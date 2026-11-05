@@ -1,0 +1,836 @@
+{
+  "passed": true,
+  "source_sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978",
+  "target": "interactive_terminal_cli",
+  "captured_cases": 9,
+  "captured_requests": 14,
+  "real_upstream_requests": 0,
+  "cch_all_verified": true,
+  "cases": [
+    {
+      "id": "cli-print-default",
+      "exit_code": 0,
+      "local_requests": 1,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 82429,
+          "body_sha256": "bfac6a7678a33b7e1398b9204a7893d0205d400eeb70b383a1e3c99ce01fe87d",
+          "cch": "2e0f9",
+          "cch_verified": true,
+          "identity": "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+          "system_blocks": [
+            {
+              "bytes": 192,
+              "sha256": "88448e117c0a96762a863193799eb212211045c3d28f0c3b29d8b5bea1ca5700"
+            },
+            {
+              "bytes": 62,
+              "sha256": "0d7062851dd7bd7e66d4be4f12ac4951e3d2f587ec408295333a49963bd3f6b7"
+            },
+            {
+              "bytes": 10682,
+              "sha256": "5930501c4490d97d31d93534da66b5d54a1d71fb1e043a1dc4939bf142c22b1b"
+            },
+            {
+              "bytes": 16627,
+              "sha256": "11f243d59e81e27301cd9dab4b2f795180506b2a61a298edc0239ea10560f40e"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, sdk-cli)",
+          "turn_origin": "sdk",
+          "entrypoint": "sdk-cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-print-append",
+      "exit_code": 0,
+      "local_requests": 1,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 82518,
+          "body_sha256": "f6825bd7fa87b568da79ddb7f48f9b1a44047620bf16b177444a31c8fdb4df7d",
+          "cch": "b4073",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.",
+          "system_blocks": [
+            {
+              "bytes": 192,
+              "sha256": "2ea51418559b528214014cf8a988d707cb2f13d53733e76db408471e4153b5ae"
+            },
+            {
+              "bytes": 94,
+              "sha256": "6c1afcd9232947a1d8f7c44a79316f8fe08d06dcdc6e7453f09e2d78fa858e5e"
+            },
+            {
+              "bytes": 10682,
+              "sha256": "5930501c4490d97d31d93534da66b5d54a1d71fb1e043a1dc4939bf142c22b1b"
+            },
+            {
+              "bytes": 16682,
+              "sha256": "9fd2e8f71922a90eba321814d4da512d9b9f3f52835bbc48d420a7332d470618"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, sdk-cli)",
+          "turn_origin": "sdk",
+          "entrypoint": "sdk-cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-print-no-tools",
+      "exit_code": 0,
+      "local_requests": 1,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 28978,
+          "body_sha256": "efe87451895397775bd5cb3323c619864dd6e0549dfc886b6ff129d39254bf06",
+          "cch": "6bebe",
+          "cch_verified": true,
+          "identity": "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+          "system_blocks": [
+            {
+              "bytes": 192,
+              "sha256": "1742bce311edd11676b560e66abbe3b73e39711bfa92af7ee9cbfc09e030af6b"
+            },
+            {
+              "bytes": 62,
+              "sha256": "0d7062851dd7bd7e66d4be4f12ac4951e3d2f587ec408295333a49963bd3f6b7"
+            },
+            {
+              "bytes": 10604,
+              "sha256": "6ed0608ab0f8a2e5966a72e22ffe1fc04a1ff6d5e220393c1ef30b7c9e336b30"
+            },
+            {
+              "bytes": 15838,
+              "sha256": "0d9acffb7ce0a4bfa99347e8968ff7c26e925e4cbfd9bec708ae8ab22ef1db2a"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, sdk-cli)",
+          "turn_origin": "sdk",
+          "entrypoint": "sdk-cli",
+          "message_block_count": 5,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-print-custom-system",
+      "exit_code": 0,
+      "local_requests": 1,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 54874,
+          "body_sha256": "61f1f609c3505e30a3315a625ca240063c8148da27d951dcf8300a9b4e575d48",
+          "cch": "0f3bf",
+          "cch_verified": true,
+          "identity": "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+          "system_blocks": [
+            {
+              "bytes": 192,
+              "sha256": "f66c429569b736cf9c8fbde4009c9843e4179a5941ba9724ebdb968264c4264f"
+            },
+            {
+              "bytes": 62,
+              "sha256": "0d7062851dd7bd7e66d4be4f12ac4951e3d2f587ec408295333a49963bd3f6b7"
+            },
+            {
+              "bytes": 54,
+              "sha256": "bcace8f1c786f42cba0001cf88c6765515d5a1e28e7298ebfba33c8ed8bec039"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, sdk-cli)",
+          "turn_origin": "sdk",
+          "entrypoint": "sdk-cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-terminal-default",
+      "exit_code": 0,
+      "local_requests": 2,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "auxiliary",
+          "model": "claude-haiku-5-5",
+          "body_bytes": 4078,
+          "body_sha256": "17a8eeefe233b01e45ec87a48f5c3f49d6179f726e81a18b4be981b668a7b706",
+          "cch": "92a0f",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 81,
+              "sha256": "0bab03db0c87852f97d2d52ab293ac451126cc2f7d7a47fe3c886729eda8ace3"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 3073,
+              "sha256": "765b5ba2fa0a315a3c749c7e54bf5cef450084a745eb01e66371b8b6359d4752"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": null,
+          "entrypoint": "cli",
+          "message_block_count": 1,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "output_config",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        },
+        {
+          "index": 1,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 90502,
+          "body_sha256": "897044713b376211ba6cb33b32a000cc131b60fc6ec0afde4956a32ba8aef093",
+          "cch": "0022e",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 190,
+              "sha256": "a33bf29f373b1454e47927440fe1d5d0cbc5b23d5c6ba1057ae4979d11276c92"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 10682,
+              "sha256": "5930501c4490d97d31d93534da66b5d54a1d71fb1e043a1dc4939bf142c22b1b"
+            },
+            {
+              "bytes": 16766,
+              "sha256": "8aa3c38dec606013c38f22416bb8dc99c9fd364489672cecc6f0c6083df76ab4"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "AskUserQuestion",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": "human",
+          "entrypoint": "cli",
+          "message_block_count": 10,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "safeguards",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-approved-default",
+      "exit_code": 0,
+      "local_requests": 2,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "auxiliary",
+          "model": "claude-haiku-5-5",
+          "body_bytes": 4078,
+          "body_sha256": "353ca4063f6407cb9721d20a51358e669a0a7dde9a453ad8da7ca1a099def195",
+          "cch": "f2878",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 81,
+              "sha256": "fe3cbb93d2cb585456bc6232539ff2189c1d1e24c1ed1a2b20c145047b9c2d7c"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 3073,
+              "sha256": "765b5ba2fa0a315a3c749c7e54bf5cef450084a745eb01e66371b8b6359d4752"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": null,
+          "entrypoint": "cli",
+          "message_block_count": 1,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "output_config",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        },
+        {
+          "index": 1,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 87888,
+          "body_sha256": "d042d167ff9d969ad7396b17abbdfb663bca02c5127152dc3b1a6746c4646762",
+          "cch": "df71d",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 190,
+              "sha256": "328cee03a2de2325bb86058755987fd9ba9ec939757dc8427d84a93b32304563"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 10682,
+              "sha256": "5930501c4490d97d31d93534da66b5d54a1d71fb1e043a1dc4939bf142c22b1b"
+            },
+            {
+              "bytes": 16766,
+              "sha256": "32f313e799907eac3641fa2dccaecab2b1677871f24c86d19aa01e4c0406810c"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "AskUserQuestion",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": "human",
+          "entrypoint": "cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-approved-no-tools",
+      "exit_code": 0,
+      "local_requests": 2,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "auxiliary",
+          "model": "claude-haiku-5-5",
+          "body_bytes": 4078,
+          "body_sha256": "5e07952b8358b034fb1897292a2650f8b5a82ff673129a149aa76282d525ab41",
+          "cch": "5364f",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 81,
+              "sha256": "1059507a56fd6d410c05750af7e31a84af065b4aef93e77a9e61e2907281ddf4"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 3073,
+              "sha256": "765b5ba2fa0a315a3c749c7e54bf5cef450084a745eb01e66371b8b6359d4752"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": null,
+          "entrypoint": "cli",
+          "message_block_count": 1,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "output_config",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        },
+        {
+          "index": 1,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 29267,
+          "body_sha256": "44e2481b070cf2d123580d02fc7278d48a75f67fffcab3fa45c7f6657ffe4940",
+          "cch": "c2ece",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 190,
+              "sha256": "41b2f112d1a7f88799f5a985a3a837f311900ae21de91a6eee85a181e436ada0"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 10604,
+              "sha256": "6ed0608ab0f8a2e5966a72e22ffe1fc04a1ff6d5e220393c1ef30b7c9e336b30"
+            },
+            {
+              "bytes": 16131,
+              "sha256": "621bd8f663d458a16c737bdd4058c569c772f28dbaf37f1b47214dc55c6ff48b"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": "human",
+          "entrypoint": "cli",
+          "message_block_count": 5,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-approved-custom-system",
+      "exit_code": 0,
+      "local_requests": 2,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "auxiliary",
+          "model": "claude-haiku-5-5",
+          "body_bytes": 4078,
+          "body_sha256": "01603c7250ce3208aa8f3b1e9ac7ae5ff8cbe50321eea7c70e9b78c876524e5e",
+          "cch": "481ba",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 81,
+              "sha256": "d1d4d597146d8e6e7e9c91a56e4404d77e2dd3ba4733e875f1c0dfc29e5573fc"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 3073,
+              "sha256": "765b5ba2fa0a315a3c749c7e54bf5cef450084a745eb01e66371b8b6359d4752"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": null,
+          "entrypoint": "cli",
+          "message_block_count": 1,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "output_config",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        },
+        {
+          "index": 1,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 60192,
+          "body_sha256": "47308a9e250c731c896905ba11faa5edc144085c7a46f074402e0e3f196fe945",
+          "cch": "01d6b",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 190,
+              "sha256": "ec5904cdc35e57d4fb3fa9fd98df283f25224f309fe4d9513d241a662eee3b8d"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 54,
+              "sha256": "bcace8f1c786f42cba0001cf88c6765515d5a1e28e7298ebfba33c8ed8bec039"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "AskUserQuestion",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": "human",
+          "entrypoint": "cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    },
+    {
+      "id": "cli-approved-empty-system",
+      "exit_code": 0,
+      "local_requests": 2,
+      "final_text_seen": true,
+      "requests": [
+        {
+          "index": 0,
+          "request_class": "auxiliary",
+          "model": "claude-haiku-5-5",
+          "body_bytes": 4078,
+          "body_sha256": "c18a4e6a428b1d7f9a427ccbd806d1b787059e6e868f8a27b8f18d7b5e9fcb44",
+          "cch": "5c04a",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 81,
+              "sha256": "8bcde89583e694f44b70bd51dcc12eaf84f61a1f2a6906884b6ac2fa46107182"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            },
+            {
+              "bytes": 3073,
+              "sha256": "765b5ba2fa0a315a3c749c7e54bf5cef450084a745eb01e66371b8b6359d4752"
+            }
+          ],
+          "tool_names": [],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": null,
+          "entrypoint": "cli",
+          "message_block_count": 1,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "output_config",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        },
+        {
+          "index": 1,
+          "request_class": "main",
+          "model": "claude-sonnet-4-6",
+          "body_bytes": 60075,
+          "body_sha256": "249705f3f59f509fb26c2844f98642d2e71cb4fa9c58e1eb3a069cb9eb76585e",
+          "cch": "df002",
+          "cch_verified": true,
+          "identity": "You are Claude Code, Anthropic's official CLI for Claude.",
+          "system_blocks": [
+            {
+              "bytes": 190,
+              "sha256": "7f2534a3f4fcdb6b8646f2a5616b99cee0f267ca4bfac3d0dec37c6de8f78066"
+            },
+            {
+              "bytes": 57,
+              "sha256": "2719b7a469d904b3281d8488976f33103944211279bddf04c05bca44d184dae6"
+            }
+          ],
+          "tool_names": [
+            "Agent",
+            "AskUserQuestion",
+            "Bash",
+            "Edit",
+            "ListAgents",
+            "Read",
+            "ReportFindings",
+            "ScheduleWakeup",
+            "Skill",
+            "ToolSearch",
+            "Workflow",
+            "DeferredToolPlaceholder",
+            "Write"
+          ],
+          "user_agent": "claude-cli/2.1.293 (external, cli)",
+          "turn_origin": "human",
+          "entrypoint": "cli",
+          "message_block_count": 9,
+          "top_level_fields": [
+            "model",
+            "messages",
+            "system",
+            "tools",
+            "metadata",
+            "max_tokens",
+            "thinking",
+            "context_management",
+            "output_config",
+            "diagnostics",
+            "stream"
+          ],
+          "final_receiver": "isolated_local_tls",
+          "real_upstream_requests": 0
+        }
+      ]
+    }
+  ],
+  "artifact_root": "/root/project/cc-runtime-bridge/artifacts/cli-alignment-20261105T064401Z",
+  "network": [
+    {
+      "trace": "network-cli.trace",
+      "connect_attempts": 64,
+      "loopback_attempts": 64,
+      "blocked_nonloopback_attempts": 0,
+      "successful_nonloopback_connections": 0,
+      "blocked_addresses": []
+    },
+    {
+      "trace": "network-interactive.trace",
+      "connect_attempts": 12,
+      "loopback_attempts": 4,
+      "blocked_nonloopback_attempts": 8,
+      "successful_nonloopback_connections": 0,
+      "blocked_addresses": [
+        "114.114.114.114",
+        "8.8.8.8"
+      ]
+    }
+  ],
+  "source_unchanged": true,
+  "reference_processes_closed": true,
+  "reference_mode": "真实 PTY 交互终端，未注入 BUN_OPTIONS 或替换 fetch",
+  "data_boundary": "本文件仅含身份、字段、字节数与校验摘要；原始正文及工具描述保留在被忽略的 artifacts",
+  "approved_reference": {
+    "cases": [
+      "cli-approved-default",
+      "cli-approved-no-tools",
+      "cli-approved-custom-system",
+      "cli-approved-empty-system"
+    ],
+    "configuration": "专用空项目；相同合成 API key 预先本地确认；默认权限。首次终端确认样本的 auto/safeguards 单独保留。",
+    "network_evidence": "unshare --net 仅回环、CONNECT 只连接本机 TLS；这四次未另录系统调用 trace，不能据此声称没有外连尝试。"
+  }
+}

@@ -1,0 +1,8 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"核对原生 CCH、唯一发送、六类关联、常驻隔离、产物身份及配对性能"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"核对最终采样来源、历史记录及缺失状态，禁止将中间值冒充最终值"}
+{"file":".trellis/tasks/11-05-cli-alignment/research/cli-baseline.md","reason":"以真实交互 CLI 而非 sdk-cli 打印模式验收系统提示词、工具和消息上下文"}
+{"file":".trellis/tasks/11-05-cli-alignment/research/cli-baseline-summary.json","reason":"核对来源哈希、九次参考启动、十四份最终 CCH、辅助请求计数和网络隔离证据"}
+{"file":".trellis/tasks/11-05-cli-alignment/research/static-text-reuse.md","reason":"核对六个纯工厂及键依赖、动态钩子/会话隔离、129 项回归与新哈希验收，暖复用未达标不能记为完成"}
+{"file": ".trellis/tasks/11-05-cli-alignment/research/warm-call-profile.md", "reason": "确认本轮研究未纳入生产、原产物身份及正式失败结论保留，不将研究结果作为已修复"}
+{"file": ".trellis/tasks/11-05-cli-alignment/research/first-send-path.md", "reason": "核对首发原型未纳入生产；保留旧性能失败，当前 CHK-001 延迟风险已获用户接受，不以研究启动或成功场景冒充完整准入"}
+{"file": ".trellis/tasks/11-05-cli-alignment/research/acceptance.md", "reason": "最新省略 tools 即无工具的明确决定、新配方9产物及128项聚焦验证、40对完整出站和14份最终采样；旧速度风险记录保留为历史"}

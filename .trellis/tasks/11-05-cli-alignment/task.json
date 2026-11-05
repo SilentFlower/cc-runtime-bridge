@@ -1,0 +1,82 @@
+{
+  "id": "cli-alignment",
+  "name": "cli-alignment",
+  "title": "对齐固定293终端CLI的请求构造与出站行为",
+  "description": "用户明确要求对齐终端CLI的真实请求装配，保留结构化单轮桥接、常驻隔离与部署体积预算。用户已接受当前延迟，取消vm2api相对速度准入，以原生正确性、凭据保护及故障隔离为优先；工具仅采用调用方显式列表，省略及空列表均无工具，不注入CC内置声明。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-05",
+  "completedAt": "2026-11-05",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-05T16:20:44Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-05T06:42:46Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "e68722f3707e06e17ecb284a63293cb074d4d3e8",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "e68722f3707e06e17ecb284a63293cb074d4d3e8",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "8e6e5093311c3c2be44a45e1f655bcad6fcc5fb8f9951a092ae7e8083b3c35b8"
+          }
+        ],
+        "fingerprint": "dbec0a76426080acedeb61b1f0931d3303d9bdf146c2fbf574c7ba9cb13cb2a8"
+      }
+    }
+  },
+  "progress": {
+    "completedSteps": [
+      "固定293 CLI默认提示词、实际工具及六类归因对齐",
+      "省略或空工具列表不注入内置声明，单次原生发送及失败隔离验证",
+      "配方9产物、131项回归、最终TLS、独立部署和重复构建验收"
+    ],
+    "partialStep": null,
+    "nextStep": "无后续开发事项",
+    "notes": "旧相对速度门槛已由用户取消，历史失败保留；仅使用合成凭据和无外网回环验证",
+    "updatedAt": "2026-11-05T16:20:44Z"
+  }
+}

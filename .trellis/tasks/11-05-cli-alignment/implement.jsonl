@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"保留固定来源、原版与精简入口、单次发送、常驻隔离及体积预算；用户已取消相对速度准入，SDK 默认条目由本任务显式变更"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"区分 cc_prepared 与真实最终采样，保留秘密处理及采集完整性语义"}
+{"file":".trellis/tasks/11-05-cli-alignment/research/cli-baseline.md","reason":"固定原版交互终端与打印模式的历史基线及装配边界；最新工具默认值和匹配参考以PRD与acceptance为准"}
+{"file":".trellis/tasks/11-05-cli-alignment/research/static-text-reuse.md","reason":"用户已选择的静态复用边界、逐轮依赖、单项预算、原版对照及同窗口性能证据"}
+{"file": ".trellis/tasks/11-05-cli-alignment/research/warm-call-profile.md", "reason": "CHK-001 暖路径分段、当前产物采样及三组无足够收益的配对研究，防止重复无效缓存或误用研究启动数据"}
+{"file": ".trellis/tasks/11-05-cli-alignment/research/first-send-path.md", "reason": "首发消费裁剪原型的固定 AST 边界、28 份 CCH/14 对出站等价证据及仅小幅收益，工具缓存已有 162 次全命中"}
