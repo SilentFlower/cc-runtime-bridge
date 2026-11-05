@@ -1,0 +1,84 @@
+{
+  "id": "native-cc-ingress",
+  "name": "native-cc-ingress",
+  "title": "原生 CC 入站保真适配与全场景回归",
+  "description": "按用户确认方向接纳原生CC293请求，保留业务正文及归因，增加前置校验并修复超时，重测原23场景及新增原生矩阵。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-05",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-05T18:57:47Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-05T17:23:20Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "0bf504a972c3b3695ba273f754b2230686315198",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "0bf504a972c3b3695ba273f754b2230686315198",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "f4793212cd7be500413a649e666cc160ed0cffb75ef6a6988da98d17f166bac9"
+          }
+        ],
+        "fingerprint": "70b6019c77ec727df272b4a76a16403830ee134b7d7ec7605651adb332a8f421"
+      }
+    }
+  },
+  "progress": {
+    "updatedAt": "2026-11-05T18:57:47.168009+00:00",
+    "completedSteps": [
+      "完成固定293原生入站识别、正文保真及必要身份改写，保持普通API组装合同",
+      "修复三项原构造超时，增加工具及thinking前置校验",
+      "最终精简产物通过重复构建、独立部署、Unicode及原版对照验证",
+      "完成49组场景和189项自动化用例，核验最终CCH及历史日志不变",
+      "更新运行时、日志和页面规范，按确认范围提交并推送业务变更"
+    ],
+    "partialStep": null,
+    "nextStep": "无",
+    "notes": "全程使用合成凭据与离线回环，0真实上游请求；旧相对速度诊断保留未通过结论，生产自动最终采集能力未改变。"
+  }
+}
