@@ -25,3 +25,10 @@ playwright-report/
 .DS_Store
 .idea/
 .vscode/
+# BEGIN Flower shared records
+!/.flower/
+/.flower/*
+!/.flower/.gitignore
+!/.flower/plugins.json
+!/.flower/plugin-lock.json
+# END Flower shared records
