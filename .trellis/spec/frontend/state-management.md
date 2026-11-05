@@ -1,0 +1,58 @@
+# 日志页面状态合同
+
+## Scenario: 筛选、详情及阶段原文
+
+### 1. Scope / Trigger
+
+- web/client.ts 管理原生页面状态；类型与 API 解码来自 src/shared/contracts.ts、src/shared/log-api.ts。
+- 本页属于只读控制台，不承担账号操作或模型提交。
+
+### 2. Signatures
+
+- decodeLogList(value: unknown): { rows: RequestRow[]; total: number }。
+- decodeLogDetail(value: unknown): RequestDetail。
+- loadList(): Promise<void>；openDetail(id: string, refresh = false): Promise<void>。
+- GET /api/logs 使用 requestId、model、state、requestClass、sessionId、since、until、limit、offset。
+- GET /api/logs/:id 读取快照；GET /api/health 返回 engine、logMode、captureError、nativeFinalCapture。
+
+### 3. Contracts
+
+- 分页 limit=50，offset 从 0 开始，下一页依据 total。筛选修改、重置和同会话查看都从第一页开始。
+- UI 本地时间筛选转换为 ISO UTC；requestId 为包含匹配，模型、类别、状态和 session 为精确匹配。
+- 列表和详情各有独立 AbortController；旧请求不能覆盖新筛选或新详情，关闭对话框后不得写回旧结果。
+- 开启自动刷新后每 3 秒刷新列表；详情显式刷新，打开新 ID 重置到 summary/ingress，同 ID 刷新保留页签。
+- 详情四页签为概览、头部处理、性能、原始数据；阶段名称与采集状态由持久接口驱动。
+- null 性能字段显示未观测，不写 0；请求 state 与捕获 status 不相互替代。
+- demo/fixture 必须明显标记演示与未调用上游。wire_final 不可用时显示未采集，不能以中间原文填充。
+- 文本、模型名、原文全部通过 textContent 渲染；不得通过 innerHTML 解释输入。复制只使用已经脱敏的接口文本。
+- 同会话按钮用发生时的 sessionId 查询；父 agentId 与 agentId 保留快照，不依赖活跃进程对象。
+- 表单子元素不能命名为 reset，以免覆盖 HTMLFormElement.reset()；当前按钮 ID 为 reset-filters。
+- 复制提示在对话框打开时挂到 dialog 内，以免被原生顶层对话框遮住。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 页面行为 |
+| --- | --- |
+| 无匹配记录 | 空态，禁用无效翻页 |
+| 列表读取失败 | 加载失败说明与提示，不重放模型 |
+| 详情不存在或过期 | 显示读取错误，不拼接当前进程内容 |
+| text=null | 显示未保存原文，禁用正文复制 |
+| wire_final unavailable | 明示未采集和采集位置原因 |
+| captureError | 健康提示与采集异常信息，不能据此判定模型失败 |
+| 浏览器拒绝剪贴板 | 提示手动复制，不把错误当作复制成功 |
+
+### 5. Scenarios and Examples
+
+- 正常：筛选 subagent，打开详情，查看父 agent，再点击同会话按钮看到主请求与子请求。
+- 边界：summary 模式仍能显示关联与终态；没有正文时保持明确空值。
+- 错误用法：看到 HTTP 200 就在页面判为成功。正确做法是显示服务端 RequestRow.state，区分 SSE 错误与缺失终态。
+- 错误用法：使用 id=reset 的表单按钮后调用 form.reset()。正确做法是使用当前 reset-filters ID，关联筛选和重置均验收。
+- 错误用法：把模型里的 HTML 或 JSON 原文通过 innerHTML 展示。正确做法是安全文本渲染，格式化 JSON 仍为文本。
+
+### 6. Tests Required
+
+- tests/browser/logs.spec.ts：列表与四页签、脱敏复制、最终值缺口、类别/时间筛选、同会话关联。
+- 手机 390 像素宽度验收详情可读且页面不横向溢出。
+- HTML/XSS 输入只显示为文本，不能创建节点或执行脚本。
+- 改动异步读取或销毁流程时，核对 AbortController 与结果归属，关闭或换 ID 后旧响应不能覆盖页面。
+- bun run typecheck 与 bun run build；浏览器验收使用独立目录、显式 demo 和无外网空间。
