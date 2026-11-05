@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/index.md","reason":"控制服务与持久化所属规范入口"}
+{"file":".trellis/spec/frontend/index.md","reason":"日志页面所属规范入口"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"从入站、协议、持久化到页面的字段一致性"}
+{"file":"docs/header-policy.md","reason":"扩展默认保留、运行时字段归属与上下文关联"}
+{"file":"docs/request-logs.md","reason":"采集位置、模式、完整性与脱敏存储合同"}
+{"file":"docs/api.md","reason":"受支持 API、拒绝规则及运行配置"}
+{"file":"docs/research/claude-code-293-study.md","reason":"固定运行时接口、双阶段机制与最终 CCH 边界"}

@@ -1,0 +1,51 @@
+{
+  "id": "native-runtime-logs",
+  "name": "native-runtime-logs",
+  "title": "首版：官方 293 原生请求桥接、黑名单头策略与请求日志查看",
+  "description": "独立官方 293 原生桥接，保留请求语义，以黑名单处理扩展头，并提供带采集阶段和完整性标记的本地请求日志查看。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-05",
+  "completedAt": "2026-11-05",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "README.md",
+    "AGENTS.md",
+    "docs/header-policy.md",
+    "docs/request-logs.md",
+    "docs/research/baseline.json",
+    "docs/research/claude-code-293-study.md"
+  ],
+  "notes": "首版实现、构建、类型检查、56 项离线与浏览器验收、完整检查和规范更新已完成。用户确认后，业务代码已发布至 GitHub 公开仓库 SilentFlower/cc-runtime-bridge；任务完成状态由进度同步记录。现有 cc2api 及 V4 均未变更。",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成固定官方 2.1.293 原生构造与发送、头部策略和上下文适配",
+      "完成分阶段脱敏日志、持久化与本地只读控制台",
+      "完成构建、类型检查及 56 项离线和浏览器验收",
+      "完成完整检查及可复用项目规范记录",
+      "首版业务代码已发布至 GitHub 公开仓库"
+    ],
+    "partialStep": null,
+    "nextStep": "首版任务已完成；后续接入或生产验收另立任务",
+    "notes": "真实 OAuth、生产最终出站采样及跨账号并发不在本次首版验收范围，wire_final 明确显示未采集。",
+    "updatedAt": "2026-11-05T01:45:05Z"
+  },
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-05T01:45:05Z",
+    "blockers": []
+  }
+}
