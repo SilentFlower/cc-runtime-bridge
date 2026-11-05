@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "官方 Claude Code 原生桥接与请求日志查看",
+  "description": "本地运行时适配与请求日志工具",
   "scripts": {
     "build": "bun scripts/build.ts",
     "dev": "bun src/control/cli.ts",
