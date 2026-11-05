@@ -44,7 +44,7 @@ bun run start
 
 ## 接口
 
-- `POST /v1/messages`：接收受支持的 Messages API 正文。
+- `POST /v1/messages`：接收固定 293 原生 CC 正文或受支持的 Messages API 正文。
 - `POST /api/requests`：接收带 request_id、headers、context 的信封。
 - `GET /api/logs`、`GET /api/logs/:id`：只读查询；`GET /api/health` 查看运行来源和采集故障。
 

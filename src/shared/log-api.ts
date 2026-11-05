@@ -23,6 +23,7 @@ export function decodeLogList(value: unknown): { rows: RequestRow[]; total: numb
 export function decodeLogDetail(value: unknown): RequestDetail {
   if (!isObject(value) || !Array.isArray(value.decisions) || !Array.isArray(value.captures) || (value.context !== null && !isObject(value.context))) throw new Error('日志详情响应不合法');
   const request = row(value.request);
+  if (isObject(value.context) && value.context.inputFormat !== undefined && !['api', 'claude_code'].includes(String(value.context.inputFormat))) throw new Error('日志接入类型不合法');
   for (const decision of value.decisions) if (!isObject(decision) || typeof decision.name !== 'string' || typeof decision.reason !== 'string' || !['keep', 'drop', 'runtime', 'context'].includes(String(decision.action))) throw new Error('头部决策合同不匹配');
   for (const capture of value.captures) {
     if (!isObject(capture) || !['ingress', 'header_policy', 'cc_prepared', 'wire_final', 'upstream_response'].includes(String(capture.stage)) || typeof capture.source !== 'string' || typeof capture.status !== 'string' || typeof capture.observedBytes !== 'number' || !Array.isArray(capture.headers) || (capture.text !== null && typeof capture.text !== 'string')) throw new Error('采集阶段合同不匹配');

@@ -130,6 +130,7 @@ function field(label: string, value: unknown, wide = false): HTMLElement {
 function summary(value: RequestDetail): void {
   const row = value.request;
   const grid = element('div', undefined, 'detail-grid');
+  grid.append(field('接入路径', value.context?.inputFormat === 'claude_code' ? '原生 CC 正文接入' : value.context?.inputFormat === 'api' ? '普通 API 原生组装' : value.context ? '旧记录未注明' : '未解析'));
   grid.append(field('状态', STATES[row.state] ?? row.state), field('HTTP 状态', row.httpStatus), field('模型', row.model), field('请求类别', CLASSES[row.requestClass] ?? row.requestClass), field('引擎', row.engine), field('上下文来源', value.context?.source === 'client' ? '调用方上下文' : value.context ? '桥接器默认' : '未解析'), field('开始时间', date(row.createdAt)), field('完成时间', date(row.finishedAt)), field('会话 ID', row.sessionId), field('Prompt ID', row.promptId), field('Agent ID', row.agentId), field('父 Agent ID', row.parentAgentId), field('二进制 SHA256', row.binarySha256, true));
   content.append(grid);
   if (row.error) content.append(element('p', row.error, 'notice warning'));
@@ -173,7 +174,8 @@ function rawView(value: RequestDetail): void {
   const nav = element('div', undefined, 'capture-nav');
   for (const [stage, label] of Object.entries(STAGES)) {
     const capture = value.captures.find(item => item.stage === stage);
-    const button = element('button', label + ' · ' + (capture ? CAPTURE[capture.status] ?? capture.status : '未采集'), 'button' + (selectedStage === stage ? ' active' : ''));
+    const stageLabel = stage === 'cc_prepared' && value.context?.inputFormat === 'claude_code' ? '原生改写（中间值）' : label;
+    const button = element('button', stageLabel + ' · ' + (capture ? CAPTURE[capture.status] ?? capture.status : '未采集'), 'button' + (selectedStage === stage ? ' active' : ''));
     button.addEventListener('click', () => { selectedStage = stage; renderDetail(); }); nav.append(button);
   }
   content.append(nav);

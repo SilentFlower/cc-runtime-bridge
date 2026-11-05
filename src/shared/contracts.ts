@@ -8,13 +8,13 @@ export type HeaderPair = [string, string];
 export type RequestClass = 'main' | 'subagent' | 'workflow' | 'compaction' | 'auxiliary' | 'side_reply';
 
 /** 一个 API 消息，不把用户工具转换为本地可执行工具。 */
-export interface ApiMessage {
-  role: 'user' | 'assistant';
+export interface ApiMessage extends JsonObject {
+  role: 'user' | 'assistant' | 'system';
   content: string | JsonObject[];
 }
 
 /** 首版能够适配的 Messages API 参数。 */
-export interface MessageBody {
+export interface MessageBody extends JsonObject {
   model: string;
   messages: ApiMessage[];
   system?: string | JsonObject[];
@@ -46,10 +46,12 @@ export interface BridgeInput {
   body: MessageBody;
   headers: HeaderPair[];
   context: ContextInput;
+  inputFormat?: 'api' | 'claude_code';
 }
 
 /** 已解析的调用上下文，各表示都以此为同一来源。 */
 export interface RequestContext {
+  inputFormat?: 'api' | 'claude_code';
   requestClass: RequestClass;
   sessionId: string;
   promptId: string;

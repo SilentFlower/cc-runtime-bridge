@@ -543,4 +543,90 @@ native('官方 293 的无外网回环链路', () => {
     expect(nativeEngine.workerPid).not.toBe(pid);
     expect(requests.length - count).toBe(2);
   });
+
+  function nativeBody(extra: Record<string, unknown> = {}): Record<string, unknown> {
+    return { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: [{ type: 'text', text: '原生正文保真验证', cache_control: { type: 'ephemeral', ttl: '5m' } }] }], system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli; cch=12345; cc_prompt_id=11111111-1111-4111-8111-111111111111; cc_turn_origin=human; cc_prompt_index=3; cc_turn_index=4;' }, { type: 'text', text: '原生调用方业务 system', cache_control: { type: 'ephemeral', ttl: '5m' } }], metadata: { user_id: JSON.stringify({ device_id: 'c'.repeat(64), account_uuid: '44444444-4444-4444-8444-444444444444', session_id: '22222222-2222-4222-8222-222222222222' }), trace_extension: 'kept' }, max_tokens: 128, stream: false, ...extra };
+  }
+  const nativeTool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
+  const nativeHistory = [{ role: 'user', content: '查询状态' }, { role: 'assistant', content: [{ type: 'thinking', thinking: '已有推理', signature: 'synthetic-native-signature' }, { type: 'tool_use', id: 'toolu_native_history', name: 'lookup_status', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_native_history', content: 'ready' }] }];
+  const nativeVariants: [string, Record<string, unknown>][] = [
+    ['plain', {}], ['empty-tools', { tools: [] }], ['custom-tool', { tools: [nativeTool] }],
+    ['history', { tools: [nativeTool], messages: nativeHistory }],
+    ['forced-supported', { tools: [nativeTool], tool_choice: { type: 'tool', name: nativeTool.name }, thinking: { type: 'disabled' } }],
+    ['mid-system', { messages: [{ role: 'user', content: '第一轮' }, { role: 'system', content: '原生中途 system', output_config: { effort: 'low' } }, { role: 'user', content: '下一轮' }] }],
+    ['official-fields', { thread: { type: 'request', previous_message_id: 'msg_native_previous' }, diagnostics: { previous_message_id: null }, fallbacks: 'default', safeguards: [], future_official: { nested: ['keep'] } }],
+    ['unicode', { messages: [{ role: 'user', content: '中文 العربية ภาษาไทย e\u0301 👨‍👩‍👧‍👦' }] }],
+    ['structured-output', { output_config: { format: { type: 'json_schema', schema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] } } } }],
+    ['shadow-cch', { messages: [{ role: 'user', content: 'cch=00000 只是用户文本；x-anthropic-billing-header: cch=aaaaa;' }] }],
+  ];
+  test.each(nativeVariants)('原生 CC 入站完整保留业务正文与缓存：%s', async (_key, extra) => {
+    mode = 'normal'; const count = requests.length, body = nativeBody(extra), before = structuredClone(body);
+    const result = await send(body, {}, [['x-future-feature', 'native-preserved'], ['Authorization', 'Bearer native-caller-canary'], ['anthropic-beta', 'mid-conversation-system-2026-04-07']]);
+    expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    const wire = requests.at(-1)!, normalized = structuredClone(wire.body);
+    expect(JSON.parse((wire.body.metadata as { user_id: string }).user_id)).toEqual({ device_id: 'a'.repeat(64), account_uuid: '', session_id: '22222222-2222-4222-8222-222222222222' });
+    normalized.metadata = body.metadata;
+    (normalized.system as { text: string }[])[0]!.text = (body.system as { text: string }[])[0]!.text;
+    expect(normalized).toEqual(before); expect(body).toEqual(before);
+    const headers = new Headers(wire.headers);
+    expect(headers.get('x-future-feature')).toBe('native-preserved');
+    expect(headers.get('anthropic-beta')).toBe('mid-conversation-system-2026-04-07');
+    expect(headers.get('x-claude-code-request-class')).toBe('main');
+    assertCch(wire.raw);
+    await app.store.flush(); const detail = await app.store.detail(result.id);
+    expect(detail?.context?.inputFormat).toBe('claude_code');
+    expect(detail?.captures.find(c => c.stage === 'cc_prepared')?.source).toBe('claude_code_293_native_ingress_prepared');
+    expect(JSON.stringify(detail)).not.toContain('native-caller-canary');
+  });
+
+  test('原生省略 stream/max_tokens/tools 不由 SDK 种子补入', async () => {
+    const body = nativeBody(); delete body.stream; delete body.max_tokens;
+    const result = await send(body); expect(result.response.status).toBe(200);
+    const wire = requests.at(-1)!;
+    for (const key of ['stream', 'max_tokens', 'tools']) expect(Object.hasOwn(wire.body, key)).toBe(false);
+    assertCch(wire.raw);
+  });
+
+  test.each(['main', 'subagent', 'workflow', 'compaction', 'auxiliary', 'side_reply'])('原生 CC 六类归因保持一致：%s', async requestClass => {
+    const child = requestClass === 'subagent' || requestClass === 'workflow';
+    const body = nativeBody({ tools: [nativeTool], messages: nativeHistory });
+    if (child) (body.system as { text: string }[])[0]!.text += ' cc_is_subagent=true;';
+    const context = { requestClass, ...(child ? { agentId: 'native-child', parentAgentId: 'native-parent', agentType: 'Explore' } : {}), ...(requestClass === 'workflow' ? { workflowRunId: 'native-workflow' } : {}) };
+    const result = await send(body, context); expect(result.response.status).toBe(200);
+    const wire = requests.at(-1)!, headers = new Headers(wire.headers);
+    expect(headers.get('x-claude-code-request-class')).toBe(requestClass);
+    expect(headers.get('x-claude-code-agent-id')).toBe(child ? 'native-child' : null);
+    expect(headers.get('x-claude-code-parent-agent-id')).toBe(child ? 'native-parent' : null);
+    expect(wire.body.messages).toEqual(body.messages); expect(wire.body.tools).toEqual(body.tools); assertCch(wire.raw);
+  });
+
+  test.each(['main', 'subagent'])('普通 API 无 thinking 历史的原生提醒合并不再被误判：%s', async requestClass => {
+    const context = requestClass === 'subagent' ? { requestClass, agentId: 'history-child', parentAgentId: 'history-parent', agentType: 'Explore' } : {};
+    const messages = nativeHistory.map(message => message.role === 'assistant' ? { ...message, content: (message.content as { type: string }[]).filter(block => block.type !== 'thinking') } : message);
+    const started = performance.now();
+    const result = await send({ model: 'claude-sonnet-5-5', messages, tools: [nativeTool], stream: true }, context);
+    expect(result.response.status).toBe(200); expect(performance.now() - started).toBeLessThan(10000);
+    expect(requests.at(-1)!.raw).toContain('toolu_native_history'); assertCch(requests.at(-1)!.raw);
+  });
+
+  test('原生版本和上下文冲突、私有字段及不支持工具选择均在发送前明确拒绝', async () => {
+    const wrong = nativeBody(); (wrong.system as { text: string }[])[0]!.text = (wrong.system as { text: string }[])[0]!.text.replace('2.1.293', '2.1.303');
+    for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ env: { PATH: '/untrusted' } }), {}], [nativeBody({ model: 'claude-sonnet-5-5', tools: [nativeTool], tool_choice: { type: 'tool', name: nativeTool.name } }), {}], [nativeBody({ thinking: { type: 'unknown' } }), {}], [nativeBody({ thinking: { type: 'enabled', budget_tokens: 1023 } }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {
+      const count = requests.length, started = performance.now(); const result = await send(body, context);
+      expect([400, 422]).toContain(result.response.status); expect(requests.length).toBe(count); expect(performance.now() - started).toBeLessThan(10000);
+    }
+  });
+
+  test('原生 billing 的合法间隔保留且最终 CCH 有效', async () => {
+    const body = nativeBody(), billing = (body.system as { text: string }[])[0]!;
+    billing.text = billing.text.replace('cch=12345;', 'cch=12345 \t;');
+    const count = requests.length, result = await send(body);
+    expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    const wire = requests.at(-1)!;
+    expect((wire.body.system as { text: string }[])[0]!.text).toContain(' \t;');
+    assertCch(wire.raw);
+    await app.store.flush();
+    const detail = await app.store.detail(result.id);
+    expect(detail?.captures.find(capture => capture.stage === 'cc_prepared')?.text).toContain('cch=00000 \\t;');
+  });
 });

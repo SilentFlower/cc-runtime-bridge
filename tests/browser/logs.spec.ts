@@ -111,3 +111,43 @@ test('手机详情可读，原文及模型内容只作为安全文本', async ({
   await expect(detail).not.toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('原生入站显示接入路径和改写中间值', async ({ page, request }) => {
+  const response = await request.post('/api/requests', {
+    data: {
+      request_id: 'ui-native',
+      body: {
+        model: 'claude-sonnet-4-6',
+        system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli; cch=12345;' }],
+        metadata: { user_id: JSON.stringify({ device_id: 'a'.repeat(64), account_uuid: '', session_id: session }) },
+        messages: [{ role: 'user', content: '原生页面合同的合成夹具' }],
+      },
+    },
+  });
+  expect(response.status()).toBe(200);
+  await response.body();
+  await expect.poll(async () => (await (await request.get('/api/logs/ui-native')).json()).context?.inputFormat).toBe('claude_code');
+  await page.goto('/');
+  await page.getByLabel('每 3 秒刷新').uncheck();
+  await page.getByRole('button', { name: 'ui-native', exact: true }).click();
+  const detail = page.getByRole('dialog');
+  await expect(detail.getByText('原生 CC 正文接入', { exact: true })).toBeVisible();
+  await detail.getByRole('tab', { name: '原始数据', exact: true }).click();
+  await detail.getByRole('button', { name: /原生改写（中间值）/ }).click();
+  await expect(detail.locator('.capture-meta')).toContainText('demo_fixture');
+  await detail.getByRole('button', { name: /最终出站采样/ }).click();
+  await expect(detail.locator('.capture-meta')).toContainText('未采集');
+});
+
+test('入口拒绝而未解析的请求显示实际状态', async ({ page, request }) => {
+  const response = await request.post('/v1/messages', { data: { model: 'm', messages: [{ role: 'invalid', content: '非法角色的合成输入' }] } });
+  expect(response.status()).toBe(400);
+  const id = response.headers()['x-ccrb-request-id']!;
+  await expect.poll(async () => (await (await request.get('/api/logs/' + id)).json()).request?.state).toBe('error');
+  await page.goto('/');
+  await page.getByLabel('每 3 秒刷新').uncheck();
+  await page.getByTitle(id, { exact: true }).click();
+  const detail = page.getByRole('dialog');
+  await expect(detail.locator('.detail-grid')).toContainText('接入路径未解析');
+  await expect(detail.getByText('旧记录未注明', { exact: true })).toHaveCount(0);
+});

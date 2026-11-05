@@ -36,6 +36,7 @@ function validateRuntimeEvent(value: unknown, requestId: string): RuntimeEvent {
 export function decodeRuntimeJob(value: unknown): RuntimeJob {
   if (!isObject(value) || value.type !== 'request_start' || value.schema_version !== 1 || typeof value.request_id !== 'string' || !isObject(value.prepared)) throw new BridgeError('runtime_protocol', '无效运行时作业');
   const prepared = value.prepared;
+  if (isObject(prepared.input) && prepared.input.inputFormat !== undefined && !['api', 'claude_code'].includes(String(prepared.input.inputFormat))) throw new BridgeError('runtime_protocol', '运行时接入类型不合法', 502);
   if (!isObject(prepared.input) || prepared.input.request_id !== value.request_id || !isObject(prepared.input.body) || !Array.isArray(prepared.input.body.messages) || !isObject(prepared.context) || typeof prepared.context.sessionId !== 'string' || typeof prepared.context.promptId !== 'string' || !headerPairs(prepared.headers)) throw new BridgeError('runtime_protocol', '运行时作业缺少上下文');
   return value as unknown as RuntimeJob;
 }

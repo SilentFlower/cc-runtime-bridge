@@ -72,6 +72,7 @@ export function prepareInput(input: BridgeInput): PreparedInput {
   if (requestClass === 'side_reply') querySource = 'side_reply';
   const sessionId = context.sessionId ?? randomUUID();
   const resolved: RequestContext = {
+    inputFormat: input.inputFormat ?? 'api',
     requestClass: requestClass as RequestClass,
     sessionId,
     promptId,

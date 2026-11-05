@@ -28,7 +28,17 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 信封 headers 是有序二元字符串数组，提供后替代外层 HTTP 头作为业务转发输入；日志仍会保存实际入站 HTTP 头。没有信封 headers 时使用 HTTP 头。鉴权、传输字段、Connection 动态字段及原生上下文按 [头部策略](header-policy.md) 处理。
 
-## 正文能力
+## 原生 CC 正文
+
+两种入口均按正文证据区分原生 CC 与普通 API。原生请求需要根 system 数组首段包含唯一独立 billing 文本块，`cc_version=2.1.293.<三位十六进制后缀>`、`cc_entrypoint=cli`、有效 CCH，以及合法的 `metadata.user_id` JSON 字符串。设备 ID 为 64 位十六进制，账号 UUID 可为空，会话 ID 必须为 UUID；可选 prompt ID、轮次及子代理标识同时校验。损坏或不支持的原生证据返回 422，不回落到普通 API 重组。
+
+原生分支保留业务 system、messages、tools、tool_choice、thinking、output_config、缓存标记及位置，以及 thread、diagnostics、fallbacks、safeguards 和扩展 JSON。消息可包含原生 system 角色及扩展字段。省略字段保持省略；工具为空或省略均不补工具，也不添加 CLI 提醒或默认正文。
+
+必要改写仅包括：metadata.user_id 的 device_id/account_uuid 使用当前专用运行时身份，session_id 与其他 metadata 保留；billing CCH 先置为原生占位，再由同一原生传输生成最终值。原版本后缀、prompt、轮次及父子标识保留，显式上下文或头部冲突返回 400。入站 beta 在原生分支保留，凭据与传输头仍遵循既有头部策略。
+
+扩展 JSON 只作为上游数据。根字段 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于本机控制字段，返回 422。调用方不能通过正文改变账号、代理、工作目录或执行程序。原生识别不代表上游已接受扩展字段或模型参数组合。
+
+## 普通 API 正文能力
 
 | 字段 | 首版行为 |
 | --- | --- |
@@ -36,7 +46,7 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 | messages | 必填；user / assistant，文本或内容块数组 |
 | system | 省略使用 CLI 默认正文；显式文本或仅含 type/text 的文本块完整替换正文，对应 --system-prompt；空文本与空数组同样是替换 |
 | tools | 省略或 [] 均无工具；非空数组为完整列表，不加入 CC 内置、延迟或搜索工具；schema 经原生 extraToolSchemas 输入 |
-| tool_choice | 由原生工具选择参数表达，发送前校验保留 |
+| tool_choice | auto、none、any、tool；tool 必须引用已声明工具，非 none 选择需要非空列表 |
 | max_tokens、temperature | 映射原生输出预算和温度参数，发送前校验 |
 | thinking | disabled、enabled、adaptive；enabled 需要不小于 1024 的 budget_tokens |
 | output_config | effort、format；模型或原生能力不能表达时返回 422 |
@@ -46,9 +56,11 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 普通主请求使用固定 293 交互终端 CLI 的原生身份、提示词、权限、环境和技能等提醒，工具仅来自调用方显式列表；默认正文及提醒根据实际工具集生成。业务 system 替换默认正文，身份及 billing 仍由原生链路装配。原生补充消息逐项关联，不能以忽略全部 system-reminder 代替业务保留校验。自定义工具 schema 是桥接的结构化接口能力，不表示终端 --tools 接受任意 schema。
 
-已封口的 x-anthropic-billing-header system 前缀、显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未知合法端到端请求头采用默认保留策略。
+普通 API 的显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未知合法端到端请求头采用默认保留策略。完整原生 billing 由上一节的独立分支处理。
 
 省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。调用方应按实际需要明确选择受支持参数。
+
+两条路径都在发送前校验工具名称、重复声明及强制选择组合。thinking 为 enabled/adaptive，或固定 293 原生模型能力要求 adaptive 时，any/tool 强制选择返回 400。模型能力直接查询固定运行时，不按模型名称猜测。不兼容组合、原生构造错误和模型失败事件会确定失败，不通过等待超时、隐式切换模型或重试处理。
 
 ## 上下文
 
@@ -59,7 +71,7 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 - 子代理需要 agentId，workflow 还需要 workflowRunId；父 agent、agent 类型、session 和 prompt 一起传给原生链路。
 - agentKind 支持 main、subagent、teammate；类别与身份冲突返回错误。
 - 压缩可以保留主代理或子代理身份，不能只改变 request-class 头。
-- sessionId、promptId 未提供时生成；promptId 必须为 UUID。
+- 普通 API 的 sessionId、promptId 未提供时生成；原生分支优先使用 metadata 会话及可选 billing prompt，缺少 prompt 时生成。promptId 必须为 UUID。
 
 账号工作进程惰性启动、串行常驻，每轮建立独立原生会话根并以 session transition 恢复指定会话身份。正常完成后复用进程，取消或异常后隔离重建；不重放当前请求。它保留请求关联，不在本地维护可执行的用户代理循环。原版和精简版的构建与身份合同见 [运行时说明](runtime.md)。
 

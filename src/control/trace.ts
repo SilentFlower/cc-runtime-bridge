@@ -96,6 +96,10 @@ export class RequestTrace {
       const captured = this.captures.get('cc_prepared')!;
       captured.observedBytes = event.body_bytes;
       captured.sha256 = event.body_sha256;
+      if (!this.options.engine.startsWith('demo') && this.prepared?.context.inputFormat === 'claude_code') {
+        captured.source = 'claude_code_293_native_ingress_prepared';
+        captured.note = '原生入站业务正文保留，仅改写账号身份及原生 CCH 占位；此处仍为最终传输前的中间值';
+      }
       this.save();
     } else if (event.type === 'response_headers') {
       this.row.httpStatus = event.status;

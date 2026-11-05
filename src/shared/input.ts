@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { ApiMessage, BridgeInput, ContextInput, HeaderPair, MessageBody } from './contracts';
 import { BridgeError, isObject } from './errors';
+import { readNativeInput, mergeNativeContext } from './native-input';
+import { validateToolChoice } from './parameters';
 
 const BODY_KEYS = new Set(['model', 'messages', 'system', 'tools', 'tool_choice', 'max_tokens', 'thinking', 'temperature', 'output_config', 'stream']);
 const CONTEXT_KEYS = new Set(['requestClass', 'sessionId', 'promptId', 'agentId', 'parentAgentId', 'agentType', 'agentKind', 'workflowRunId']);
@@ -19,28 +21,34 @@ function validateKeys(value: Record<string, unknown>, allowed: Set<string>, owne
  */
 export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = []): BridgeInput {
   if (!isObject(raw)) throw new BridgeError('invalid_request', '请求必须是 JSON 对象');
-  const envelope = 'body' in raw ? raw : { body: raw };
+  const envelope = 'body' in raw && !('model' in raw || 'messages' in raw) ? raw : { body: raw };
   validateKeys(envelope, new Set(['schema_version', 'request_id', 'body', 'headers', 'context']), '信封');
   if (envelope.schema_version !== undefined && envelope.schema_version !== 1) throw new BridgeError('schema_version', '不支持的内部协议版本');
   const body = envelope.body;
   if (!isObject(body)) throw new BridgeError('invalid_body', 'body 必须是对象');
-  validateKeys(body, BODY_KEYS, '正文');
+  const native = readNativeInput(body);
+  if (!native) validateKeys(body, BODY_KEYS, '正文');
   if (typeof body.model !== 'string' || !body.model.trim()) throw new BridgeError('invalid_model', 'model 必须是非空字符串');
   if (!Array.isArray(body.messages) || body.messages.length === 0) throw new BridgeError('invalid_messages', 'messages 必须是非空数组');
   const messages: ApiMessage[] = body.messages.map((message: unknown) => {
-    if (!isObject(message) || !['user', 'assistant'].includes(String(message.role))) throw new BridgeError('invalid_message', '消息 role 必须是 user 或 assistant');
-    validateKeys(message, new Set(['role', 'content']), '消息');
+    if (!isObject(message) || !(native ? ['user', 'assistant', 'system'] : ['user', 'assistant']).includes(String(message.role))) throw new BridgeError('invalid_message', '消息 role 不属于当前接入类型支持的角色');
+    if (!native) validateKeys(message, new Set(['role', 'content']), '消息');
     if (typeof message.content !== 'string' && (!Array.isArray(message.content) || !message.content.every(isObject))) throw new BridgeError('invalid_content', '消息 content 必须是文本或内容块数组');
-    return { role: message.role as ApiMessage['role'], content: message.content as ApiMessage['content'] };
+    return { ...message, role: message.role as ApiMessage['role'], content: message.content as ApiMessage['content'] };
   });
   if (body.system !== undefined && typeof body.system !== 'string' && (!Array.isArray(body.system) || !body.system.every(isObject))) throw new BridgeError('invalid_system', 'system 必须是文本或文本块数组');
   if (body.tools !== undefined && (!Array.isArray(body.tools) || !body.tools.every(isObject))) throw new BridgeError('invalid_tools', 'tools 必须是对象数组');
   for (const key of ['thinking', 'tool_choice', 'output_config']) {
     if (body[key] !== undefined && !isObject(body[key])) throw new BridgeError('invalid_parameter', key + ' 必须是对象');
   }
+  if (isObject(body.thinking)) {
+    if (!['disabled', 'enabled', 'adaptive'].includes(String(body.thinking.type))) throw new BridgeError('unsupported_parameter', '不支持的 thinking.type', 422);
+    if (body.thinking.type === 'enabled' && (!Number.isSafeInteger(body.thinking.budget_tokens) || Number(body.thinking.budget_tokens) < 1024)) throw new BridgeError('unsupported_parameter', 'enabled thinking 需要不少于 1024 的 budget_tokens', 422);
+  }
   if (body.max_tokens !== undefined && (!Number.isSafeInteger(body.max_tokens) || Number(body.max_tokens) <= 0)) throw new BridgeError('invalid_max_tokens', 'max_tokens 必须是正整数');
   if (body.temperature !== undefined && (typeof body.temperature !== 'number' || !Number.isFinite(body.temperature) || body.temperature < 0 || body.temperature > 1)) throw new BridgeError('invalid_temperature', 'temperature 必须位于 0 到 1');
   if (body.stream !== undefined && typeof body.stream !== 'boolean') throw new BridgeError('invalid_stream', 'stream 必须为布尔值');
+  validateToolChoice(body as unknown as MessageBody);
   const context = envelope.context ?? {};
   if (!isObject(context)) throw new BridgeError('invalid_context', 'context 必须是对象');
   validateKeys(context, CONTEXT_KEYS, '上下文');
@@ -58,6 +66,7 @@ export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = []): Br
     request_id: id,
     body: { ...body, messages } as unknown as MessageBody,
     headers: rawHeaders.map(pair => [pair[0], pair[1]]) as HeaderPair[],
-    context: context as ContextInput,
+    context: native ? mergeNativeContext(context as ContextInput, native) : context as ContextInput,
+    inputFormat: native ? 'claude_code' : 'api',
   };
 }

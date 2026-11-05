@@ -27,12 +27,12 @@
 - BCJ2/LZMA2 与静态 C SDK 加载器单文件分发；载荷 SHA256 自校验后写入封存 memfd 并 fexecve，同 PID 执行，控制层再核对 /proc/<pid>/exe。运行不依赖原版、提取目录或构建工具；磁盘、内存文件与 RSS 分列，不把内存展开当作内存节省。
 - 原生模式显式提供 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR；可提供 CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN、CCRB_PROXY_URL、CCRB_CA_FILE。子进程使用环境白名单。
 - 启动工作进程与配对性能脚本统一设置 CLAUDE_CODE_ENTRYPOINT=cli，由原生代码生成 User-Agent 的 cli 入口段及 billing 的 cc_entrypoint=cli；requestClass、agentKind 和父子身份仍独立按真实上下文生成。切换入口须重建进程，历史 sdk-cli 日志保留原采样值，不能仅替换日志或正文中的标签。
-- 默认以固定 293 交互 CLI 主请求为参考，主来源为 repl_main_thread、业务用户消息采用 human；-p 的 SDK 行为仅作差异证据。原生 pie、VA/Kz/LT/Uz 及 OM 生成工具、system、提醒和默认模型参数，不手写身份句或用录制请求模板替代；工具结果及六类上下文保持实际来源。
-- tools 省略与 [] 均无工具，非空列表完整采用调用方定义，不加入 CC 内置、延迟、搜索或占位工具；原生 system 和提醒按实际列表生成，CLI 参考须使用对应工具选择。system 省略时使用 CLI 默认正文；显式值按 --system-prompt 替换，空文本/数组同样属于显式替换。显式消息、工具/thinking 和模型参数在发送前核对；工具数组即使省略也核对空列表，不能无损表达时拒绝，不静默删字段。
+- 普通 API 以固定 293 交互 CLI 主请求为参考，主来源为 repl_main_thread、业务用户消息采用 human；-p 的 SDK 行为仅作差异证据。原生 pie、VA/Kz/LT/Uz 及 OM 生成工具、system、提醒和默认模型参数，不手写身份句或用录制请求模板替代；工具结果及六类上下文保持实际来源。完整原生正文走后文的保真分支。
+- 两条路径的 tools 省略与 [] 均无工具，非空列表完整采用调用方定义，不加入 CC 内置、延迟、搜索或占位工具。普通 API 的原生 system 和提醒按实际列表生成，CLI 参考须使用对应工具选择；system 省略时使用 CLI 默认正文，显式值按 --system-prompt 替换，空文本/数组同样属于显式替换。显式消息、工具/thinking 和模型参数在发送前核对；工具数组即使省略也核对空列表，不能无损表达时拒绝，不静默删字段。
 - 每个引擎绑定一个账号环境，首个模型作业惰性启动，正常串行作业复用一个物理进程，最多 16 个执行中或排队作业。HOME、配置、凭据来源、代理及 cwd 不按请求切换；更换配置须关闭并重建引擎。服务关闭后不再接收作业，并等待队列和常驻进程退出。
 - 控制配置中的显式 API key 使用官方本地规则只记录使用确认标识，不保存完整密钥；已有 rejected 决定返回 native_configuration/503，不改写拒绝状态。初始化、预热及测试不能因此触发真实账号登录或付费推理。
 - worker_ready 晚于原生绑定、Nst 与本地构造依赖初始化；本地初始化使用独立根，发送前中止，不发模型请求或业务事件，成本计入总启动时间。每轮经 nEr 创建全新原生根，AsyncLocalStorage/yLs 绑定作用域，再调用 t_；同 sessionId 也不能复用上一轮账本、请求日志及取消状态。
-- 请求只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。
+- 普通 API 只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。原生入站的扩展正文及必要改写另见后文合同。
 - OM 的 deps.callModel 仅进入一次 K_t；其 fetchOverride 取得同一官方 SDK 的正文、头及发送上下文，在显式字段核验后由 Ree 唯一发送。stream 仅按调用方明确值映射；SDK 不取得 Response，桥接独占原始逻辑响应，读取收口后立即取消原生解析。调用次数守卫禁止模型重试，不创建第二个 SDK，不替换全局 fetch；本地工具、代理循环及自动辅助压缩禁用，显式 compaction 保留。
 - 只在精简构建复用固定摘要的六个纯正文格式化函数 KLo、XLo、QLo、nNo、sNo、pNo。每次仍求值原生条件与外层钩子，每个工厂仅保留最近一次原始条件及字符串；UTF-8 键和值每项 ≤64 KiB、六项 ≤384 KiB，不代表堆或 RSS 上限。失败和超限不入缓存；整份提示词、权限/工具选择、会话段落表、memory 读取及请求正文不跨作业缓存。
 - HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
@@ -50,7 +50,7 @@
 
 | 条件 | 行为 |
 | --- | --- |
-| 不支持的正文键、system 缓存参数、beta 或原生无法保留的显式值 | 422，发送前拒绝 |
+| 普通 API 不支持的正文键、system 缓存参数、beta 或原生无法保留的显式值 | 422，发送前拒绝 |
 | 上下文冲突、非法头、无效 promptId | 400 |
 | 重复 request_id | 409，不覆盖已有记录 |
 | 队列已满 | 429 |
@@ -90,6 +90,58 @@
 - 完整必需部署文件总量 ≤27933052 B。保留总启动到首轮、就绪后首轮及暖复用实测，初始化与解包计入启动；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。2026-11-05 用户已接受当前延迟，vm2api 相对速度不再是当前准入；scripts/benchmark-runtime.ts 仍保留固定标杆、五轮六作业和旧 1.10 诊断规则，原 passed/退出状态不修改。
 - tests/unit/{redaction,startup-failure,header-policy,profile,engine,worker-protocol}.test.ts：秘密及截断边界不泄露，调用方凭据不转发，拒绝未知身份；初始化错误保留受控原因且等待写完，取消、错帧和迟到输出隔离，不重放或遗留进程。tests/unit/{static-prompts,static-text}.test.ts 核对缓存条件变化、失败不入缓存及 UTF-8 预算；原生套件另核对模型/工具交替恢复后无串值。
 - 原生验证仅使用专用 HOME、合成凭据和 unshare 网络命名空间；不能因测试失败切换真实账号。
+
+## Scenario: 固定 293 原生正文接入与构造失败收口
+
+### 1. Scope / Trigger
+
+- 同一 HTTP 入口区分普通 API 和完整原生 CC 正文；输入证据、必要改写、原生发送、日志路径须保持一致。
+- 依据 src/shared/{input,native-input,parameters}.ts 和 src/runtime/293/job.ts；模型规则仅依据固定官方源，不从其他版本或模型名称猜测。
+
+### 2. Signatures
+
+- readNativeInput(body: JsonObject): NativeInput | null；没有 billing 前缀返回 null，疑似原生但损坏时明确失败。
+- mergeNativeContext(context: ContextInput, native: NativeInput): ContextInput；显式归因冲突返回 400。
+- prepareNativeBody(body: MessageBody, generatedMetadata: unknown): JsonObject；只更新账号归属及 CCH 占位。
+- validateToolChoice(body: MessageBody, requiresAdaptive = false): void；模型能力由 bindings.context.kps(false, {type:'disabled'}, model) 实际返回值提供。
+- ensureMessages(expected: ApiMessage[], nativeMetadata: NativeMessage[], actual: unknown): void；普通 API 的规范化历史保留守卫。
+- BridgeInput.inputFormat 与 RequestContext.inputFormat 为可选 'api' | 'claude_code'；HTTP 由 parseInput 计算，不能由信封直接指定。私有作业校验 input.inputFormat，日志解码校验 context.inputFormat 的已知枚举，历史缺失保持可读。
+
+### 3. Contracts
+
+- 原生根 system 必须为数组，首段是唯一独立 text billing 且不带 cache_control。cc_version 匹配 2.1.293.<三位十六进制>，cc_entrypoint=cli，CCH 为五位十六进制；重复字段、歧义 CCH、非法 cc_is_subagent、prompt UUID 或轮次均拒绝。这里只核对入站形状，不凭 billing 授权账号或执行。
+- metadata.user_id 必须是 JSON 字符串，device_id 为 64 位十六进制，account_uuid 为空或 UUID，session_id 为 UUID。session、可选 billing prompt 和主/子身份合并显式信封及原生头，冲突拒绝；子代理及 workflow 仍须提供既有合同所需关联，不能猜父子身份。
+- 原生保留业务 system、messages、tools、thinking、输出配置、缓存位置及 thread/diagnostics/fallbacks/safeguards 等扩展 JSON；省略字段保持省略，原生 system 角色和消息扩展允许。不加入默认 CLI system、提醒、工具、strict 或种子默认参数。
+- 根 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于禁止的本机控制字段；工具 schema 内的同名业务字段不因此删除。其他扩展只作为上游数据，不改变账号、目标地址、代理或工作目录。
+- 同一 SDK 的安全种子仅取得当前账号发送上下文；唯一 fetchOverride 中替换为原生正文。metadata.user_id 只用原生 SDK 生成的 device_id/account_uuid 覆盖归属，保留原 session 及其余字段；billing 只定位独立 CCH 字段写 00000，保留其余文本与合法间隔，最终值仍由 Ree 的原生传输生成。入站 beta 沿用其列表，普通 API 继续按生成列表校验；凭据与传输头遵循共同策略。
+- 两类输入都校验 thinking 的 disabled/enabled/adaptive；enabled 的 budget_tokens 为不少于 1024 的安全整数。工具名称有效且唯一；auto/any/tool 需要工具列表，tool.name 必须已声明。enabled/adaptive 或固定模型强制 adaptive 时，any/tool 返回 400。
+- 构造边界异常先保存原因并取消；model_fallback_triggered 和助手 isApiErrorMessage 事件在未采集正文时明确 422，只公开受控分类，不启动模型回退，不等待整体超时。
+- 普通 API 的 tool_result 仅允许原业务完整前缀及同次已知完整提醒合并；Environment 提升为 system 只允许对应已知完整正文。业务丢失、改写、未知注入及未消费附件均拒绝，不能靠忽略所有提醒通过。终态、idle、取消退役、响应所有权和单次发送合同不变。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 无 billing 前缀 | 普通 API 白名单及角色校验 |
+| 版本、billing、metadata、thinking 类型/预算不合法，或根本机控制字段 | 422，0 发送，不回落 API 重组 |
+| metadata/billing 与显式上下文或头部冲突 | 400，0 发送 |
+| 工具选择、名称、引用或强制 thinking 组合不合法 | 400，0 发送 |
+| 原生身份无法取得 | native_identity/503，不沿用调用方账号归属 |
+| 原生构造失败事件或业务投影不能保留 | 确定失败并收口，不以模型重试、隐式 fallback 或超时掩盖 |
+
+### 5. Scenarios and Examples
+
+- 正常：原生主请求自带业务 system、缓存、线程和工具历史，仅改设备/账号归属及最终 CCH，保留版本后缀、轮次、签名和会话。
+- 边界：原生省略 stream/max_tokens/tools 时不从种子补入；缺可选 billing prompt 时可生成头部 prompt，metadata 会话仍保留。子代理压缩保留子身份及 compaction 类别。
+- 错误用法：把已有原生正文再次交给 OM 添加默认提醒，或仅替换版本字符串接纳 303。正确做法是固定 293 原生分支保真，版本不匹配明确拒绝。
+- 错误用法：工具续轮守卫失败后忽略全部 system-reminder。正确做法是逐项关联同次已知提醒，同时保留完整业务前缀并拒绝未知注入。
+
+### 6. Tests Required
+
+- tests/unit/native-input.test.ts：普通白名单、原生保真/缓存/省略、版本/身份/重复/冲突、本机控制、工具组合及 billing 间隔占位。
+- tests/unit/message-projection.test.ts：字符串/数组工具结果的已知提醒合并、Environment 提升、业务丢失/改写和未知注入反例。
+- tests/native/native.test.ts 对原版和最终哈希执行相同矩阵：保真正文、六类归因、原工具历史超时、错误/取消及后续隔离；额外独立核验全部已发送 TLS 实体的 CCH。
+- 原 23 组 API 与新增原生矩阵保留稳定 ID、预期状态、发送次数和最终采集缺失原因；支持输入成功，不支持输入明确拒绝，不能删用例换取全通过。只用合成凭据与无外网回环。
 
 ## Scenario: 官方运行时压缩与新版本适配
 
@@ -144,8 +196,8 @@
 
 ### 5. Scenarios and Examples
 
-- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。当前 CLI 产物为 27371576 B（26.10 MiB），它是本版结果，不是对新版本的体积保证；完整身份与证据见 docs/runtime.md。
-- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。当前内存执行体约 107.55 MiB，与磁盘 26.10 MiB 分列。
+- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。当前 CLI 产物为 27375672 B（26.11 MiB），它是本版结果，不是对新版本的体积保证；完整身份与证据见 docs/runtime.md。
+- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。普通 API 和原生入站分别验收。当前内存执行体约 107.56 MiB，与磁盘 26.11 MiB 分列。
 - 错误用法：拿到新版本后只改 PROFILE_293.sha256，沿用旧模块名和 ICU 偏移。正确做法是先重新测定容器、原生符号及资源合同，适配构建，再对最终哈希运行全部准入；当前 293 入口继续只接受原有固定来源。
 - 错误用法：用压缩包或 --version 耗时证明体积/速度达标，或把用户接受延迟改写为 benchmark 通过。正确做法是比较完整可执行部署集合，保留协议边界的总启动、就绪后首轮及暖复用实测和原诊断结论；各阶段中位数不能相加代替总耗时，不为追赶旧目标引入未验证的研究裁剪。
 
