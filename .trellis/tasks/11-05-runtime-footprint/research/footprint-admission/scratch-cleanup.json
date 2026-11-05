@@ -1,0 +1,34 @@
+{
+  "removed_owned_scratch": [
+    {
+      "file": "native-api-filter49",
+      "bytes": 34217464
+    },
+    {
+      "file": "native-api-namespace",
+      "bytes": 107379896
+    },
+    {
+      "file": "native-api-acyclic",
+      "bytes": 107379896
+    },
+    {
+      "file": "native-api-pure",
+      "bytes": 107199672
+    },
+    {
+      "file": "native-namespace-intermediate.js",
+      "bytes": 16275447
+    },
+    {
+      "file": "native-acyclic-intermediate.js",
+      "bytes": 16274817
+    },
+    {
+      "file": "native-pure-intermediate.js",
+      "bytes": 16095009
+    }
+  ],
+  "reclaimed_bytes": 404822201,
+  "note": "仅清理本轮已记录证据的冗余候选，保留原版与 vm2api 原文件、基线专用探针及 BCJ2 归档"
+}

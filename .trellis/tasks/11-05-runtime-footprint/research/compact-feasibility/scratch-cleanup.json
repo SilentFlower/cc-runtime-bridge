@@ -1,0 +1,38 @@
+{
+  "removed_owned_scratch": [
+    {
+      "name": "native-api-direct",
+      "bytes": 103337144
+    },
+    {
+      "name": "native-api-probe",
+      "bytes": 104840376
+    },
+    {
+      "name": "native-api-require",
+      "bytes": 105274552
+    },
+    {
+      "name": "native-api-assets",
+      "bytes": 106892472
+    },
+    {
+      "name": "native-api-trim",
+      "bytes": 107199672
+    },
+    {
+      "name": "native-compiler-hello",
+      "bytes": 89181368
+    },
+    {
+      "name": "native-compiler-hello-packed",
+      "bytes": 29599364
+    },
+    {
+      "name": "native-api-files.xz",
+      "bytes": 33147020
+    }
+  ],
+  "reclaimed_bytes": 679471968,
+  "kept": "保留固定接口候选、其压缩探针、提取输入、元数据和自有脚本，以供下一阶段复现；未清理用户项目文件或原安装"
+}

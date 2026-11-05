@@ -1,0 +1,491 @@
+{
+  "conditions": {
+    "isolation": "unshare --net，仅启用回环；合成 API key；每进程独立 HOME/config/cwd",
+    "trials": 5,
+    "jobs_per_process": 6,
+    "reference_slots": 20,
+    "slots_used": 1,
+    "order": "每轮两方交错，奇偶轮反转顺序",
+    "page_cache": "未清理，不等同冷磁盘或虚拟机启动",
+    "endpoint": "相同本地 HTTP SSE 上游，原生 CCH 由另行 TLS 回归验证",
+    "boundary": "从 CLI 运行时启动到协议终态及空闲确认；不包含 HTTP 控制面和模型推理",
+    "input": {
+      "model": "claude-sonnet-4-6",
+      "max_tokens": 128,
+      "stream": true,
+      "output_config": {
+        "effort": "low"
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Print integers."
+        }
+      ]
+    },
+    "response_bytes": 739,
+    "process_loadavg_before": "10.15 12.84 8.41 7/1119 119636"
+  },
+  "samples": [
+    {
+      "variant": "compact",
+      "trial": 0,
+      "pid": 119637,
+      "ready_ms": 3276.727924,
+      "startup_to_first_complete_ms": 3446.923605,
+      "ready_to_first_complete_ms": 170.19568100000015,
+      "jobs": [
+        {
+          "elapsed_ms": 169.55965300000025,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 12.972097999999733,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.00403899999992,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 12.055882999999994,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.246837000000141,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 9.902540000000045,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 139063296,
+      "rss_after": 150401024,
+      "rss_peak": 150646784,
+      "generated_disk_bytes": 0,
+      "executable": "/memfd:ccrb-native-runtime (deleted)",
+      "image_sha256": "48af79c7b02eb60ae3b64f96aced1835f334601a302a4338fb8133c51c4a88b5"
+    },
+    {
+      "variant": "reference",
+      "trial": 0,
+      "pid": 119653,
+      "ready_ms": 3550.27174,
+      "startup_to_first_complete_ms": 3684.140098,
+      "ready_to_first_complete_ms": 133.86835799999972,
+      "jobs": [
+        {
+          "elapsed_ms": 133.6444309999997,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 19.6221230000001,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 20.864580999999816,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 9.610452999999325,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 24.90581099999963,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.33010699999977,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 229732352,
+      "rss_after": 217411584,
+      "rss_peak": 238497792,
+      "generated_disk_bytes": 0,
+      "executable": "/root/project/vm2api/share/wrap-cli/cli-node",
+      "image_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b"
+    },
+    {
+      "variant": "reference",
+      "trial": 1,
+      "pid": 119670,
+      "ready_ms": 3436.163253999999,
+      "startup_to_first_complete_ms": 3585.8568969999997,
+      "ready_to_first_complete_ms": 149.69364300000052,
+      "jobs": [
+        {
+          "elapsed_ms": 148.24490200000037,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 21.41415599999891,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 21.988132999998925,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 12.358250999999655,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 28.091866000000664,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.267840000000433,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 229888000,
+      "rss_after": 216305664,
+      "rss_peak": 231297024,
+      "generated_disk_bytes": 0,
+      "executable": "/root/project/vm2api/share/wrap-cli/cli-node",
+      "image_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b"
+    },
+    {
+      "variant": "compact",
+      "trial": 1,
+      "pid": 119694,
+      "ready_ms": 3105.2224989999995,
+      "startup_to_first_complete_ms": 3284.1126699999986,
+      "ready_to_first_complete_ms": 178.8901709999991,
+      "jobs": [
+        {
+          "elapsed_ms": 178.37341799999922,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 11.911332000001494,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.294207999999344,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 13.485650000000533,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 9.110614000001078,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.657129999999597,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 141860864,
+      "rss_after": 148926464,
+      "rss_peak": 152219648,
+      "generated_disk_bytes": 0,
+      "executable": "/memfd:ccrb-native-runtime (deleted)",
+      "image_sha256": "48af79c7b02eb60ae3b64f96aced1835f334601a302a4338fb8133c51c4a88b5"
+    },
+    {
+      "variant": "compact",
+      "trial": 2,
+      "pid": 119708,
+      "ready_ms": 2850.212335,
+      "startup_to_first_complete_ms": 3098.292917999999,
+      "ready_to_first_complete_ms": 248.08058299999902,
+      "jobs": [
+        {
+          "elapsed_ms": 247.33847099999912,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.368821000000025,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.621226999999635,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 9.247459999998682,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 7.14926099999866,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 6.697936999997182,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 137965568,
+      "rss_after": 148545536,
+      "rss_peak": 148717568,
+      "generated_disk_bytes": 0,
+      "executable": "/memfd:ccrb-native-runtime (deleted)",
+      "image_sha256": "48af79c7b02eb60ae3b64f96aced1835f334601a302a4338fb8133c51c4a88b5"
+    },
+    {
+      "variant": "reference",
+      "trial": 2,
+      "pid": 119722,
+      "ready_ms": 3272.7513529999997,
+      "startup_to_first_complete_ms": 3376.2671179999998,
+      "ready_to_first_complete_ms": 103.5157650000001,
+      "jobs": [
+        {
+          "elapsed_ms": 103.29941699999836,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 26.111815000000206,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 27.882763000001432,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 7.952903000001243,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 30.261963999997533,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 12.209233999998105,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 240279552,
+      "rss_after": 217026560,
+      "rss_peak": 241459200,
+      "generated_disk_bytes": 0,
+      "executable": "/root/project/vm2api/share/wrap-cli/cli-node",
+      "image_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b"
+    },
+    {
+      "variant": "reference",
+      "trial": 3,
+      "pid": 119739,
+      "ready_ms": 3580.112108000001,
+      "startup_to_first_complete_ms": 3686.868665000002,
+      "ready_to_first_complete_ms": 106.75655700000061,
+      "jobs": [
+        {
+          "elapsed_ms": 106.50250500000038,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 21.186710000001767,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 21.88220000000001,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 7.047738999997819,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 16.88412199999948,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.78364000000147,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 239538176,
+      "rss_after": 217100288,
+      "rss_peak": 240525312,
+      "generated_disk_bytes": 0,
+      "executable": "/root/project/vm2api/share/wrap-cli/cli-node",
+      "image_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b"
+    },
+    {
+      "variant": "compact",
+      "trial": 3,
+      "pid": 119787,
+      "ready_ms": 2824.887408999999,
+      "startup_to_first_complete_ms": 2982.0123559999993,
+      "ready_to_first_complete_ms": 157.12494700000025,
+      "jobs": [
+        {
+          "elapsed_ms": 156.81920900000114,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 17.873470999998972,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 9.567467000000761,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 11.177329000001919,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.444241999997757,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.210677999999461,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 137367552,
+      "rss_after": 150093824,
+      "rss_peak": 150093824,
+      "generated_disk_bytes": 0,
+      "executable": "/memfd:ccrb-native-runtime (deleted)",
+      "image_sha256": "48af79c7b02eb60ae3b64f96aced1835f334601a302a4338fb8133c51c4a88b5"
+    },
+    {
+      "variant": "compact",
+      "trial": 4,
+      "pid": 119803,
+      "ready_ms": 2780.421521999997,
+      "startup_to_first_complete_ms": 2942.1822079999984,
+      "ready_to_first_complete_ms": 161.76068600000144,
+      "jobs": [
+        {
+          "elapsed_ms": 161.25990599999932,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.623200999994879,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 8.222964000000502,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 7.363128000004508,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 11.208566000001156,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 7.374936000000162,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 137654272,
+      "rss_after": 149499904,
+      "rss_peak": 149925888,
+      "generated_disk_bytes": 0,
+      "executable": "/memfd:ccrb-native-runtime (deleted)",
+      "image_sha256": "48af79c7b02eb60ae3b64f96aced1835f334601a302a4338fb8133c51c4a88b5"
+    },
+    {
+      "variant": "reference",
+      "trial": 4,
+      "pid": 119818,
+      "ready_ms": 3285.527384000001,
+      "startup_to_first_complete_ms": 3403.830013999999,
+      "ready_to_first_complete_ms": 118.30262999999832,
+      "jobs": [
+        {
+          "elapsed_ms": 117.96252999999706,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 37.81780699999945,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 30.4123649999965,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 10.771051999996416,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 19.768067999997584,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        },
+        {
+          "elapsed_ms": 6.778674000001047,
+          "upstream_requests": 1,
+          "response_bytes": 739
+        }
+      ],
+      "rss_ready": 239673344,
+      "rss_after": 216612864,
+      "rss_peak": 240197632,
+      "generated_disk_bytes": 0,
+      "executable": "/root/project/vm2api/share/wrap-cli/cli-node",
+      "image_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b"
+    }
+  ]
+}

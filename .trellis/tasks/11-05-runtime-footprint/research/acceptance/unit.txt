@@ -1,0 +1,59 @@
+$ bun test tests/unit
+bun test v1.3.14 (0d9b296a)
+
+tests/unit/redaction.test.ts:
+(pass) 持久日志的脱敏与字节边界 > 完整输入先脱敏再截断，不产生半个 UTF-8 字符 [2.16ms]
+(pass) 持久日志的脱敏与字节边界 > 响应前缀截在凭据中间时不保存残余片段 [0.17ms]
+(pass) 持久日志的脱敏与字节边界 > 配置秘密、Bearer、代理密码和重复头各自脱敏 [0.45ms]
+
+tests/unit/engine.test.ts:
+(pass) 常驻生命周期与隔离：reuse [163.20ms]
+(pass) 常驻生命周期与隔离：file_change [150.92ms]
+(pass) 常驻生命周期与隔离：close [158.53ms]
+(pass) 常驻生命周期与隔离：cancel [1711.53ms]
+(pass) 常驻生命周期与隔离：backpressure [1722.36ms]
+(pass) 常驻生命周期与隔离：ready_backpressure [201.55ms]
+(pass) 常驻生命周期与隔离：wrong_request [124.67ms]
+(pass) 常驻生命周期与隔离：wrong_worker [144.86ms]
+(pass) 常驻生命周期与隔离：double_terminal [137.71ms]
+(pass) 常驻生命周期与隔离：missing_idle [1670.31ms]
+(pass) 常驻生命周期与隔离：malformed [117.49ms]
+(pass) 常驻生命周期与隔离：early_exit [112.57ms]
+(pass) 常驻生命周期与隔离：startup_exit [104.92ms]
+(pass) 常驻生命周期与隔离：startup_wait [162.00ms]
+(pass) 常驻生命周期与隔离：duplicate_ready [116.70ms]
+(pass) 常驻生命周期与隔离：late [207.96ms]
+
+tests/unit/profile.test.ts:
+(pass) 错误版本二进制明确拒绝，不能改个版本字符串就继续或回退演示 [20.85ms]
+
+tests/unit/worker-protocol.test.ts:
+(pass) 常驻协议同时校验进程与作业归属，不接纳旧协议握手 [0.63ms]
+(pass) 包装事件继续严格验证原生载荷及单次发送，不接受请求内伪造握手 [0.88ms]
+
+tests/unit/observer.test.ts:
+(pass) 分片和 CRLF 不改变 SSE 终态与首输出观察 [1.83ms]
+(pass) HTTP 200 的 SSE 错误与缺失终态分别识别 [0.11ms]
+(pass) 非流式 JSON 完成与错误不靠 HTTP 状态猜测 [0.15ms]
+(pass) 单个超大 SSE 事件即使一次到齐，也不会被当作已完整验证 [2.45ms]
+
+tests/unit/header-policy.test.ts:
+(pass) 扩展、凭据与调用语义 > 未来头默认保留，同时删除动态连接字段和全部调用方凭据 [0.59ms]
+(pass) 扩展、凭据与调用语义 > 子代理头进入关联上下文，不会统一变为 main [0.29ms]
+(pass) 扩展、凭据与调用语义 > 未知来源有明确默认标记，正文里的 agent 字样不会改变分类 [0.07ms]
+(pass) 扩展、凭据与调用语义 > 显式主代理身份允许使用独立的 root agentId [0.12ms]
+(pass) 扩展、凭据与调用语义 > 压缩可以发生在子代理中，不能只靠 request-class 判断内部 agent 类型 [0.11ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 0 [0.18ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 1 [0.05ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 2 [0.03ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 3 [0.33ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 4 [0.05ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 5 [0.05ms]
+(pass) 扩展、凭据与调用语义 > 冲突或无法保真的输入明确拒绝 6 [0.08ms]
+(pass) 扩展、凭据与调用语义 > 未知显式正文参数不会因头部采用黑名单而被默默丢掉 [0.13ms]
+(pass) 扩展、凭据与调用语义 > 日志脱敏不改变参与发送的数据 [0.41ms]
+
+ 40 pass
+ 0 fail
+ 95 expect() calls
+Ran 40 tests across 6 files. [7.11s]

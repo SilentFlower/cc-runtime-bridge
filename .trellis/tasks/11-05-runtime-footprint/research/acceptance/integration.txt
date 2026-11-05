@@ -1,0 +1,28 @@
+$ bun test tests/integration --timeout 45000
+bun test v1.3.14 (0d9b296a)
+
+tests/integration/control.test.ts:
+(pass) 控制、持久日志与查询 > 完整链路保留扩展头决策、原文和独立哈希，查询不再执行模型 [197.26ms]
+(pass) 控制、持久日志与查询 > 非法来源保留拒绝记录，不伪造 main 上下文 [64.82ms]
+(pass) 控制、持久日志与查询 > 入站原文保存 HTTP 的原始空白与转义，哈希不使用 JSON 重序列化 [113.27ms]
+(pass) 控制、持久日志与查询 > 模式 summary 不保存正文 [110.49ms]
+(pass) 控制、持久日志与查询 > 模式 off 不保存正文 [106.92ms]
+(pass) 控制、持久日志与查询 > 日志截断与上游完整完成是不同状态 [124.70ms]
+(pass) 控制、持久日志与查询 > 页面和只读 API 拒绝跨来源访问 [54.66ms]
+(pass) HTTP 200 error 按真实终态记录 [110.43ms]
+(pass) HTTP 200 incomplete 按真实终态记录 [82.84ms]
+(pass) 客户端取消能收口正在返回的流，不重放请求 [170.65ms]
+(pass) 正文写入故障不会阻塞或重放当前响应，健康状态显示采集缺口 [63.33ms]
+(pass) SQLite 写线程等待锁时，主响应继续返回且不重放请求 [94.22ms]
+(pass) 慢消费者在超时后解除背压，关闭服务不会卡死 [201.66ms]
+
+tests/integration/storage.test.ts:
+(pass) 正文先过期，摘要在各自保留期内仍然可查 [89.01ms]
+(pass) 容量按 UTF-8 载荷计算，超限回收最旧的已完成请求 [119.66ms]
+(pass) 控制进程重启后保留详情，并把未确认的运行中记录标为未完成 [129.72ms]
+(pass) 正文文件损坏或丢失会明确标出采集失败 [54.13ms]
+
+ 17 pass
+ 0 fail
+ 65 expect() calls
+Ran 17 tests across 2 files. [1.92s]

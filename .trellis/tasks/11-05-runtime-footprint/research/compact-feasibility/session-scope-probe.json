@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"second_initial_index\":0,\"second_final_index\":22,\"first_delayed\":{\"id\":\"11111111-1111-4111-8111-111111111111\",\"index\":11},\"roots_distinct\":true,\"host_shared\":true,\"outside_restored\":true}\n",
+  "stderr": ""
+}

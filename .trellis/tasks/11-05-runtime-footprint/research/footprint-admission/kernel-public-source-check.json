@@ -1,0 +1,5 @@
+{
+  "url": "https://api.github.com/repos/oven-sh/bun/commits/eecfd55debb281c3fe3518098b1a49f76429637c",
+  "status": 422,
+  "body": "{\"message\":\"No commit found for SHA: eecfd55debb281c3fe3518098b1a49f76429637c\",\"documentation_url\":\"https://docs.github.com/rest/commits/commits#get-a-commit\",\"status\":\"422\"}"
+}

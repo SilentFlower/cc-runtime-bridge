@@ -1,0 +1,19 @@
+{
+  "command": [
+    "/tmp/ccrb-footprint-study-i7_zyco2/upx",
+    "--best",
+    "--lzma",
+    "--overlay=copy",
+    "--no-progress",
+    "-o",
+    "/tmp/ccrb-footprint-study-i7_zyco2/claude-upx-best",
+    "/root/.nvm/versions/node/v22.23.4/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 181.523,
+  "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\n        File size         Ratio      Format      Name\n   --------------------   ------   -----------   -----------\n 252755128 ->  78602720   31.10%   linux/amd64   claude-upx-best\n\nPacked 1 file.\n",
+  "stderr": "",
+  "output_bytes": 78602720,
+  "output_sha256": "499987616d783a08e9a981c72a2da2e0be89ba63b134d1b6324aa79dc7641ea0",
+  "output_mib": 74.96
+}

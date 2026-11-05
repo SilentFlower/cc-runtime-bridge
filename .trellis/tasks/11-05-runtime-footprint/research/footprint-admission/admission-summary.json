@@ -1,0 +1,65 @@
+{
+  "files": [
+    {
+      "file": "claude.exe",
+      "file_bytes": 252755128,
+      "sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978",
+      "native_sections": {
+        ".rodata": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff",
+        ".bun_builtins": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b",
+        ".text": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a",
+        ".data": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+      }
+    },
+    {
+      "file": "native-api-files",
+      "file_bytes": 107199672,
+      "sha256": "3ad0d4b919b30dae2de91a6152b5ffb53315204e5792e64137bca95dd5d2391f",
+      "native_sections": {
+        ".rodata": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff",
+        ".bun_builtins": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b",
+        ".text": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a",
+        ".data": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+      }
+    },
+    {
+      "file": "native-api-acyclic",
+      "file_bytes": 107379896,
+      "sha256": "f73a058ee071e570a87542a8ce19e78bff63b78b2865b52f3a25a19a86a41a8e",
+      "native_sections": {
+        ".rodata": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff",
+        ".bun_builtins": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b",
+        ".text": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a",
+        ".data": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+      }
+    },
+    {
+      "file": "native-api-pure",
+      "file_bytes": 107199672,
+      "sha256": "95ffaa4f10a0258b1c7bb2d7a7d2e83a78b384a0e20be1597604626c870f3675",
+      "native_sections": {
+        ".rodata": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff",
+        ".bun_builtins": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b",
+        ".text": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a",
+        ".data": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+      }
+    }
+  ],
+  "native_sections_equal": true,
+  "target_bytes": 27933052,
+  "best_executable_bytes": 34217464,
+  "best_archive_bytes": 31194227,
+  "archive_exceeds_budget_bytes": 3261175,
+  "admission_passed": false,
+  "runtime_requests_benchmarked": false,
+  "snapshot_hashes": {
+    "sevenzip-probe.py": "04a4e0b689530e4f75122be4353de3ef9807e905159e5b4ecdb5ac167ba13944",
+    "pure-annotations.mjs": "eeb182376eae7276bebf5a29e5948e377a784cd944bf259b57825771d82594eb",
+    "build-api-native-acyclic.mjs": "bc14f56d0908f2b45151895f91fd0a3e24834a6ff926f77d667fafed86d9f537",
+    "build-api-native-pure.mjs": "ff48fe36e20f5c131c9fd55373a32a74f615ebb10cb5e73b4b3d3a22cdb65533",
+    "make-acyclic-probe.py": "31e94c5be48afc4b90bb22d7d84cde139b56de91272d441b4d693a4080f4f76b",
+    "kernel-identity.mjs": "3b5457dfef04933a327550e26d95df4fe97001e25c352bb5f65451475859ac6c"
+  },
+  "snapshot_note": "构建脚本快照增加了中文接口注释；实际执行原文件位于临时根，算法未改变",
+  "typescript_compiler_sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+}

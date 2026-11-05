@@ -1,0 +1,11 @@
+{
+  "tag": "26.05",
+  "release_url": "https://github.com/ip7z/7zip/releases/tag/26.05",
+  "archive_url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz",
+  "archive_sha256": "22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e",
+  "executable_sha256": "d32657a7a0e4cdc0a8aa57cafe474746944d76e861e753e9c902b9c9356fa886",
+  "entries": 76,
+  "manuals": [
+    "MANUAL/cmdline/switches/method.htm"
+  ]
+}

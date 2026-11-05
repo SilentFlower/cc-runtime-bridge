@@ -1,0 +1,6 @@
+{
+  "exit_code": 0,
+  "seconds": 2.6289805570013414,
+  "stdout": "{\"success\":true,\"bun\":\"1.4.3\",\"mapped_modules\":1220,\"acyclic_candidates\":371,\"rewritten_static_requires\":218,\"logs\":[],\"actual_file_bytes\":107379896}\n",
+  "stderr": ""
+}

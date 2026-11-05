@@ -1,0 +1,37 @@
+{
+  "command": [
+    "/tmp/ccrb-compact-feasibility-tsy0tloy/sevenzip/7zz",
+    "a",
+    "-t7z",
+    "-mx=9",
+    "-m0=BCJ2",
+    "-m1=LZMA2:d=128m:fb=273",
+    "-m2=LZMA2:d=16m",
+    "-m3=LZMA2:d=16m",
+    "-mb0:1",
+    "-mb0s1:2",
+    "-mb0s2:3",
+    "-mmt=1",
+    "-mtm=off",
+    "-bsp0",
+    "/tmp/ccrb-compact-feasibility-tsy0tloy/native-api-bcj2.7z",
+    "/tmp/ccrb-compact-feasibility-tsy0tloy/native-api-files"
+  ],
+  "exit_code": 0,
+  "seconds": 43.76566369600005,
+  "archive_bytes": 31194227,
+  "stdout": "\n7-Zip (z) 26.05 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-10-21\n 64-bit locale=C.UTF-8 Threads:16 OPEN_MAX:10240, ASM\n\nScanning the drive:\n1 file, 107199672 bytes (103 MiB)\n\nCreating archive: /tmp/ccrb-compact-feasibility-tsy0tloy/native-api-bcj2.7z\n\nAdd new data to archive: 1 file, 107199672 bytes (103 MiB)\n\n\nFiles read from disk: 1\nArchive size: 31194227 bytes (30 MiB)\nEverything is Ok\n",
+  "stderr": "",
+  "test": {
+    "exit_code": 0,
+    "stdout": "\n7-Zip (z) 26.05 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-10-21\n 64-bit locale=C.UTF-8 Threads:16 OPEN_MAX:10240, ASM\n\nScanning the drive for archives:\n1 file, 31194227 bytes (30 MiB)\n\nTesting archive: /tmp/ccrb-compact-feasibility-tsy0tloy/native-api-bcj2.7z\n--\nPath = /tmp/ccrb-compact-feasibility-tsy0tloy/native-api-bcj2.7z\nType = 7z\nPhysical Size = 31194227\nHeaders Size = 174\nMethod = LZMA2:27 BCJ2\nSolid = -\nBlocks = 1\n\nEverything is Ok\n\nSize:       107199672\nCompressed: 31194227\n",
+    "stderr": ""
+  },
+  "decode": {
+    "exit_code": 0,
+    "seconds": 1.058897335000438,
+    "bytes": 107199672,
+    "sha256": "3ad0d4b919b30dae2de91a6152b5ffb53315204e5792e64137bca95dd5d2391f",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "setupMs": 4931.615791,
+  "binarySha256": "89e8a66e29a28011fb08d1a20a1d2587bbbe5cf380a8079615e5f363ca152842",
+  "conditions": "HTTP 控制面及日志启用、TLS CONNECT 合成上游；与裸协议基准不同，不直接相减计算开销",
+  "timings": [
+    {
+      "previousPid": null,
+      "pid": 142601,
+      "completeMs": 2746.1442289999995
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 11.404258000000482
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 11.156980000000658
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 9.569414000001416
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 11.61211000000003
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 9.0473290000009
+    },
+    {
+      "previousPid": 142601,
+      "pid": 142601,
+      "completeMs": 8.835719000000609
+    }
+  ]
+}

@@ -1,0 +1,825 @@
+{
+  "conditions": {
+    "network": "unshare --net，只有回环启用",
+    "trials_per_variant": 5,
+    "slots_per_process": 20,
+    "credentials": "合成 API key，独立空 HOME",
+    "file_page_cache": "未清理，不等同于冷磁盘启动",
+    "requests": "每个进程首轮加五轮复用，本地合成 SSE，无真实模型"
+  },
+  "versions": [
+    {
+      "variant": "packed",
+      "trial": 0,
+      "duration_ms": 2490.978,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "packed",
+      "trial": 1,
+      "duration_ms": 2473.22,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "packed",
+      "trial": 2,
+      "duration_ms": 2586.067,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "packed",
+      "trial": 3,
+      "duration_ms": 2786.41,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "packed",
+      "trial": 4,
+      "duration_ms": 2531.104,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "unpacked",
+      "trial": 0,
+      "duration_ms": 616.045,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "unpacked",
+      "trial": 1,
+      "duration_ms": 610.46,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "unpacked",
+      "trial": 2,
+      "duration_ms": 593.66,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "unpacked",
+      "trial": 3,
+      "duration_ms": 595.55,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    },
+    {
+      "variant": "unpacked",
+      "trial": 4,
+      "duration_ms": 596.628,
+      "exit_code": 0,
+      "stdout": "2.1.303 (Claude Code)\n",
+      "stderr": ""
+    }
+  ],
+  "native": [
+    {
+      "variant": "packed",
+      "trial": 0,
+      "pid": 78838,
+      "slots": 20,
+      "host_ready_ms": 2835.719,
+      "all_slots_ready_ms": 2836.063,
+      "memory_at_ready": {
+        "VmHWM": 232521728,
+        "VmRSS": 230404096
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 104.609,
+          "first_text_ms": 100.162,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 13.212,
+          "first_text_ms": 12.005,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 11.837,
+          "first_text_ms": 10.919,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 7.292,
+          "first_text_ms": 6.637,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 20.601,
+          "first_text_ms": 19.797,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 7.09,
+          "first_text_ms": 6.308,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 232521728,
+        "VmRSS": 217767936
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "packed",
+      "trial": 1,
+      "pid": 78871,
+      "slots": 20,
+      "host_ready_ms": 3817.896,
+      "all_slots_ready_ms": 3818.177,
+      "memory_at_ready": {
+        "VmHWM": 231596032,
+        "VmRSS": 230002688
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 166.991,
+          "first_text_ms": 161.596,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 14.552,
+          "first_text_ms": 13.314,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 15.033,
+          "first_text_ms": 14.269,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 21.395,
+          "first_text_ms": 20.493,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 11.541,
+          "first_text_ms": 10.668,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 15.412,
+          "first_text_ms": 14.735,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 231596032,
+        "VmRSS": 215068672
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "packed",
+      "trial": 2,
+      "pid": 78929,
+      "slots": 20,
+      "host_ready_ms": 3008.395,
+      "all_slots_ready_ms": 3009.021,
+      "memory_at_ready": {
+        "VmHWM": 234151936,
+        "VmRSS": 229978112
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 129.483,
+          "first_text_ms": 124.357,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 25.16,
+          "first_text_ms": 23.367,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 18.297,
+          "first_text_ms": 17.396,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 10.605,
+          "first_text_ms": 9.683,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 13.876,
+          "first_text_ms": 12.826,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 12.511,
+          "first_text_ms": 11.577,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 234151936,
+        "VmRSS": 216567808
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "packed",
+      "trial": 3,
+      "pid": 78980,
+      "slots": 20,
+      "host_ready_ms": 3427.535,
+      "all_slots_ready_ms": 3428.012,
+      "memory_at_ready": {
+        "VmHWM": 234524672,
+        "VmRSS": 229597184
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 183.393,
+          "first_text_ms": 176.102,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 23.841,
+          "first_text_ms": 22.41,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 26.446,
+          "first_text_ms": 25.103,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 9.512,
+          "first_text_ms": 8.565,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 23.918,
+          "first_text_ms": 22.779,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 12.917,
+          "first_text_ms": 12.031,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 234524672,
+        "VmRSS": 214093824
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "packed",
+      "trial": 4,
+      "pid": 79063,
+      "slots": 20,
+      "host_ready_ms": 3023.464,
+      "all_slots_ready_ms": 3023.789,
+      "memory_at_ready": {
+        "VmHWM": 240041984,
+        "VmRSS": 240041984
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 112.824,
+          "first_text_ms": 108.629,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 12.351,
+          "first_text_ms": 10.768,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 19.508,
+          "first_text_ms": 18.729,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 13.568,
+          "first_text_ms": 12.75,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 11.928,
+          "first_text_ms": 11.163,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 14.242,
+          "first_text_ms": 13.404,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 240959488,
+        "VmRSS": 217018368
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "unpacked",
+      "trial": 0,
+      "pid": 79091,
+      "slots": 20,
+      "host_ready_ms": 1027.786,
+      "all_slots_ready_ms": 1028.22,
+      "memory_at_ready": {
+        "VmHWM": 209424384,
+        "VmRSS": 203894784
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 111.655,
+          "first_text_ms": 108.109,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 19.488,
+          "first_text_ms": 18.161,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 12.809,
+          "first_text_ms": 12.095,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 18.964,
+          "first_text_ms": 18.112,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 11.387,
+          "first_text_ms": 10.675,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 6.176,
+          "first_text_ms": 5.44,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 209424384,
+        "VmRSS": 192008192
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "unpacked",
+      "trial": 1,
+      "pid": 79149,
+      "slots": 20,
+      "host_ready_ms": 911.742,
+      "all_slots_ready_ms": 912.027,
+      "memory_at_ready": {
+        "VmHWM": 214290432,
+        "VmRSS": 214077440
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 94.302,
+          "first_text_ms": 91.023,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 7.254,
+          "first_text_ms": 6.18,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 16.262,
+          "first_text_ms": 15.543,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 10.603,
+          "first_text_ms": 9.898,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 11.286,
+          "first_text_ms": 10.3,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 14.68,
+          "first_text_ms": 14.0,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 215257088,
+        "VmRSS": 192303104
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "unpacked",
+      "trial": 2,
+      "pid": 79192,
+      "slots": 20,
+      "host_ready_ms": 779.661,
+      "all_slots_ready_ms": 779.937,
+      "memory_at_ready": {
+        "VmHWM": 216809472,
+        "VmRSS": 216809472
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 90.277,
+          "first_text_ms": 87.167,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 12.213,
+          "first_text_ms": 10.843,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 19.06,
+          "first_text_ms": 18.203,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 7.179,
+          "first_text_ms": 6.0,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 8.595,
+          "first_text_ms": 7.568,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 15.03,
+          "first_text_ms": 14.314,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 218120192,
+        "VmRSS": 194297856
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "unpacked",
+      "trial": 3,
+      "pid": 79225,
+      "slots": 20,
+      "host_ready_ms": 936.138,
+      "all_slots_ready_ms": 936.409,
+      "memory_at_ready": {
+        "VmHWM": 213651456,
+        "VmRSS": 213651456
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 96.656,
+          "first_text_ms": 93.059,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 12.533,
+          "first_text_ms": 11.486,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 22.701,
+          "first_text_ms": 21.811,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 12.214,
+          "first_text_ms": 11.292,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 6.611,
+          "first_text_ms": 5.937,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 16.866,
+          "first_text_ms": 16.249,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 214700032,
+        "VmRSS": 192163840
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    },
+    {
+      "variant": "unpacked",
+      "trial": 4,
+      "pid": 79269,
+      "slots": 20,
+      "host_ready_ms": 847.53,
+      "all_slots_ready_ms": 847.804,
+      "memory_at_ready": {
+        "VmHWM": 214499328,
+        "VmRSS": 214499328
+      },
+      "host_ready": {
+        "type": "host_ready",
+        "protocol_version": 2,
+        "slots": 20,
+        "system_layout": "stock",
+        "timezone": "America/New_York",
+        "capabilities": [
+          "multi_slot",
+          "native_sse",
+          "stateless",
+          "ping",
+          "classifier_request_context",
+          "vm_telemetry"
+        ]
+      },
+      "jobs": [
+        {
+          "job_index": 0,
+          "terminal_ms": 100.471,
+          "first_text_ms": 97.154,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 1,
+          "terminal_ms": 7.458,
+          "first_text_ms": 6.389,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 2,
+          "terminal_ms": 8.163,
+          "first_text_ms": 7.19,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 3,
+          "terminal_ms": 16.531,
+          "first_text_ms": 15.84,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 4,
+          "terminal_ms": 9.148,
+          "first_text_ms": 8.463,
+          "upstream_requests": 1
+        },
+        {
+          "job_index": 5,
+          "terminal_ms": 9.075,
+          "first_text_ms": 8.484,
+          "upstream_requests": 1
+        }
+      ],
+      "memory_after_jobs": {
+        "VmHWM": 215678976,
+        "VmRSS": 192602112
+      },
+      "process_alive_after_jobs": true,
+      "success": true
+    }
+  ],
+  "summary": {
+    "packed": {
+      "successful_trials": 5,
+      "version_median_ms": 2531.104,
+      "all_slots_ready_median_ms": 3023.789,
+      "first_request_median_ms": 129.483,
+      "warm_request_median_ms": 13.876,
+      "max_ready_hwm_bytes": 240041984,
+      "max_after_jobs_hwm_bytes": 240959488
+    },
+    "unpacked": {
+      "successful_trials": 5,
+      "version_median_ms": 596.628,
+      "all_slots_ready_median_ms": 912.027,
+      "first_request_median_ms": 96.656,
+      "warm_request_median_ms": 12.213,
+      "max_ready_hwm_bytes": 216809472,
+      "max_after_jobs_hwm_bytes": 218120192
+    }
+  },
+  "total_mock_requests": 60
+}

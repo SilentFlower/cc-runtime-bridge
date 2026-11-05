@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/backend/runtime-contract.md", "reason": "核对精简版与原版的结构化请求、CCH、取消和单次发送行为"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "核对产物身份和日志实际摘要，不把源哈希冒充执行文件哈希"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/footprint-study.md", "reason": "核对体积与资源验收证据，区分已验证数据和待验证精简方案"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/vm2api-init-comparison.md", "reason": "固定标杆的磁盘、常驻循环及隔离实测，用户已确认体积与速度对齐和常驻范围"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/compact-feasibility.md", "reason": "同内核构建、动态依赖与会话作用域实证；32.63 MiB 仍未达标，先通过体积准入关卡"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/footprint-admission.md", "reason": "首轮固定原生节方案未过体积关卡的证据；用户随后已允许内核裁剪或调整基底，最新范围以三件套为准"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/kernel-admission.md", "reason": "固定原内核 ICU 裁剪与 BCJ2 内存加载准入；区分探针、真实请求及最终验收"}
+{"file": ".trellis/tasks/11-05-runtime-footprint/research/acceptance.md", "reason": "最终A1-A8体积、独立部署、身份、原生回归、常驻和五轮配对性能证据；历史研究不代表最终状态"}

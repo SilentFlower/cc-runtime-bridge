@@ -1,0 +1,52 @@
+[
+  {
+    "name": "original293",
+    "code": 0,
+    "event_types": [
+      "ready",
+      "cc_prepared",
+      "response_headers",
+      "response_chunk",
+      "completed"
+    ],
+    "errors": [],
+    "response_b64": [
+      "eyJpZCI6Im1zZ19rZXJuZWxfZml4dHVyZSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsIm1vZGVsIjoiY2xhdWRlLXNvbm5ldC00LTYiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiLnprvnur/ljp/nlJ/lk43lupQifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsIm91dHB1dF90b2tlbnMiOjF9fQ=="
+    ],
+    "stderr": "",
+    "observed": [
+      {
+        "mode": null,
+        "cch": "b88a9",
+        "expected": "b88a9",
+        "valid": true
+      }
+    ],
+    "model_requests": 1
+  },
+  {
+    "name": "worker293",
+    "code": 0,
+    "event_types": [
+      "ready",
+      "cc_prepared",
+      "response_headers",
+      "response_chunk",
+      "completed"
+    ],
+    "errors": [],
+    "response_b64": [
+      "eyJpZCI6Im1zZ19rZXJuZWxfZml4dHVyZSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsIm1vZGVsIjoiY2xhdWRlLXNvbm5ldC00LTYiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiLnprvnur/ljp/nlJ/lk43lupQifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsIm91dHB1dF90b2tlbnMiOjF9fQ=="
+    ],
+    "stderr": "",
+    "observed": [
+      {
+        "mode": null,
+        "cch": "b88a9",
+        "expected": "b88a9",
+        "valid": true
+      }
+    ],
+    "model_requests": 1
+  }
+]

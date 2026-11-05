@@ -1,0 +1,22 @@
+{
+  "purpose": "规划可行性探针，不是最终运行时或原生回归验收",
+  "temporary_root": "/tmp/ccrb-compact-feasibility-tsy0tloy",
+  "build_bun_version": "1.4.3",
+  "metafile_inputs": 1141,
+  "rewrites_total": 218,
+  "static_import_meta_requires": 197,
+  "resource_alias_requires": 12,
+  "embedded_compressed_assets": 9,
+  "packed_probe_bytes": 34217464,
+  "packed_probe_mib": 32.63231658935547,
+  "function_import_median_seconds": 2.7409236490002513,
+  "target_bytes": 27933052,
+  "exceeds_target_bytes": 6284412,
+  "source_snapshots": {
+    "build-api-native-files.mjs": "bdaed56d7fc39685145431f5f430e164ea4e855a7fe1d44b963e86defca41292",
+    "api-entry.mjs": "e52791cd2d3ee7cff53fc9347365aa399efe1cc632c33f9fb8fa59018c12eb84",
+    "session-scope-probe.mjs": "d00723756e868cdc3644a880320628ee797e9bdadbcc92448d4424d633833554",
+    "pack-probe.py": "e719bfa01f67bb5c771fc0a9f926e010b690163b5a33429001c7d80ca702e485"
+  },
+  "snapshot_note": "脚本快照增加了中文接口注释；本次实际执行来源位于 temporary_root，构建算法未改变"
+}

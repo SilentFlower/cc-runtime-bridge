@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"build_type\":\"function\",\"success\":true,\"logs\":[],\"outputs\":[{\"path\":\"/tmp/ccrb-compact-feasibility-tsy0tloy/native-compiler-hello\",\"size\":90}]}\n",
+  "stderr": ""
+}

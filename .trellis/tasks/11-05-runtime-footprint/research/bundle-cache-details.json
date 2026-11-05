@@ -1,0 +1,17 @@
+{
+  "module_count": 2511,
+  "flags_hex": "0x1bff",
+  "builtin_bytecode_count": 134,
+  "builtin_bytecode_bytes": 2691088,
+  "bytecode_string_table_bytes": 13530952,
+  "startup_module_count": 7,
+  "module_info_string_table_bytes": 131488,
+  "prelinked_graph_bytes": 5359880,
+  "prelinked_module_count": 2271,
+  "runtime_flags": 2,
+  "runtime_value": 1090519040,
+  "records_end": 163574473,
+  "payload_end": 163574474,
+  "argv_offset": 163574473,
+  "argv_length": 0
+}

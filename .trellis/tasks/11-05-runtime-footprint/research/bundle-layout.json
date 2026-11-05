@@ -1,0 +1,209 @@
+{
+  "section_bytes": 163574530,
+  "graph_bytes": 163574522,
+  "flags_hex": "0x1bff",
+  "module_count": 2511,
+  "entry_point": "/$bunfs/root/cli",
+  "field_lengths_sum": {
+    "name": 77697,
+    "contents": 48268385,
+    "sourcemap": 0,
+    "bytecode": 93132536,
+    "module_info": 0,
+    "bytecode_origin_path": 68093
+  },
+  "extensions": {
+    ".js": 2273,
+    "(无扩展名)": 1,
+    ".txt": 25,
+    ".node": 2,
+    ".zst": 135,
+    ".md": 71,
+    ".asset": 2,
+    ".mjs": 2
+  },
+  "largest_contents": [
+    {
+      "name": "/$bunfs/root/chunk-g263vvvn.js",
+      "contents": 4697891,
+      "sourcemap": 0,
+      "bytecode": 13279992,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-848z1p5h.js",
+      "contents": 1674050,
+      "sourcemap": 0,
+      "bytecode": 4859632,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-ght2tkzh.js",
+      "contents": 1447944,
+      "sourcemap": 0,
+      "bytecode": 2478432,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/clipboard-napi.node",
+      "contents": 1072864,
+      "sourcemap": 0,
+      "bytecode": 0,
+      "module_info": 0,
+      "encoding": 0,
+      "loader": 10
+    },
+    {
+      "name": "/$bunfs/root/chunk-aqh2c7wz.js",
+      "contents": 948684,
+      "sourcemap": 0,
+      "bytecode": 2853352,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-g9a2nkn9.js",
+      "contents": 942154,
+      "sourcemap": 0,
+      "bytecode": 2186024,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/mermaid.min.js",
+      "contents": 785819,
+      "sourcemap": 0,
+      "bytecode": 0,
+      "module_info": 0,
+      "encoding": 0,
+      "loader": 5
+    },
+    {
+      "name": "/$bunfs/root/chunk-cxjvwxsa.js",
+      "contents": 731734,
+      "sourcemap": 0,
+      "bytecode": 1942944,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-e4mbnnjh.js",
+      "contents": 667758,
+      "sourcemap": 0,
+      "bytecode": 1543728,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-hesrqedr.js",
+      "contents": 653247,
+      "sourcemap": 0,
+      "bytecode": 747432,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-tgaxhpjj.js",
+      "contents": 638311,
+      "sourcemap": 0,
+      "bytecode": 2077408,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-5068bjwm.js",
+      "contents": 589971,
+      "sourcemap": 0,
+      "bytecode": 559064,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    }
+  ],
+  "largest_bytecode": [
+    {
+      "name": "/$bunfs/root/chunk-g263vvvn.js",
+      "contents": 4697891,
+      "sourcemap": 0,
+      "bytecode": 13279992,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-848z1p5h.js",
+      "contents": 1674050,
+      "sourcemap": 0,
+      "bytecode": 4859632,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-aqh2c7wz.js",
+      "contents": 948684,
+      "sourcemap": 0,
+      "bytecode": 2853352,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-ght2tkzh.js",
+      "contents": 1447944,
+      "sourcemap": 0,
+      "bytecode": 2478432,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-g9a2nkn9.js",
+      "contents": 942154,
+      "sourcemap": 0,
+      "bytecode": 2186024,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-tgaxhpjj.js",
+      "contents": 638311,
+      "sourcemap": 0,
+      "bytecode": 2077408,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-cxjvwxsa.js",
+      "contents": 731734,
+      "sourcemap": 0,
+      "bytecode": 1942944,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    },
+    {
+      "name": "/$bunfs/root/chunk-g47mesgs.js",
+      "contents": 192111,
+      "sourcemap": 0,
+      "bytecode": 1544096,
+      "module_info": 0,
+      "encoding": 1,
+      "loader": 1
+    }
+  ]
+}

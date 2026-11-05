@@ -1,0 +1,26 @@
+$ bun scripts/test-native.ts
+bun test v1.3.14 (0d9b296a)
+
+tests/native/native.test.ts:
+(pass) 官方 293 的无外网回环链路 > 主请求由真实 293 构造并发送，扩展头、关联和 CCH 均一致 [821.65ms]
+(pass) 官方 293 的无外网回环链路 > 子代理保留父子头、prompt、billing 与工具历史，返回工具不在本地执行 [19.02ms]
+(pass) 官方 293 的无外网回环链路 > 非流式请求仍使用原生 SDK，JSON 响应不经 SSE 重组 [13.50ms]
+(pass) 官方 293 的无外网回环链路 > 原生 compaction 上下文保持分类与 billing 一致 0 [13.51ms]
+(pass) 官方 293 的无外网回环链路 > 原生 compaction 上下文保持分类与 billing 一致 1 [17.39ms]
+(pass) 官方 293 的无外网回环链路 > 原生 auxiliary 上下文保持分类与 billing 一致 2 [14.79ms]
+(pass) 官方 293 的无外网回环链路 > 原生 side_reply 上下文保持分类与 billing 一致 3 [15.12ms]
+(pass) 官方 293 的无外网回环链路 > 原生 workflow 上下文保持分类与 billing 一致 4 [14.95ms]
+(pass) 官方 293 的无外网回环链路 > 显式 adaptive thinking、工具选择和 effort 由原生能力生成 [15.73ms]
+(pass) 官方 293 的无外网回环链路 > 原生无法保留的显式 system 缓存参数在发送前拒绝 [28.02ms]
+(pass) 官方 293 的无外网回环链路 > 上游 429 状态和正文返回，原生 SDK 不额外重试 [974.11ms]
+(pass) 官方 293 的无外网回环链路 > 真实原生 sse_error 的日志终态正确 [210.13ms]
+(pass) 官方 293 的无外网回环链路 > 真实原生 incomplete 的日志终态正确 [167.40ms]
+(pass) 官方 293 的无外网回环链路 > 取消传播至原生流，下一请求继续运行且取消请求没有重试 [1039.87ms]
+(pass) 官方 293 的无外网回环链路 > 相同 session 的多轮保持同一 PID，主子代理与 Unicode 正文不串入下一轮 [544.26ms]
+(pass) 官方 293 的无外网回环链路 > 进程意外退出后下一作业重建，不重放已完成请求 [892.69ms]
+(pass) 官方 293 的无外网回环链路 > 流中进程被终止时保留已返回字节，收口后下一轮重建且不重放 [961.67ms]
+
+ 17 pass
+ 0 fail
+ 214 expect() calls
+Ran 17 tests across 1 file. [6.66s]

@@ -1,0 +1,13 @@
+{
+  "binary": "upx-best",
+  "exit_code": 0,
+  "module_probe": "{\"bun\":\"1.4.3\",\"K_t\":\"function\",\"Re\":\"function\",\"Kc\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"transition\":\"function\",\"permissions\":\"function\"}",
+  "memory": {
+    "VmHWM": "262180 kB",
+    "VmRSS": "262180 kB",
+    "RssAnon": "228712 kB",
+    "RssFile": "2116 kB",
+    "RssShmem": "31352 kB"
+  },
+  "stderr": ""
+}

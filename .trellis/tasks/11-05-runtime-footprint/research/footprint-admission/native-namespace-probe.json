@@ -1,0 +1,6 @@
+{
+  "exit_code": 1,
+  "seconds": 0.7680517649987451,
+  "error": "TypeError: Object.entries requires that input parameter not be null or undefined",
+  "note": "省略错误栈中夹带的专有源码片段；本候选未接纳"
+}

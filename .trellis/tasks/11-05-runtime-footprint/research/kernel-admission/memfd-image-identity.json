@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"pid\":95901,\"executable\":\"/memfd:ccrb-native-runtime (deleted)\",\"bytes\":107199672,\"sha256\":\"de877cbebdfa2ae292e9db12f84d8f2a4e6153c310e971522c4248134c32432c\",\"bun\":\"1.4.3\"}\n",
+  "stderr": ""
+}

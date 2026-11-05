@@ -1,0 +1,5 @@
+{
+  "release": "https://github.com/ip7z/7zip/releases/tag/26.05",
+  "source_archive": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz",
+  "source_archive_sha256": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e"
+}

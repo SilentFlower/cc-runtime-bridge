@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"version\":\"1.4.3\",\"revision\":\"eecfd55debb281c3fe3518098b1a49f76429637c\",\"fetchExports\":[\"FetchSession\",\"fetch\"]}\n",
+  "stderr": ""
+}

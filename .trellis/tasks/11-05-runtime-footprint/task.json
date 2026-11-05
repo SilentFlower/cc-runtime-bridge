@@ -1,0 +1,95 @@
+{
+  "id": "runtime-footprint",
+  "name": "runtime-footprint",
+  "title": "对齐 vm2api 的运行时体积与速度并支持常驻复用",
+  "description": "对齐固定 vm2api 的完整运行时体积与初始化、首轮及复用速度，纳入单账号常驻串行，保持固定 293 的原生构造、发送与上下文可验证。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-05",
+  "completedAt": "2026-11-05",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-05T05:40:05Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/runtime/profile.ts",
+    "src/control/engine.ts",
+    "package.json",
+    "scripts/",
+    "tests/unit/profile.test.ts",
+    "tests/native/native.test.ts",
+    "README.md",
+    "docs/api.md"
+  ],
+  "notes": "已按用户确认完成固定293轻量运行时、单账号常驻及A1-A8离线验收；完整文件25.18 MiB，五轮配对三项速度均达标，94项自动化用例通过。Check-All、runtime/logging规范及新版本压缩适配合同已完成，业务改动已提交并推送；任务记录由本次完成进度同步。",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-05T02:04:43Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "df6045c9596ea81db9c383db86ccf4142a8432db",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "df6045c9596ea81db9c383db86ccf4142a8432db",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "94ba8ed90d996ffba802149f5807e988ad88d58997da7e9f891406004caccc88"
+          }
+        ],
+        "fingerprint": "c5c00e8baa19b26815b95039a902c5f29a47391e0c4e0b55c057a4db012853b9"
+      }
+    }
+  },
+  "progress": {
+    "updatedAt": "2026-11-05T05:40:05.250386Z",
+    "completedSteps": [
+      "完成固定293轻量构建与产物身份核验",
+      "完成单账号常驻、每轮隔离、取消与故障恢复",
+      "完成94项自动化回归、独立部署及重复构建验证",
+      "完成五轮配对体积与性能验收",
+      "完成全面检查及运行时、日志规范同步",
+      "沉淀可供新版本沿用的压缩构建、适配与准入合同",
+      "按确认范围完成业务提交与推送"
+    ],
+    "partialStep": null,
+    "nextStep": "无（本任务已完成）",
+    "notes": "完整运行时26404920字节；三项离线配对速度达标，验收证据已保存在当前任务。"
+  }
+}

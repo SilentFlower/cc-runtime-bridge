@@ -1,0 +1,53 @@
+{
+  "success": true,
+  "source_unchanged": true,
+  "source_sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978",
+  "cases": [
+    {
+      "case": "source_hash",
+      "rejected": true,
+      "error": "官方源程序校验不匹配"
+    },
+    {
+      "case": "kernel",
+      "rejected": true,
+      "error": "固定原生内核的节摘要不匹配"
+    },
+    {
+      "case": "flags",
+      "rejected": true,
+      "error": "未知 Bun 模块表合同"
+    },
+    {
+      "case": "pointer",
+      "rejected": true,
+      "error": "容器指针越界"
+    },
+    {
+      "case": "path",
+      "rejected": true,
+      "error": "模块路径越界或重复"
+    },
+    {
+      "case": "duplicate",
+      "rejected": true,
+      "error": "模块路径越界或重复"
+    },
+    {
+      "case": "encoding",
+      "rejected": true,
+      "error": "未知模块编码或记录标签"
+    },
+    {
+      "case": "empty_elf",
+      "rejected": true,
+      "error": "仅支持已核验的 Linux x64 ELF"
+    },
+    {
+      "case": "wrong_arch",
+      "rejected": true,
+      "error": "仅支持已核验的 Linux x64 ELF"
+    }
+  ],
+  "conditions": "只读原版；变异副本和部分提取内容全部在测试临时目录清理；结构测试不替代生产来源哈希准入"
+}

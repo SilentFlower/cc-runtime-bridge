@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "hidden": {
+    "official": true,
+    "worker_source": true,
+    "build_driver": true,
+    "extracted_source": true
+  },
+  "requests": 1,
+  "exit": 0,
+  "binary_sha256": "6b80ce8a3f79d199c1d267f7853354c02c72030b8e8daef90acddbbada40e321",
+  "image_sha256": "89e8a66e29a28011fb08d1a20a1d2587bbbe5cf380a8079615e5f363ca152842",
+  "deployment_files": [
+    {
+      "path": "/root/project/cc-runtime-bridge/runtime/claude-293",
+      "bytes": 26404920
+    }
+  ],
+  "extra_disk_expansion": false,
+  "filesystem_bytes_before": 77,
+  "extra_filesystem_bytes_at_ready": 0,
+  "extra_filesystem_bytes_at_idle": 0,
+  "extra_filesystem_bytes_observed_peak": 0,
+  "conditions": "私有挂载与网络命名空间，原版、源码、构建脚本和旧 /tmp 均不可见；独立 HOME，合成凭据，本地 HTTP 上游"
+}

@@ -1,0 +1,59 @@
+{
+  "files": [
+    {
+      "path": "/root/.nvm/versions/node/v22.23.4/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+      "file_bytes": 252755128,
+      "sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978",
+      "sections": {
+        ".rodata": {
+          "bytes": 21359396,
+          "sha256": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff"
+        },
+        ".bun_builtins": {
+          "bytes": 2614168,
+          "sha256": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b"
+        },
+        ".text": {
+          "bytes": 62673292,
+          "sha256": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a"
+        },
+        ".data": {
+          "bytes": 90516,
+          "sha256": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+        },
+        ".bun": {
+          "bytes": 163574530,
+          "sha256": "4e851d0d6ff5699e503a59079b5e92dce855825eddd17381891796b094aebb9b"
+        }
+      }
+    },
+    {
+      "path": "/tmp/ccrb-compact-feasibility-tsy0tloy/native-api-files",
+      "file_bytes": 107199672,
+      "sha256": "3ad0d4b919b30dae2de91a6152b5ffb53315204e5792e64137bca95dd5d2391f",
+      "sections": {
+        ".rodata": {
+          "bytes": 21359396,
+          "sha256": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff"
+        },
+        ".bun_builtins": {
+          "bytes": 2614168,
+          "sha256": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b"
+        },
+        ".text": {
+          "bytes": 62673292,
+          "sha256": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a"
+        },
+        ".data": {
+          "bytes": 90516,
+          "sha256": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+        },
+        ".bun": {
+          "bytes": 18020943,
+          "sha256": "f67e859d2b3dd4d2c8239e2ffbd7e4fc2fd56bcf51ea26fadd27c929f51b3884"
+        }
+      }
+    }
+  ],
+  "native_sections_equal": true
+}

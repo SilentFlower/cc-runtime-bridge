@@ -1,0 +1,12 @@
+{
+  "study_dir": "/tmp/ccrb-vm2api-study-542b7872",
+  "packed_path": "/root/project/vm2api/share/wrap-cli/cli-node",
+  "packed_bytes": 27933052,
+  "packed_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+  "unpacked_path": "/tmp/ccrb-vm2api-study-542b7872/cli-node-unpacked",
+  "unpacked_bytes": 118306944,
+  "unpacked_sha256": "f13d8cdfa45dfc6eb7c10334d5c7f7b0ab47e7c1b7886fc3afc274942105b98b",
+  "source_path": "/tmp/ccrb-vm2api-study-542b7872/vm2api-cli-source.js",
+  "source_bytes": 24679899,
+  "source_sha256": "ced77bcd9639314e6f277c23d91c98f5e178add7eb1eb93538d51ad1cb500830"
+}

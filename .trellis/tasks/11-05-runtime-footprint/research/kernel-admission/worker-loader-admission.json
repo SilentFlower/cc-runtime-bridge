@@ -1,0 +1,9 @@
+{
+  "source_sha256": "34a8a029aca5f9f3f213894f3a63bd5d06159bfcec9fda9c6a3f67b88f4e0af2",
+  "image_sha256": "48a57ab58144e64b2db6014fd752d0cf4f197f2218b98a28079f683d0d85bc45",
+  "image_bytes": 107211960,
+  "archive_bytes": 26349358,
+  "launcher_bytes": 26404920,
+  "launcher_sha256": "eba06df55323c2393690b936d1484311bec762e4af9357832664ef9cec4b5d51",
+  "build_seconds": 79.72559658699902
+}

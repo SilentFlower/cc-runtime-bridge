@@ -1,0 +1,8 @@
+{
+  "command": "upx --best --lzma --filter=0x49",
+  "exit_code": 0,
+  "seconds": 63.15235999400102,
+  "bytes": 34217464,
+  "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\n        File size         Ratio      Format      Name\n   --------------------   ------   -----------   -----------\n 107199672 ->  34217464   31.92%   linux/amd64   native-api-filter49\n\nPacked 1 file.\n",
+  "stderr": ""
+}

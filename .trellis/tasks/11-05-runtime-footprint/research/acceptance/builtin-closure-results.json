@@ -1,0 +1,136 @@
+{
+  "exit_code": 0,
+  "builtins": [
+    {
+      "name": "child_process",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "bun:ffi",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "perf_hooks",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "fs",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "path",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "stream",
+      "available": true,
+      "type": "function"
+    },
+    {
+      "name": "constants",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "util",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "assert",
+      "available": true,
+      "type": "function"
+    },
+    {
+      "name": "events",
+      "available": true,
+      "type": "function"
+    },
+    {
+      "name": "http",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "https",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "net",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "tls",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "url",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "http2",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "crypto",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "undici",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "os",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "tty",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "process",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "buffer",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "fs/promises",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "querystring",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "zlib",
+      "available": true,
+      "type": "object"
+    },
+    {
+      "name": "dns",
+      "available": true,
+      "type": "object"
+    }
+  ],
+  "stderr": ""
+}

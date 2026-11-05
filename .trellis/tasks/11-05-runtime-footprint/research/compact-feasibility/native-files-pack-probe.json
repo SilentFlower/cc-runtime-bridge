@@ -1,0 +1,64 @@
+{
+  "command": [
+    "/tmp/ccrb-footprint-study-i7_zyco2/upx",
+    "--best",
+    "--lzma",
+    "-o",
+    "/tmp/ccrb-compact-feasibility-tsy0tloy/native-api-files-packed",
+    "/tmp/ccrb-compact-feasibility-tsy0tloy/native-api-files"
+  ],
+  "exit_code": 0,
+  "compression_seconds": 59.620339467999656,
+  "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\n        File size         Ratio      Format      Name\n   --------------------   ------   -----------   -----------\n 107199672 ->  34217464   31.92%   linux/amd64   native-api-files-packed\n\nPacked 1 file.\n",
+  "stderr": "",
+  "source_bytes": 107199672,
+  "source_sha256": "3ad0d4b919b30dae2de91a6152b5ffb53315204e5792e64137bca95dd5d2391f",
+  "packed_bytes": 34217464,
+  "packed_sha256": "eea569fd5d9d80f03a15bdee5ac12775ec02d0e995ba940ba69a1603b1efa89f",
+  "upx_test": {
+    "exit_code": 0,
+    "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\ntesting /tmp/ccrb-compact-feasibility-tsy0tloy/native-api-files-packed [OK]\n\nTested 1 file.\n",
+    "stderr": ""
+  },
+  "roundtrip": {
+    "exit_code": 0,
+    "restored_sha256": "3ad0d4b919b30dae2de91a6152b5ffb53315204e5792e64137bca95dd5d2391f"
+  },
+  "function_import_samples": [
+    {
+      "iteration": 0,
+      "seconds": 2.6718557290005265,
+      "exit_code": 0,
+      "stdout": "{\"bun\":\"1.4.3\",\"Re\":\"function\",\"Kc\":\"function\",\"K_t\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"F\":\"function\",\"nEr\":\"function\",\"yLs\":\"function\",\"t_\":\"function\",\"su\":\"function\"}\n",
+      "stderr": ""
+    },
+    {
+      "iteration": 1,
+      "seconds": 2.7409236490002513,
+      "exit_code": 0,
+      "stdout": "{\"bun\":\"1.4.3\",\"Re\":\"function\",\"Kc\":\"function\",\"K_t\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"F\":\"function\",\"nEr\":\"function\",\"yLs\":\"function\",\"t_\":\"function\",\"su\":\"function\"}\n",
+      "stderr": ""
+    },
+    {
+      "iteration": 2,
+      "seconds": 2.7555782639992685,
+      "exit_code": 0,
+      "stdout": "{\"bun\":\"1.4.3\",\"Re\":\"function\",\"Kc\":\"function\",\"K_t\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"F\":\"function\",\"nEr\":\"function\",\"yLs\":\"function\",\"t_\":\"function\",\"su\":\"function\"}\n",
+      "stderr": ""
+    },
+    {
+      "iteration": 3,
+      "seconds": 2.753006191998793,
+      "exit_code": 0,
+      "stdout": "{\"bun\":\"1.4.3\",\"Re\":\"function\",\"Kc\":\"function\",\"K_t\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"F\":\"function\",\"nEr\":\"function\",\"yLs\":\"function\",\"t_\":\"function\",\"su\":\"function\"}\n",
+      "stderr": ""
+    },
+    {
+      "iteration": 4,
+      "seconds": 2.68966389399975,
+      "exit_code": 0,
+      "stdout": "{\"bun\":\"1.4.3\",\"Re\":\"function\",\"Kc\":\"function\",\"K_t\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"F\":\"function\",\"nEr\":\"function\",\"yLs\":\"function\",\"t_\":\"function\",\"su\":\"function\"}\n",
+      "stderr": ""
+    }
+  ]
+}

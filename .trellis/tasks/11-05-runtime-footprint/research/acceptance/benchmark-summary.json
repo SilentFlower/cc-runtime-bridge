@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "binary_sha256": "6b80ce8a3f79d199c1d267f7853354c02c72030b8e8daef90acddbbada40e321",
+  "reference_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+  "summary": {
+    "compact": {
+      "startup_to_first_complete_ms": 3360.4045020000003,
+      "ready_to_first_complete_ms": 22.156214999995427,
+      "warm_ms": 10.947406999999657,
+      "rss_after_bytes": 149196800,
+      "rss_peak_bytes": 149196800,
+      "generated_disk_bytes": 0
+    },
+    "reference": {
+      "startup_to_first_complete_ms": 4483.659731,
+      "ready_to_first_complete_ms": 148.01591100000223,
+      "warm_ms": 21.95783400000073,
+      "rss_after_bytes": 213983232,
+      "rss_peak_bytes": 231559168,
+      "generated_disk_bytes": 0
+    }
+  },
+  "ratios": {
+    "startup_to_first_complete_ms": 0.7494780388364847,
+    "ready_to_first_complete_ms": 0.14968806292720174,
+    "warm_ms": 0.49856497685515305
+  },
+  "upstream_requests": 60,
+  "conditions": {
+    "isolation": "unshare --net，仅启用回环；合成 API key；每进程独立 HOME/config/cwd",
+    "trials": 5,
+    "jobs_per_process": 6,
+    "reference_slots": 20,
+    "slots_used": 1,
+    "order": "每轮两方交错，奇偶轮反转顺序",
+    "page_cache": "未清理，不等同冷磁盘或虚拟机启动",
+    "endpoint": "相同本地 HTTP SSE 上游，原生 CCH 由另行 TLS 回归验证",
+    "boundary": "从 CLI 运行时启动到协议终态及空闲确认；不包含 HTTP 控制面和模型推理",
+    "input": {
+      "model": "claude-sonnet-4-6",
+      "max_tokens": 128,
+      "stream": true,
+      "output_config": {
+        "effort": "low"
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Print integers."
+        }
+      ]
+    },
+    "response_bytes": 739,
+    "process_loadavg_before": "8.22 6.00 6.02 5/1195 137599"
+  }
+}

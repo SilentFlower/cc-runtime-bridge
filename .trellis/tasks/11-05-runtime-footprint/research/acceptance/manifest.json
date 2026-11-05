@@ -1,0 +1,3880 @@
+{
+  "schema_version": 1,
+  "source": {
+    "version": "2.1.293",
+    "sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978"
+  },
+  "kernel": {
+    "version": "1.4.3",
+    "revision": "eecfd55debb281c3fe3518098b1a49f76429637c",
+    "sections_before_prune": {
+      ".rodata": "9f91e7f58e9adf8fff8c732181cc206d679f1239e4a1ae48a52d20b39dcfa8ff",
+      ".bun_builtins": "0f0631ca198344c231782e2b11f1478dee1ef1bc1471633ba9231cf92d00ce9b",
+      ".text": "413d169839d53a8d479b7b2002d7a0b8ff8681a57dc53d13beda5ee96022125a",
+      ".data": "00366dc1835ad0f8cf830623a4d7eaf04c6c2f2596d6c9f2fe35bdc8c75ced28"
+    }
+  },
+  "launcher": {
+    "sha256": "6b80ce8a3f79d199c1d267f7853354c02c72030b8e8daef90acddbbada40e321",
+    "bytes": 26404920
+  },
+  "image": {
+    "sha256": "89e8a66e29a28011fb08d1a20a1d2587bbbe5cf380a8079615e5f363ca152842",
+    "bytes": 107220152
+  },
+  "deployment": {
+    "files": [
+      {
+        "name": "claude-293",
+        "bytes": 26404920,
+        "sha256": "6b80ce8a3f79d199c1d267f7853354c02c72030b8e8daef90acddbbada40e321"
+      }
+    ],
+    "total_bytes": 26404920,
+    "limit_bytes": 27933052,
+    "required_external_files": [],
+    "existing_system_libraries": [
+      "librt.so.1",
+      "libc.so.6",
+      "ld-linux-x86-64.so.2",
+      "libpthread.so.0",
+      "libdl.so.2",
+      "libm.so.6"
+    ],
+    "disk_expansion_bytes": 0,
+    "memory_file_bytes": 107220152
+  },
+  "recipe": {
+    "version": 1,
+    "bridge_sources": {
+      "src/runtime/293/source-profile.ts": "f152662f206ec84340c51fb7949f1a60c1dad024f83bc658c20ae52145b6f82f",
+      "src/runtime/293/native.ts": "c513a1133b083d4c04e5bdd31652e6074f8f0f8150c1f65451e02a8ec0325515",
+      "src/runtime/293/job.ts": "345f8db470f39f6ffff0fb7ed8cc9097bc939366dd40cd6e9dc61419a8d869fe",
+      "src/runtime/293/worker.ts": "e02f03eeeec8df1ba3dd9b31b32db66691216490abdd0bbdcca592d8745420a3",
+      "src/shared/contracts.ts": "9dbc5426889c30145699047e3fd42cd5a886ca728389d870eb1ed720ae62039b",
+      "src/shared/protocol.ts": "0ae24a23dae34751a6672cd4d38906f6e64d3c35a2787507f08a850a5c5c3e17",
+      "src/shared/errors.ts": "464ae8a47140d0407bd95f2ecbd88862e526742e743c9d8cbc89cf193fddcc1a",
+      "src/shared/input.ts": "32fc758f44ab7336cbcd384d574f2b5855395450f255ee01144d3532e65ef7ec",
+      "src/control/header-policy.ts": "859bee855a33467eea3f548e73f5895105d4d442ae0eb68713111e657b1655ee",
+      "src/control/redaction.ts": "d6fb30520b024b7500952403720b4d7c42a60a24baa14fc967492bebb5f0d69c",
+      "scripts/runtime/compile.ts": "e2368441fc3fe4b119fd31f4d6dec84b0a83ad0078a48e0217082a1f0ebd9a9f",
+      "scripts/runtime/image.py": "3874f1e10b9fb9d0949213806c42832a83cec09c7b4cdc1b05c82be9f39b2932",
+      "scripts/runtime/loader.c": "8c546a06f00e872f6d454be68a3c9e521a49b69b9d378fc2801b15d544b3d27e",
+      "scripts/build-runtime.ts": "aff4d4f0f198716bbc686af8d52381e4869c27c7e29d05f53becc443aa0fd592"
+    },
+    "archive": [
+      "-t7z",
+      "-mx=9",
+      "-m0=BCJ2",
+      "-m1=LZMA2:d=128m:fb=273",
+      "-m2=LZMA2:d=16m",
+      "-m3=LZMA2:d=16m",
+      "-mb0:1",
+      "-mb0s1:2",
+      "-mb0s2:3",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-bsp0"
+    ],
+    "gcc": "13.3.0",
+    "tool_sha256": "d32657a7a0e4cdc0a8aa57cafe474746944d76e861e753e9c902b9c9356fa886",
+    "sdk_archive_sha256": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e",
+    "sdk_files": [
+      "Bcj2.c",
+      "Bra.c",
+      "Bra86.c",
+      "BraIA64.c",
+      "CpuArch.c",
+      "Delta.c",
+      "Lzma2Dec.c",
+      "LzmaDec.c",
+      "7zCrc.c",
+      "7zCrcOpt.c",
+      "7zAlloc.c",
+      "7zArcIn.c",
+      "7zBuf.c",
+      "7zBuf2.c",
+      "7zDec.c",
+      "7zStream.c",
+      "Sha256.c",
+      "Sha256Opt.c"
+    ],
+    "icu": {
+      "kept": 801,
+      "removed": 3189,
+      "policy": "root/en、完整字符/规范化及全部 brkitr；LANG=C.UTF-8"
+    }
+  },
+  "closure": {
+    "bun_version": "1.4.3",
+    "bun_revision": "eecfd55debb281c3fe3518098b1a49f76429637c",
+    "mapped_modules": [
+      "/$bunfs/root/SKILL-e92179a2.md.zst",
+      "/$bunfs/root/SKILL-f2840619.md.zst",
+      "/$bunfs/root/SKILL_COMPOSED-a8900b24.md.zst",
+      "/$bunfs/root/artifact-workshop.html-8587e777.txt.zst",
+      "/$bunfs/root/audio-capture.node",
+      "/$bunfs/root/chunk-00xvb92a.js",
+      "/$bunfs/root/chunk-01080scn.js",
+      "/$bunfs/root/chunk-01jwcbqt.js",
+      "/$bunfs/root/chunk-024q56rr.js",
+      "/$bunfs/root/chunk-025kqzfg.js",
+      "/$bunfs/root/chunk-02y3jsnw.js",
+      "/$bunfs/root/chunk-04k11b1d.js",
+      "/$bunfs/root/chunk-06eeg3ky.js",
+      "/$bunfs/root/chunk-075f614y.js",
+      "/$bunfs/root/chunk-0767nrfd.js",
+      "/$bunfs/root/chunk-0883kvzg.js",
+      "/$bunfs/root/chunk-089npb88.js",
+      "/$bunfs/root/chunk-09q4p3a9.js",
+      "/$bunfs/root/chunk-0avs5kwj.js",
+      "/$bunfs/root/chunk-0b4r0z6w.js",
+      "/$bunfs/root/chunk-0baqn6rs.js",
+      "/$bunfs/root/chunk-0br4npfm.js",
+      "/$bunfs/root/chunk-0bv0117w.js",
+      "/$bunfs/root/chunk-0cg7ksy5.js",
+      "/$bunfs/root/chunk-0czdnwvk.js",
+      "/$bunfs/root/chunk-0ekzpz1e.js",
+      "/$bunfs/root/chunk-0evjc5gs.js",
+      "/$bunfs/root/chunk-0fdma4bg.js",
+      "/$bunfs/root/chunk-0g7h280z.js",
+      "/$bunfs/root/chunk-0ghaqxad.js",
+      "/$bunfs/root/chunk-0gv2h7jq.js",
+      "/$bunfs/root/chunk-0ha6em9z.js",
+      "/$bunfs/root/chunk-0hkbz6dk.js",
+      "/$bunfs/root/chunk-0hrvnhgh.js",
+      "/$bunfs/root/chunk-0hsfdyrc.js",
+      "/$bunfs/root/chunk-0jk1e84t.js",
+      "/$bunfs/root/chunk-0jkq1npd.js",
+      "/$bunfs/root/chunk-0kj2hcjd.js",
+      "/$bunfs/root/chunk-0nycxcj4.js",
+      "/$bunfs/root/chunk-0rpvgntj.js",
+      "/$bunfs/root/chunk-0rwjsxxx.js",
+      "/$bunfs/root/chunk-0t2y4qvy.js",
+      "/$bunfs/root/chunk-0vq4eqbt.js",
+      "/$bunfs/root/chunk-0x1jfxxy.js",
+      "/$bunfs/root/chunk-0x4jr6a6.js",
+      "/$bunfs/root/chunk-0xcfmr4z.js",
+      "/$bunfs/root/chunk-0y12vz6b.js",
+      "/$bunfs/root/chunk-0ynn782m.js",
+      "/$bunfs/root/chunk-0yvh01ns.js",
+      "/$bunfs/root/chunk-0yyymdp2.js",
+      "/$bunfs/root/chunk-0z9zdf18.js",
+      "/$bunfs/root/chunk-113y5rkg.js",
+      "/$bunfs/root/chunk-11cpj19y.js",
+      "/$bunfs/root/chunk-11k2ntzg.js",
+      "/$bunfs/root/chunk-11mfs4z9.js",
+      "/$bunfs/root/chunk-129w2n24.js",
+      "/$bunfs/root/chunk-143rqhvz.js",
+      "/$bunfs/root/chunk-15g4fgzt.js",
+      "/$bunfs/root/chunk-15pqxcn0.js",
+      "/$bunfs/root/chunk-15pv0949.js",
+      "/$bunfs/root/chunk-16frxmjc.js",
+      "/$bunfs/root/chunk-181s4qh5.js",
+      "/$bunfs/root/chunk-19kr5wet.js",
+      "/$bunfs/root/chunk-1c6tn3en.js",
+      "/$bunfs/root/chunk-1ck9zmfg.js",
+      "/$bunfs/root/chunk-1ct70zd9.js",
+      "/$bunfs/root/chunk-1efntr6f.js",
+      "/$bunfs/root/chunk-1egjew2j.js",
+      "/$bunfs/root/chunk-1ezhesgp.js",
+      "/$bunfs/root/chunk-1gahhhn6.js",
+      "/$bunfs/root/chunk-1hgk3eea.js",
+      "/$bunfs/root/chunk-1p8srqdp.js",
+      "/$bunfs/root/chunk-1pv5t8fz.js",
+      "/$bunfs/root/chunk-1q4fetbq.js",
+      "/$bunfs/root/chunk-1qmh4b58.js",
+      "/$bunfs/root/chunk-1qzv0wed.js",
+      "/$bunfs/root/chunk-1r841fxg.js",
+      "/$bunfs/root/chunk-1sc4f8cg.js",
+      "/$bunfs/root/chunk-1svj4pg3.js",
+      "/$bunfs/root/chunk-1t9w0jb2.js",
+      "/$bunfs/root/chunk-1ts65b16.js",
+      "/$bunfs/root/chunk-1xmw07c1.js",
+      "/$bunfs/root/chunk-1zygkwq5.js",
+      "/$bunfs/root/chunk-20a2nr82.js",
+      "/$bunfs/root/chunk-20jrwbrq.js",
+      "/$bunfs/root/chunk-20v91205.js",
+      "/$bunfs/root/chunk-20wcvshx.js",
+      "/$bunfs/root/chunk-22e1a2na.js",
+      "/$bunfs/root/chunk-22hmv20d.js",
+      "/$bunfs/root/chunk-23jxzj4j.js",
+      "/$bunfs/root/chunk-23sxjvtd.js",
+      "/$bunfs/root/chunk-2551dc71.js",
+      "/$bunfs/root/chunk-259j8ef5.js",
+      "/$bunfs/root/chunk-274p7k61.js",
+      "/$bunfs/root/chunk-27dxbx08.js",
+      "/$bunfs/root/chunk-28fj72x7.js",
+      "/$bunfs/root/chunk-28k9amxe.js",
+      "/$bunfs/root/chunk-290gq2xn.js",
+      "/$bunfs/root/chunk-2aepvq05.js",
+      "/$bunfs/root/chunk-2an3bps9.js",
+      "/$bunfs/root/chunk-2axkqng9.js",
+      "/$bunfs/root/chunk-2b3rbf00.js",
+      "/$bunfs/root/chunk-2bz6k1ah.js",
+      "/$bunfs/root/chunk-2c5k1j8d.js",
+      "/$bunfs/root/chunk-2d25km35.js",
+      "/$bunfs/root/chunk-2dqe3gzx.js",
+      "/$bunfs/root/chunk-2drbg3ps.js",
+      "/$bunfs/root/chunk-2f7jtw3w.js",
+      "/$bunfs/root/chunk-2fm26m1j.js",
+      "/$bunfs/root/chunk-2g073jpc.js",
+      "/$bunfs/root/chunk-2h6x4979.js",
+      "/$bunfs/root/chunk-2hac32vj.js",
+      "/$bunfs/root/chunk-2j48j0j1.js",
+      "/$bunfs/root/chunk-2j6gb646.js",
+      "/$bunfs/root/chunk-2jb0trbw.js",
+      "/$bunfs/root/chunk-2kr5zq90.js",
+      "/$bunfs/root/chunk-2m52wv10.js",
+      "/$bunfs/root/chunk-2pjg840d.js",
+      "/$bunfs/root/chunk-2px0bk0v.js",
+      "/$bunfs/root/chunk-2q7akxch.js",
+      "/$bunfs/root/chunk-2sdfen6a.js",
+      "/$bunfs/root/chunk-2sjrn3g3.js",
+      "/$bunfs/root/chunk-2t0gnqd8.js",
+      "/$bunfs/root/chunk-2tgfzzfp.js",
+      "/$bunfs/root/chunk-2tknasr8.js",
+      "/$bunfs/root/chunk-2v061w2s.js",
+      "/$bunfs/root/chunk-2v7s4a2d.js",
+      "/$bunfs/root/chunk-2w2q9fz8.js",
+      "/$bunfs/root/chunk-2ws9hggk.js",
+      "/$bunfs/root/chunk-2xdjg3bq.js",
+      "/$bunfs/root/chunk-2ykhbsxx.js",
+      "/$bunfs/root/chunk-30bw8frt.js",
+      "/$bunfs/root/chunk-30xn0w2c.js",
+      "/$bunfs/root/chunk-31cdcyr6.js",
+      "/$bunfs/root/chunk-34we0c1c.js",
+      "/$bunfs/root/chunk-38gbh28d.js",
+      "/$bunfs/root/chunk-38p6ajh6.js",
+      "/$bunfs/root/chunk-39rys53e.js",
+      "/$bunfs/root/chunk-3egfamvv.js",
+      "/$bunfs/root/chunk-3ftb5e5e.js",
+      "/$bunfs/root/chunk-3g9zpswz.js",
+      "/$bunfs/root/chunk-3gz878ha.js",
+      "/$bunfs/root/chunk-3j4k2j1m.js",
+      "/$bunfs/root/chunk-3m2tqye2.js",
+      "/$bunfs/root/chunk-3mja6xtv.js",
+      "/$bunfs/root/chunk-3pcsj8je.js",
+      "/$bunfs/root/chunk-3pgmp6wj.js",
+      "/$bunfs/root/chunk-3qgpxxdr.js",
+      "/$bunfs/root/chunk-3s94kw4m.js",
+      "/$bunfs/root/chunk-3snece8p.js",
+      "/$bunfs/root/chunk-3v9212sq.js",
+      "/$bunfs/root/chunk-3vrcfwd8.js",
+      "/$bunfs/root/chunk-3vy79x6h.js",
+      "/$bunfs/root/chunk-3wqs009g.js",
+      "/$bunfs/root/chunk-3x5yswj4.js",
+      "/$bunfs/root/chunk-3z6dqzny.js",
+      "/$bunfs/root/chunk-3z9fhjg5.js",
+      "/$bunfs/root/chunk-40f77365.js",
+      "/$bunfs/root/chunk-40vn7q1q.js",
+      "/$bunfs/root/chunk-40x8rjxy.js",
+      "/$bunfs/root/chunk-41e44mpx.js",
+      "/$bunfs/root/chunk-44cwbnrm.js",
+      "/$bunfs/root/chunk-451skyaa.js",
+      "/$bunfs/root/chunk-4549v90h.js",
+      "/$bunfs/root/chunk-45nzk9gb.js",
+      "/$bunfs/root/chunk-45yk163m.js",
+      "/$bunfs/root/chunk-475a37fh.js",
+      "/$bunfs/root/chunk-47cp25kj.js",
+      "/$bunfs/root/chunk-47scf3az.js",
+      "/$bunfs/root/chunk-48bqxsxd.js",
+      "/$bunfs/root/chunk-493c90n0.js",
+      "/$bunfs/root/chunk-49nt6bnx.js",
+      "/$bunfs/root/chunk-4b026tcm.js",
+      "/$bunfs/root/chunk-4b4f1qj6.js",
+      "/$bunfs/root/chunk-4b4ymzed.js",
+      "/$bunfs/root/chunk-4b6490e9.js",
+      "/$bunfs/root/chunk-4b6c7fgt.js",
+      "/$bunfs/root/chunk-4bmfm16m.js",
+      "/$bunfs/root/chunk-4ej953jh.js",
+      "/$bunfs/root/chunk-4exae0r9.js",
+      "/$bunfs/root/chunk-4f75j7cy.js",
+      "/$bunfs/root/chunk-4fjbz3wb.js",
+      "/$bunfs/root/chunk-4gd96x8w.js",
+      "/$bunfs/root/chunk-4gqt9ywy.js",
+      "/$bunfs/root/chunk-4gxzjncs.js",
+      "/$bunfs/root/chunk-4j1447cd.js",
+      "/$bunfs/root/chunk-4j1b6neq.js",
+      "/$bunfs/root/chunk-4jycp0yp.js",
+      "/$bunfs/root/chunk-4kvft9zw.js",
+      "/$bunfs/root/chunk-4mb58qnk.js",
+      "/$bunfs/root/chunk-4mdqj07x.js",
+      "/$bunfs/root/chunk-4mqa80wx.js",
+      "/$bunfs/root/chunk-4mqzc6zk.js",
+      "/$bunfs/root/chunk-4mt8g1b0.js",
+      "/$bunfs/root/chunk-4ngsrq3v.js",
+      "/$bunfs/root/chunk-4p0ah6jf.js",
+      "/$bunfs/root/chunk-4p3b8r8s.js",
+      "/$bunfs/root/chunk-4p5wb748.js",
+      "/$bunfs/root/chunk-4pbm04mt.js",
+      "/$bunfs/root/chunk-4pskkfzj.js",
+      "/$bunfs/root/chunk-4pvberqq.js",
+      "/$bunfs/root/chunk-4qyy0g6a.js",
+      "/$bunfs/root/chunk-4rvkrdmh.js",
+      "/$bunfs/root/chunk-4tjtaqr1.js",
+      "/$bunfs/root/chunk-4v0kqmfd.js",
+      "/$bunfs/root/chunk-4w6b0kyp.js",
+      "/$bunfs/root/chunk-4xqhck8m.js",
+      "/$bunfs/root/chunk-4yk6z6y5.js",
+      "/$bunfs/root/chunk-4z5wz91m.js",
+      "/$bunfs/root/chunk-4zq03m5v.js",
+      "/$bunfs/root/chunk-4zqg0s2n.js",
+      "/$bunfs/root/chunk-50tcb94a.js",
+      "/$bunfs/root/chunk-522z2r9s.js",
+      "/$bunfs/root/chunk-548dhqyc.js",
+      "/$bunfs/root/chunk-56v83k7q.js",
+      "/$bunfs/root/chunk-571ddenq.js",
+      "/$bunfs/root/chunk-57d0836j.js",
+      "/$bunfs/root/chunk-58g33fa9.js",
+      "/$bunfs/root/chunk-5cdxxdby.js",
+      "/$bunfs/root/chunk-5g6j8x8p.js",
+      "/$bunfs/root/chunk-5h2tp566.js",
+      "/$bunfs/root/chunk-5h754ap0.js",
+      "/$bunfs/root/chunk-5hfengax.js",
+      "/$bunfs/root/chunk-5jwwwj98.js",
+      "/$bunfs/root/chunk-5m1drh5r.js",
+      "/$bunfs/root/chunk-5nrks403.js",
+      "/$bunfs/root/chunk-5nvbenez.js",
+      "/$bunfs/root/chunk-5pdrsybf.js",
+      "/$bunfs/root/chunk-5pgmsdby.js",
+      "/$bunfs/root/chunk-5qd06ygs.js",
+      "/$bunfs/root/chunk-5qrh4ttg.js",
+      "/$bunfs/root/chunk-5qs5rr77.js",
+      "/$bunfs/root/chunk-5qxyyn17.js",
+      "/$bunfs/root/chunk-5rp4r4yw.js",
+      "/$bunfs/root/chunk-5s0s6gmc.js",
+      "/$bunfs/root/chunk-5tfk4bjh.js",
+      "/$bunfs/root/chunk-5v4f7g5r.js",
+      "/$bunfs/root/chunk-5vh718r8.js",
+      "/$bunfs/root/chunk-5vtdtcrh.js",
+      "/$bunfs/root/chunk-5wybav75.js",
+      "/$bunfs/root/chunk-5y0qyprz.js",
+      "/$bunfs/root/chunk-5y7p5pkb.js",
+      "/$bunfs/root/chunk-5ys86m6n.js",
+      "/$bunfs/root/chunk-5zqw5ss6.js",
+      "/$bunfs/root/chunk-607wwbk3.js",
+      "/$bunfs/root/chunk-60xq8hs0.js",
+      "/$bunfs/root/chunk-610h4aj6.js",
+      "/$bunfs/root/chunk-62f22w4z.js",
+      "/$bunfs/root/chunk-62zmv4v1.js",
+      "/$bunfs/root/chunk-649kdgw4.js",
+      "/$bunfs/root/chunk-64fv42gs.js",
+      "/$bunfs/root/chunk-65551k90.js",
+      "/$bunfs/root/chunk-65kgtwr0.js",
+      "/$bunfs/root/chunk-65z63x1q.js",
+      "/$bunfs/root/chunk-670y7hd9.js",
+      "/$bunfs/root/chunk-67x6p333.js",
+      "/$bunfs/root/chunk-685hfscv.js",
+      "/$bunfs/root/chunk-68a05577.js",
+      "/$bunfs/root/chunk-68mnexjh.js",
+      "/$bunfs/root/chunk-68r65360.js",
+      "/$bunfs/root/chunk-68vq239n.js",
+      "/$bunfs/root/chunk-68w0t2e6.js",
+      "/$bunfs/root/chunk-699w2z4t.js",
+      "/$bunfs/root/chunk-6bmq1d3t.js",
+      "/$bunfs/root/chunk-6by3vkee.js",
+      "/$bunfs/root/chunk-6bzdyyph.js",
+      "/$bunfs/root/chunk-6dn7nmax.js",
+      "/$bunfs/root/chunk-6f7s7m41.js",
+      "/$bunfs/root/chunk-6gx4r2m4.js",
+      "/$bunfs/root/chunk-6k9g5j1z.js",
+      "/$bunfs/root/chunk-6kd2vh7f.js",
+      "/$bunfs/root/chunk-6m5a0jzp.js",
+      "/$bunfs/root/chunk-6s3btj73.js",
+      "/$bunfs/root/chunk-6sbnd9bv.js",
+      "/$bunfs/root/chunk-6tp8ep63.js",
+      "/$bunfs/root/chunk-6ymw8nyx.js",
+      "/$bunfs/root/chunk-6z9xfbsz.js",
+      "/$bunfs/root/chunk-6zns9xrm.js",
+      "/$bunfs/root/chunk-70ktd4rm.js",
+      "/$bunfs/root/chunk-70yc9q5h.js",
+      "/$bunfs/root/chunk-7343v0qy.js",
+      "/$bunfs/root/chunk-734e7kxq.js",
+      "/$bunfs/root/chunk-73phyc4k.js",
+      "/$bunfs/root/chunk-75qt5nrq.js",
+      "/$bunfs/root/chunk-75wa44pa.js",
+      "/$bunfs/root/chunk-78f6n68k.js",
+      "/$bunfs/root/chunk-792tn0xv.js",
+      "/$bunfs/root/chunk-7aeaxsw5.js",
+      "/$bunfs/root/chunk-7aw702vm.js",
+      "/$bunfs/root/chunk-7bbha6es.js",
+      "/$bunfs/root/chunk-7bfw1gan.js",
+      "/$bunfs/root/chunk-7dchs7vj.js",
+      "/$bunfs/root/chunk-7ddrzt7d.js",
+      "/$bunfs/root/chunk-7ege27h0.js",
+      "/$bunfs/root/chunk-7gdd9xvw.js",
+      "/$bunfs/root/chunk-7jgz3t34.js",
+      "/$bunfs/root/chunk-7k3tncjw.js",
+      "/$bunfs/root/chunk-7mew8hxw.js",
+      "/$bunfs/root/chunk-7mn3faqa.js",
+      "/$bunfs/root/chunk-7nzams11.js",
+      "/$bunfs/root/chunk-7qk6zpqr.js",
+      "/$bunfs/root/chunk-7qntjzak.js",
+      "/$bunfs/root/chunk-7vgj71b1.js",
+      "/$bunfs/root/chunk-7we4957g.js",
+      "/$bunfs/root/chunk-7xv2rqty.js",
+      "/$bunfs/root/chunk-7z5k1fp5.js",
+      "/$bunfs/root/chunk-81x4vxfm.js",
+      "/$bunfs/root/chunk-838aw59c.js",
+      "/$bunfs/root/chunk-83e5qj7d.js",
+      "/$bunfs/root/chunk-83ph2289.js",
+      "/$bunfs/root/chunk-841xka46.js",
+      "/$bunfs/root/chunk-86p0syfg.js",
+      "/$bunfs/root/chunk-88n00hjp.js",
+      "/$bunfs/root/chunk-88wbsxq0.js",
+      "/$bunfs/root/chunk-8954xga2.js",
+      "/$bunfs/root/chunk-89sgksq8.js",
+      "/$bunfs/root/chunk-89xjtk0d.js",
+      "/$bunfs/root/chunk-8b6bkg4w.js",
+      "/$bunfs/root/chunk-8bj8ysfy.js",
+      "/$bunfs/root/chunk-8cb479ac.js",
+      "/$bunfs/root/chunk-8cjjxcy5.js",
+      "/$bunfs/root/chunk-8f2wq8tm.js",
+      "/$bunfs/root/chunk-8fkr8x8q.js",
+      "/$bunfs/root/chunk-8g0fg1nj.js",
+      "/$bunfs/root/chunk-8g1ghsbe.js",
+      "/$bunfs/root/chunk-8gsa5cd4.js",
+      "/$bunfs/root/chunk-8hjxbbs2.js",
+      "/$bunfs/root/chunk-8jrctp4q.js",
+      "/$bunfs/root/chunk-8kje1px1.js",
+      "/$bunfs/root/chunk-8kwdshbg.js",
+      "/$bunfs/root/chunk-8ky01sys.js",
+      "/$bunfs/root/chunk-8m1fq7y5.js",
+      "/$bunfs/root/chunk-8m3wcf76.js",
+      "/$bunfs/root/chunk-8neznx0f.js",
+      "/$bunfs/root/chunk-8q243sk8.js",
+      "/$bunfs/root/chunk-8qrrr75j.js",
+      "/$bunfs/root/chunk-8sjcamrf.js",
+      "/$bunfs/root/chunk-8skcamyq.js",
+      "/$bunfs/root/chunk-8ttmn0x1.js",
+      "/$bunfs/root/chunk-8v0fdv16.js",
+      "/$bunfs/root/chunk-8vcc7m2e.js",
+      "/$bunfs/root/chunk-8wdzc0vk.js",
+      "/$bunfs/root/chunk-8x4wdaxt.js",
+      "/$bunfs/root/chunk-8x6enyhq.js",
+      "/$bunfs/root/chunk-8xbts8ce.js",
+      "/$bunfs/root/chunk-90w3j9yt.js",
+      "/$bunfs/root/chunk-91dqb7wh.js",
+      "/$bunfs/root/chunk-91kes14k.js",
+      "/$bunfs/root/chunk-941sa7c2.js",
+      "/$bunfs/root/chunk-942093b7.js",
+      "/$bunfs/root/chunk-946598ze.js",
+      "/$bunfs/root/chunk-94sydjrg.js",
+      "/$bunfs/root/chunk-9528vwpp.js",
+      "/$bunfs/root/chunk-98b1thvf.js",
+      "/$bunfs/root/chunk-99ge7yjt.js",
+      "/$bunfs/root/chunk-99wcvek9.js",
+      "/$bunfs/root/chunk-9b9pp2j0.js",
+      "/$bunfs/root/chunk-9e27ffqj.js",
+      "/$bunfs/root/chunk-9eckcyrf.js",
+      "/$bunfs/root/chunk-9ejtrehj.js",
+      "/$bunfs/root/chunk-9f88agae.js",
+      "/$bunfs/root/chunk-9ftp1ypc.js",
+      "/$bunfs/root/chunk-9fzk6rte.js",
+      "/$bunfs/root/chunk-9gfc3ksw.js",
+      "/$bunfs/root/chunk-9hyq3296.js",
+      "/$bunfs/root/chunk-9jdpjx1m.js",
+      "/$bunfs/root/chunk-9m2h8kk6.js",
+      "/$bunfs/root/chunk-9mb48fme.js",
+      "/$bunfs/root/chunk-9mnz9cwd.js",
+      "/$bunfs/root/chunk-9na2emn6.js",
+      "/$bunfs/root/chunk-9p9w9mdw.js",
+      "/$bunfs/root/chunk-9peh9gjb.js",
+      "/$bunfs/root/chunk-9py7rh29.js",
+      "/$bunfs/root/chunk-9q7rk5sh.js",
+      "/$bunfs/root/chunk-9q9ez9we.js",
+      "/$bunfs/root/chunk-9rttrta7.js",
+      "/$bunfs/root/chunk-9sbwexnk.js",
+      "/$bunfs/root/chunk-9tfc4z9w.js",
+      "/$bunfs/root/chunk-9v50ev4w.js",
+      "/$bunfs/root/chunk-9vvcsfjd.js",
+      "/$bunfs/root/chunk-9wdfrv4a.js",
+      "/$bunfs/root/chunk-9x12ekc1.js",
+      "/$bunfs/root/chunk-9x515hk6.js",
+      "/$bunfs/root/chunk-9y5e16ys.js",
+      "/$bunfs/root/chunk-9yqkfeew.js",
+      "/$bunfs/root/chunk-9zhgh1cx.js",
+      "/$bunfs/root/chunk-9zrwtax3.js",
+      "/$bunfs/root/chunk-a0cvgr2x.js",
+      "/$bunfs/root/chunk-a11wcqh5.js",
+      "/$bunfs/root/chunk-a1br41y2.js",
+      "/$bunfs/root/chunk-a5b4j4me.js",
+      "/$bunfs/root/chunk-a7dqstsv.js",
+      "/$bunfs/root/chunk-a8phxg6b.js",
+      "/$bunfs/root/chunk-aahwfamk.js",
+      "/$bunfs/root/chunk-ab57t09k.js",
+      "/$bunfs/root/chunk-abtcwtg0.js",
+      "/$bunfs/root/chunk-abvt4fw2.js",
+      "/$bunfs/root/chunk-acesqbca.js",
+      "/$bunfs/root/chunk-achx7vgg.js",
+      "/$bunfs/root/chunk-acyme86h.js",
+      "/$bunfs/root/chunk-aefjweh5.js",
+      "/$bunfs/root/chunk-aex0jrne.js",
+      "/$bunfs/root/chunk-afq7rdjh.js",
+      "/$bunfs/root/chunk-ag8h4tcz.js",
+      "/$bunfs/root/chunk-agxkvasb.js",
+      "/$bunfs/root/chunk-aj1rvwep.js",
+      "/$bunfs/root/chunk-aj5fdhsh.js",
+      "/$bunfs/root/chunk-am4m102v.js",
+      "/$bunfs/root/chunk-am95ftcb.js",
+      "/$bunfs/root/chunk-amnc8bbv.js",
+      "/$bunfs/root/chunk-ana3q31s.js",
+      "/$bunfs/root/chunk-anft3zrx.js",
+      "/$bunfs/root/chunk-apze82q3.js",
+      "/$bunfs/root/chunk-aqh2c7wz.js",
+      "/$bunfs/root/chunk-aqncmpcc.js",
+      "/$bunfs/root/chunk-as6x96mg.js",
+      "/$bunfs/root/chunk-asjv932t.js",
+      "/$bunfs/root/chunk-at9t2pt5.js",
+      "/$bunfs/root/chunk-ave9sz52.js",
+      "/$bunfs/root/chunk-axf2gz18.js",
+      "/$bunfs/root/chunk-azdnr9md.js",
+      "/$bunfs/root/chunk-aznfjcg3.js",
+      "/$bunfs/root/chunk-b04dfxp4.js",
+      "/$bunfs/root/chunk-b0rmhv5m.js",
+      "/$bunfs/root/chunk-b3z0jpwa.js",
+      "/$bunfs/root/chunk-b4f8xbxq.js",
+      "/$bunfs/root/chunk-b4tqx7tj.js",
+      "/$bunfs/root/chunk-b51tm3s7.js",
+      "/$bunfs/root/chunk-b57yrkg1.js",
+      "/$bunfs/root/chunk-b5thz405.js",
+      "/$bunfs/root/chunk-b7bg1650.js",
+      "/$bunfs/root/chunk-b7x84ezk.js",
+      "/$bunfs/root/chunk-bavm4kmy.js",
+      "/$bunfs/root/chunk-bctebss4.js",
+      "/$bunfs/root/chunk-bdqfebc7.js",
+      "/$bunfs/root/chunk-bf3mqahw.js",
+      "/$bunfs/root/chunk-bf64dzp7.js",
+      "/$bunfs/root/chunk-bfhv2tx6.js",
+      "/$bunfs/root/chunk-bg1tv4aj.js",
+      "/$bunfs/root/chunk-bgyjhrbv.js",
+      "/$bunfs/root/chunk-bh7pbgyg.js",
+      "/$bunfs/root/chunk-bhxa600q.js",
+      "/$bunfs/root/chunk-bk80repb.js",
+      "/$bunfs/root/chunk-bk9q8mme.js",
+      "/$bunfs/root/chunk-bkr1h20c.js",
+      "/$bunfs/root/chunk-bmgs44y7.js",
+      "/$bunfs/root/chunk-bp8we7qw.js",
+      "/$bunfs/root/chunk-bp972ngt.js",
+      "/$bunfs/root/chunk-bqafz0am.js",
+      "/$bunfs/root/chunk-bqtfa0xb.js",
+      "/$bunfs/root/chunk-bqv5d1dn.js",
+      "/$bunfs/root/chunk-br0dmkp2.js",
+      "/$bunfs/root/chunk-bsyaz1ny.js",
+      "/$bunfs/root/chunk-bt8vprkj.js",
+      "/$bunfs/root/chunk-bw41c0jq.js",
+      "/$bunfs/root/chunk-bx02yb5x.js",
+      "/$bunfs/root/chunk-bx1nhgzb.js",
+      "/$bunfs/root/chunk-bxs4s6wr.js",
+      "/$bunfs/root/chunk-c0mwgmhj.js",
+      "/$bunfs/root/chunk-c168wd2g.js",
+      "/$bunfs/root/chunk-c1h5237f.js",
+      "/$bunfs/root/chunk-c2fwgakd.js",
+      "/$bunfs/root/chunk-c31ywkj9.js",
+      "/$bunfs/root/chunk-c4g8hk5v.js",
+      "/$bunfs/root/chunk-c54jw4xk.js",
+      "/$bunfs/root/chunk-c6h8m9xc.js",
+      "/$bunfs/root/chunk-c91vhg3c.js",
+      "/$bunfs/root/chunk-c9zcyfj2.js",
+      "/$bunfs/root/chunk-caman2jk.js",
+      "/$bunfs/root/chunk-cbyv8c54.js",
+      "/$bunfs/root/chunk-cc7yz57v.js",
+      "/$bunfs/root/chunk-cdr72eha.js",
+      "/$bunfs/root/chunk-cej8xfp1.js",
+      "/$bunfs/root/chunk-cejxg49w.js",
+      "/$bunfs/root/chunk-cfeppv9p.js",
+      "/$bunfs/root/chunk-cgg55pq6.js",
+      "/$bunfs/root/chunk-chs8nhab.js",
+      "/$bunfs/root/chunk-cjpd2k0t.js",
+      "/$bunfs/root/chunk-ck1yahp2.js",
+      "/$bunfs/root/chunk-ck2446pj.js",
+      "/$bunfs/root/chunk-ck3hfy4b.js",
+      "/$bunfs/root/chunk-cmwsveez.js",
+      "/$bunfs/root/chunk-cn9xccvs.js",
+      "/$bunfs/root/chunk-cngk4ny6.js",
+      "/$bunfs/root/chunk-cnwfp9d6.js",
+      "/$bunfs/root/chunk-cnx2d717.js",
+      "/$bunfs/root/chunk-cph2fnc4.js",
+      "/$bunfs/root/chunk-cpxwxt65.js",
+      "/$bunfs/root/chunk-cv1v1x2r.js",
+      "/$bunfs/root/chunk-cv40zr57.js",
+      "/$bunfs/root/chunk-cv8kvz35.js",
+      "/$bunfs/root/chunk-cxjvwxsa.js",
+      "/$bunfs/root/chunk-cxrkaxjh.js",
+      "/$bunfs/root/chunk-cycmn83x.js",
+      "/$bunfs/root/chunk-cyv5xs50.js",
+      "/$bunfs/root/chunk-d07mmc1m.js",
+      "/$bunfs/root/chunk-d1231xrd.js",
+      "/$bunfs/root/chunk-d1kw3x5q.js",
+      "/$bunfs/root/chunk-d2jvww3q.js",
+      "/$bunfs/root/chunk-d2qaez65.js",
+      "/$bunfs/root/chunk-d3pj89eh.js",
+      "/$bunfs/root/chunk-d6fy0knv.js",
+      "/$bunfs/root/chunk-d7e50hx9.js",
+      "/$bunfs/root/chunk-d7tqj43x.js",
+      "/$bunfs/root/chunk-d873sz44.js",
+      "/$bunfs/root/chunk-d8jznj7z.js",
+      "/$bunfs/root/chunk-d9tt7s1c.js",
+      "/$bunfs/root/chunk-da6cphk9.js",
+      "/$bunfs/root/chunk-da6tq2ab.js",
+      "/$bunfs/root/chunk-dangnj6h.js",
+      "/$bunfs/root/chunk-dc18vvgx.js",
+      "/$bunfs/root/chunk-dc9j2rj4.js",
+      "/$bunfs/root/chunk-dd6nz0pr.js",
+      "/$bunfs/root/chunk-ddfstghf.js",
+      "/$bunfs/root/chunk-de501a60.js",
+      "/$bunfs/root/chunk-df14273p.js",
+      "/$bunfs/root/chunk-dfeky22r.js",
+      "/$bunfs/root/chunk-dj0ff8ag.js",
+      "/$bunfs/root/chunk-djga69st.js",
+      "/$bunfs/root/chunk-djycxmxz.js",
+      "/$bunfs/root/chunk-djzbzbdg.js",
+      "/$bunfs/root/chunk-dk04mkqm.js",
+      "/$bunfs/root/chunk-dmwg443r.js",
+      "/$bunfs/root/chunk-dnbwz1aj.js",
+      "/$bunfs/root/chunk-dnbxpkjm.js",
+      "/$bunfs/root/chunk-dnfm03mx.js",
+      "/$bunfs/root/chunk-dpez7f1h.js",
+      "/$bunfs/root/chunk-dpnksyc1.js",
+      "/$bunfs/root/chunk-dqgd7pcw.js",
+      "/$bunfs/root/chunk-dqxsqkrd.js",
+      "/$bunfs/root/chunk-ds5pk6ma.js",
+      "/$bunfs/root/chunk-dscjvjx7.js",
+      "/$bunfs/root/chunk-dsn233je.js",
+      "/$bunfs/root/chunk-dsx3y2cq.js",
+      "/$bunfs/root/chunk-dtg3c3n7.js",
+      "/$bunfs/root/chunk-dtgfjme6.js",
+      "/$bunfs/root/chunk-dw79tn34.js",
+      "/$bunfs/root/chunk-dxe3rgsj.js",
+      "/$bunfs/root/chunk-dxg9a8tj.js",
+      "/$bunfs/root/chunk-dxwrxbnd.js",
+      "/$bunfs/root/chunk-dz7bwjyz.js",
+      "/$bunfs/root/chunk-e21ctp8m.js",
+      "/$bunfs/root/chunk-e23h7m0d.js",
+      "/$bunfs/root/chunk-e2wj64wb.js",
+      "/$bunfs/root/chunk-e32gdxtg.js",
+      "/$bunfs/root/chunk-e3b8232z.js",
+      "/$bunfs/root/chunk-e3ya4n4j.js",
+      "/$bunfs/root/chunk-e4m95wdf.js",
+      "/$bunfs/root/chunk-e4qf77em.js",
+      "/$bunfs/root/chunk-e4v0xv2r.js",
+      "/$bunfs/root/chunk-e601a4em.js",
+      "/$bunfs/root/chunk-e67vwz5v.js",
+      "/$bunfs/root/chunk-e84gprty.js",
+      "/$bunfs/root/chunk-e89e60x6.js",
+      "/$bunfs/root/chunk-e96fcfp3.js",
+      "/$bunfs/root/chunk-ebvbbvjb.js",
+      "/$bunfs/root/chunk-ec1t8qnz.js",
+      "/$bunfs/root/chunk-eczrk2s8.js",
+      "/$bunfs/root/chunk-eeby8599.js",
+      "/$bunfs/root/chunk-eehn12er.js",
+      "/$bunfs/root/chunk-eh1755yg.js",
+      "/$bunfs/root/chunk-ehe9q4bw.js",
+      "/$bunfs/root/chunk-ehk8rv41.js",
+      "/$bunfs/root/chunk-ehn9f19s.js",
+      "/$bunfs/root/chunk-ek0sb64g.js",
+      "/$bunfs/root/chunk-eksm6vqn.js",
+      "/$bunfs/root/chunk-ektt5fwj.js",
+      "/$bunfs/root/chunk-empjjfcy.js",
+      "/$bunfs/root/chunk-empkgafs.js",
+      "/$bunfs/root/chunk-eq2mmfhv.js",
+      "/$bunfs/root/chunk-eqp4tcmq.js",
+      "/$bunfs/root/chunk-eqtqzzv6.js",
+      "/$bunfs/root/chunk-es1fbg20.js",
+      "/$bunfs/root/chunk-es6rbpsv.js",
+      "/$bunfs/root/chunk-etkpxass.js",
+      "/$bunfs/root/chunk-ettyqnzn.js",
+      "/$bunfs/root/chunk-ew9bs9tp.js",
+      "/$bunfs/root/chunk-ewp5gvgt.js",
+      "/$bunfs/root/chunk-ey10f3pw.js",
+      "/$bunfs/root/chunk-ey3689yf.js",
+      "/$bunfs/root/chunk-f0fne1v7.js",
+      "/$bunfs/root/chunk-f0v8cfjt.js",
+      "/$bunfs/root/chunk-f1hjke0k.js",
+      "/$bunfs/root/chunk-f25p6k3h.js",
+      "/$bunfs/root/chunk-f288bh89.js",
+      "/$bunfs/root/chunk-f366da3s.js",
+      "/$bunfs/root/chunk-f4x4vtyr.js",
+      "/$bunfs/root/chunk-f50gh2ff.js",
+      "/$bunfs/root/chunk-f5jsjzv9.js",
+      "/$bunfs/root/chunk-f5ksdq5a.js",
+      "/$bunfs/root/chunk-f6q1ty4q.js",
+      "/$bunfs/root/chunk-f7qh45ha.js",
+      "/$bunfs/root/chunk-f8dgwhbe.js",
+      "/$bunfs/root/chunk-f9e0q8vm.js",
+      "/$bunfs/root/chunk-f9tx2hxx.js",
+      "/$bunfs/root/chunk-f9wygmnp.js",
+      "/$bunfs/root/chunk-fa1qvgt2.js",
+      "/$bunfs/root/chunk-factn9sc.js",
+      "/$bunfs/root/chunk-fbhs25s6.js",
+      "/$bunfs/root/chunk-fc0pdzsj.js",
+      "/$bunfs/root/chunk-fgkxczfy.js",
+      "/$bunfs/root/chunk-fkgw9tj8.js",
+      "/$bunfs/root/chunk-fmckca2a.js",
+      "/$bunfs/root/chunk-fn747zta.js",
+      "/$bunfs/root/chunk-fs1m5djd.js",
+      "/$bunfs/root/chunk-fts8edf7.js",
+      "/$bunfs/root/chunk-fty280t7.js",
+      "/$bunfs/root/chunk-fw94rtj6.js",
+      "/$bunfs/root/chunk-fx202h6s.js",
+      "/$bunfs/root/chunk-fxrrfs3q.js",
+      "/$bunfs/root/chunk-fy751jd3.js",
+      "/$bunfs/root/chunk-fygamvya.js",
+      "/$bunfs/root/chunk-g20bajb2.js",
+      "/$bunfs/root/chunk-g263vvvn.js",
+      "/$bunfs/root/chunk-g4c4t37p.js",
+      "/$bunfs/root/chunk-g5jky0yb.js",
+      "/$bunfs/root/chunk-g5k2mt8p.js",
+      "/$bunfs/root/chunk-g5nhhr43.js",
+      "/$bunfs/root/chunk-g658sn4a.js",
+      "/$bunfs/root/chunk-g70a6sf4.js",
+      "/$bunfs/root/chunk-g79wjybr.js",
+      "/$bunfs/root/chunk-g8gxy2ka.js",
+      "/$bunfs/root/chunk-g9a2nkn9.js",
+      "/$bunfs/root/chunk-ga9b2kn7.js",
+      "/$bunfs/root/chunk-gah7b8tw.js",
+      "/$bunfs/root/chunk-gahhptx7.js",
+      "/$bunfs/root/chunk-gb7dx65y.js",
+      "/$bunfs/root/chunk-gcajgxa4.js",
+      "/$bunfs/root/chunk-gctwj767.js",
+      "/$bunfs/root/chunk-gdbczw5p.js",
+      "/$bunfs/root/chunk-gdtqgt7x.js",
+      "/$bunfs/root/chunk-ge1wfc88.js",
+      "/$bunfs/root/chunk-geaxpn7j.js",
+      "/$bunfs/root/chunk-gef68xj8.js",
+      "/$bunfs/root/chunk-ggf1x049.js",
+      "/$bunfs/root/chunk-ggk7jzbs.js",
+      "/$bunfs/root/chunk-gj0j5fxk.js",
+      "/$bunfs/root/chunk-gk0wbd41.js",
+      "/$bunfs/root/chunk-gkd83c0c.js",
+      "/$bunfs/root/chunk-gkt7rp7q.js",
+      "/$bunfs/root/chunk-gmsvd8vt.js",
+      "/$bunfs/root/chunk-gmvnpewv.js",
+      "/$bunfs/root/chunk-gnmj35jd.js",
+      "/$bunfs/root/chunk-gpe2q94c.js",
+      "/$bunfs/root/chunk-gpqn5vj7.js",
+      "/$bunfs/root/chunk-gr8vhfp2.js",
+      "/$bunfs/root/chunk-gsa86a2x.js",
+      "/$bunfs/root/chunk-gt6czf7p.js",
+      "/$bunfs/root/chunk-gtv5tdnz.js",
+      "/$bunfs/root/chunk-gvd58vpb.js",
+      "/$bunfs/root/chunk-gvh7xxvb.js",
+      "/$bunfs/root/chunk-gwj7v27h.js",
+      "/$bunfs/root/chunk-gx95ar6n.js",
+      "/$bunfs/root/chunk-h07xxz3s.js",
+      "/$bunfs/root/chunk-h1114axt.js",
+      "/$bunfs/root/chunk-h1c50y7q.js",
+      "/$bunfs/root/chunk-h1v4fv0m.js",
+      "/$bunfs/root/chunk-h37zgzwn.js",
+      "/$bunfs/root/chunk-h3erbefy.js",
+      "/$bunfs/root/chunk-h4x4cdrv.js",
+      "/$bunfs/root/chunk-h6dscdjp.js",
+      "/$bunfs/root/chunk-h6m8dbqc.js",
+      "/$bunfs/root/chunk-h7fmm0bj.js",
+      "/$bunfs/root/chunk-h90h6ns6.js",
+      "/$bunfs/root/chunk-hbzk7jmq.js",
+      "/$bunfs/root/chunk-hc2s3ess.js",
+      "/$bunfs/root/chunk-hcx9p7ma.js",
+      "/$bunfs/root/chunk-hd0m61m4.js",
+      "/$bunfs/root/chunk-hesrqedr.js",
+      "/$bunfs/root/chunk-hfpf4cs3.js",
+      "/$bunfs/root/chunk-hgmmdjqg.js",
+      "/$bunfs/root/chunk-hgnjxp83.js",
+      "/$bunfs/root/chunk-hj10z4ec.js",
+      "/$bunfs/root/chunk-hjsqrpwq.js",
+      "/$bunfs/root/chunk-hk5hktg9.js",
+      "/$bunfs/root/chunk-hk846brm.js",
+      "/$bunfs/root/chunk-hn20h7jn.js",
+      "/$bunfs/root/chunk-hq9p3vge.js",
+      "/$bunfs/root/chunk-hqe6xm87.js",
+      "/$bunfs/root/chunk-hqh18rsa.js",
+      "/$bunfs/root/chunk-hrwjwwzw.js",
+      "/$bunfs/root/chunk-hscmwyph.js",
+      "/$bunfs/root/chunk-hsq7swsk.js",
+      "/$bunfs/root/chunk-htg09580.js",
+      "/$bunfs/root/chunk-htwmbjtm.js",
+      "/$bunfs/root/chunk-hv4n1akt.js",
+      "/$bunfs/root/chunk-hvcb9nnd.js",
+      "/$bunfs/root/chunk-hw9fxj6s.js",
+      "/$bunfs/root/chunk-hwkrjd1s.js",
+      "/$bunfs/root/chunk-hxnfcf28.js",
+      "/$bunfs/root/chunk-j0ptrqhn.js",
+      "/$bunfs/root/chunk-j36hfbsa.js",
+      "/$bunfs/root/chunk-j4zyqx4t.js",
+      "/$bunfs/root/chunk-j5w51myk.js",
+      "/$bunfs/root/chunk-j6h48kh5.js",
+      "/$bunfs/root/chunk-j6z0j5vh.js",
+      "/$bunfs/root/chunk-j6z7rz3z.js",
+      "/$bunfs/root/chunk-j7kh1asf.js",
+      "/$bunfs/root/chunk-j7w32kpj.js",
+      "/$bunfs/root/chunk-j89y6v6s.js",
+      "/$bunfs/root/chunk-j8faq1tz.js",
+      "/$bunfs/root/chunk-j8y282ff.js",
+      "/$bunfs/root/chunk-j9a7ayd6.js",
+      "/$bunfs/root/chunk-ja85b0c7.js",
+      "/$bunfs/root/chunk-jcbckx5s.js",
+      "/$bunfs/root/chunk-jcwpnrfw.js",
+      "/$bunfs/root/chunk-jdha66f5.js",
+      "/$bunfs/root/chunk-jdmmgv0h.js",
+      "/$bunfs/root/chunk-jefhx4nd.js",
+      "/$bunfs/root/chunk-jf53b9z1.js",
+      "/$bunfs/root/chunk-jf5janxj.js",
+      "/$bunfs/root/chunk-jf9cwvp3.js",
+      "/$bunfs/root/chunk-jhxnp941.js",
+      "/$bunfs/root/chunk-jkfqtdy7.js",
+      "/$bunfs/root/chunk-jmapmkkn.js",
+      "/$bunfs/root/chunk-jqafsza2.js",
+      "/$bunfs/root/chunk-jqqft64q.js",
+      "/$bunfs/root/chunk-jsendkvn.js",
+      "/$bunfs/root/chunk-jtj604tj.js",
+      "/$bunfs/root/chunk-jw8hktmv.js",
+      "/$bunfs/root/chunk-jwcv11gz.js",
+      "/$bunfs/root/chunk-jwtetmpc.js",
+      "/$bunfs/root/chunk-jx2c6fhq.js",
+      "/$bunfs/root/chunk-jxzs6mtr.js",
+      "/$bunfs/root/chunk-jz2sf54g.js",
+      "/$bunfs/root/chunk-jzgewxcc.js",
+      "/$bunfs/root/chunk-k35f0xye.js",
+      "/$bunfs/root/chunk-k477qbny.js",
+      "/$bunfs/root/chunk-k4b512v8.js",
+      "/$bunfs/root/chunk-k4t6m1v4.js",
+      "/$bunfs/root/chunk-k5d96zre.js",
+      "/$bunfs/root/chunk-k5m6njn4.js",
+      "/$bunfs/root/chunk-k6hfnrt3.js",
+      "/$bunfs/root/chunk-k8jqxbab.js",
+      "/$bunfs/root/chunk-k9yynyyf.js",
+      "/$bunfs/root/chunk-kb7zbc93.js",
+      "/$bunfs/root/chunk-kbzp5vby.js",
+      "/$bunfs/root/chunk-kc6070xy.js",
+      "/$bunfs/root/chunk-kd3w9jcv.js",
+      "/$bunfs/root/chunk-kdfwbk2x.js",
+      "/$bunfs/root/chunk-kdp0brrv.js",
+      "/$bunfs/root/chunk-kec467pa.js",
+      "/$bunfs/root/chunk-ketsw8kh.js",
+      "/$bunfs/root/chunk-kg0a61rq.js",
+      "/$bunfs/root/chunk-kgj0q4zk.js",
+      "/$bunfs/root/chunk-kgv13bcv.js",
+      "/$bunfs/root/chunk-khkk5hne.js",
+      "/$bunfs/root/chunk-kkfy1ms5.js",
+      "/$bunfs/root/chunk-kr76v9nm.js",
+      "/$bunfs/root/chunk-ktf1x2js.js",
+      "/$bunfs/root/chunk-ktsm8dyq.js",
+      "/$bunfs/root/chunk-kv1ywq6c.js",
+      "/$bunfs/root/chunk-kv5m4rjp.js",
+      "/$bunfs/root/chunk-kw4rttn5.js",
+      "/$bunfs/root/chunk-kxjf21jr.js",
+      "/$bunfs/root/chunk-kxpk97t8.js",
+      "/$bunfs/root/chunk-ky1z9aq7.js",
+      "/$bunfs/root/chunk-kz6eke73.js",
+      "/$bunfs/root/chunk-m0g2s5hm.js",
+      "/$bunfs/root/chunk-m5pzqa84.js",
+      "/$bunfs/root/chunk-m6w6w83e.js",
+      "/$bunfs/root/chunk-m6x5x8r9.js",
+      "/$bunfs/root/chunk-m7wy507r.js",
+      "/$bunfs/root/chunk-m873nza7.js",
+      "/$bunfs/root/chunk-m8haxweq.js",
+      "/$bunfs/root/chunk-m8jgs7wz.js",
+      "/$bunfs/root/chunk-m8xr5bjq.js",
+      "/$bunfs/root/chunk-mb5hcwe1.js",
+      "/$bunfs/root/chunk-mdc0q7pw.js",
+      "/$bunfs/root/chunk-me0c3h4h.js",
+      "/$bunfs/root/chunk-me7tpsme.js",
+      "/$bunfs/root/chunk-mfn0g94q.js",
+      "/$bunfs/root/chunk-mfvfdsqw.js",
+      "/$bunfs/root/chunk-mfyp81c5.js",
+      "/$bunfs/root/chunk-mh6sgnkj.js",
+      "/$bunfs/root/chunk-mha6f853.js",
+      "/$bunfs/root/chunk-mmbdmy9c.js",
+      "/$bunfs/root/chunk-mn41whmz.js",
+      "/$bunfs/root/chunk-mp8k0hxn.js",
+      "/$bunfs/root/chunk-mqyjh4ea.js",
+      "/$bunfs/root/chunk-mr94z404.js",
+      "/$bunfs/root/chunk-mrwedfjk.js",
+      "/$bunfs/root/chunk-msjhcqn9.js",
+      "/$bunfs/root/chunk-mt5ta3ng.js",
+      "/$bunfs/root/chunk-mt8e34a4.js",
+      "/$bunfs/root/chunk-mtc3ba66.js",
+      "/$bunfs/root/chunk-mwhvxmyp.js",
+      "/$bunfs/root/chunk-mx1tagx7.js",
+      "/$bunfs/root/chunk-mx3fjpad.js",
+      "/$bunfs/root/chunk-mxs546fn.js",
+      "/$bunfs/root/chunk-mzf8dx5w.js",
+      "/$bunfs/root/chunk-mzsbntyv.js",
+      "/$bunfs/root/chunk-n1qm3xcb.js",
+      "/$bunfs/root/chunk-n2hq1fe1.js",
+      "/$bunfs/root/chunk-n2qtsd39.js",
+      "/$bunfs/root/chunk-n3gd2t6e.js",
+      "/$bunfs/root/chunk-n4hy0e28.js",
+      "/$bunfs/root/chunk-n8z3qexj.js",
+      "/$bunfs/root/chunk-nayw0pf7.js",
+      "/$bunfs/root/chunk-nd0jktes.js",
+      "/$bunfs/root/chunk-ndcqd6bh.js",
+      "/$bunfs/root/chunk-ndr1xq5f.js",
+      "/$bunfs/root/chunk-ndwm66bv.js",
+      "/$bunfs/root/chunk-nf2j47gm.js",
+      "/$bunfs/root/chunk-nf4bcpn6.js",
+      "/$bunfs/root/chunk-ng4d3067.js",
+      "/$bunfs/root/chunk-ngxp0t67.js",
+      "/$bunfs/root/chunk-nkem4az1.js",
+      "/$bunfs/root/chunk-nksrj2jx.js",
+      "/$bunfs/root/chunk-nmc6fv3n.js",
+      "/$bunfs/root/chunk-nn3qbzg9.js",
+      "/$bunfs/root/chunk-nnen774y.js",
+      "/$bunfs/root/chunk-nnfhvyv6.js",
+      "/$bunfs/root/chunk-nq8z0wsm.js",
+      "/$bunfs/root/chunk-nsbq14xf.js",
+      "/$bunfs/root/chunk-nshcmnjg.js",
+      "/$bunfs/root/chunk-nv2bbff4.js",
+      "/$bunfs/root/chunk-nv52kwa3.js",
+      "/$bunfs/root/chunk-nvcb6dt8.js",
+      "/$bunfs/root/chunk-nvh6bzcs.js",
+      "/$bunfs/root/chunk-nxr8w4js.js",
+      "/$bunfs/root/chunk-nxs4y5k6.js",
+      "/$bunfs/root/chunk-nz1kqp0p.js",
+      "/$bunfs/root/chunk-p2ckaped.js",
+      "/$bunfs/root/chunk-p46wpkfz.js",
+      "/$bunfs/root/chunk-p4arm49b.js",
+      "/$bunfs/root/chunk-p6p9b9cg.js",
+      "/$bunfs/root/chunk-p6qkg7qj.js",
+      "/$bunfs/root/chunk-p7731mnh.js",
+      "/$bunfs/root/chunk-p7b21nkd.js",
+      "/$bunfs/root/chunk-p87b10wn.js",
+      "/$bunfs/root/chunk-pak9nxc5.js",
+      "/$bunfs/root/chunk-pb6addgz.js",
+      "/$bunfs/root/chunk-pbexq8d9.js",
+      "/$bunfs/root/chunk-pbrbnfk3.js",
+      "/$bunfs/root/chunk-pcete20h.js",
+      "/$bunfs/root/chunk-pcykyar6.js",
+      "/$bunfs/root/chunk-pdcsnk6e.js",
+      "/$bunfs/root/chunk-pe1t4tre.js",
+      "/$bunfs/root/chunk-pe7yxbxb.js",
+      "/$bunfs/root/chunk-pesdmje3.js",
+      "/$bunfs/root/chunk-pggz2e1z.js",
+      "/$bunfs/root/chunk-pgqaked7.js",
+      "/$bunfs/root/chunk-pgrt6jap.js",
+      "/$bunfs/root/chunk-phyxetfg.js",
+      "/$bunfs/root/chunk-pjmen0s7.js",
+      "/$bunfs/root/chunk-pm0mjb5v.js",
+      "/$bunfs/root/chunk-ppmxwdmd.js",
+      "/$bunfs/root/chunk-ppz3c3wg.js",
+      "/$bunfs/root/chunk-pqzxt7kj.js",
+      "/$bunfs/root/chunk-prcw2zb8.js",
+      "/$bunfs/root/chunk-ps5ct2d0.js",
+      "/$bunfs/root/chunk-pss7bgmv.js",
+      "/$bunfs/root/chunk-ptprwgn7.js",
+      "/$bunfs/root/chunk-pwgsygr0.js",
+      "/$bunfs/root/chunk-pwr1sghy.js",
+      "/$bunfs/root/chunk-pxa7nhh6.js",
+      "/$bunfs/root/chunk-pxjd4h71.js",
+      "/$bunfs/root/chunk-py7mekag.js",
+      "/$bunfs/root/chunk-pyqtbxg8.js",
+      "/$bunfs/root/chunk-pyspjjcs.js",
+      "/$bunfs/root/chunk-q1w6s42q.js",
+      "/$bunfs/root/chunk-q2pn2rjq.js",
+      "/$bunfs/root/chunk-q39a83x3.js",
+      "/$bunfs/root/chunk-q3ty06fp.js",
+      "/$bunfs/root/chunk-q599xhwj.js",
+      "/$bunfs/root/chunk-q5gpk45n.js",
+      "/$bunfs/root/chunk-q6tptssb.js",
+      "/$bunfs/root/chunk-q6vzfszz.js",
+      "/$bunfs/root/chunk-q7c19z2k.js",
+      "/$bunfs/root/chunk-q7gr20ky.js",
+      "/$bunfs/root/chunk-q7h03w5e.js",
+      "/$bunfs/root/chunk-q9b5rs3e.js",
+      "/$bunfs/root/chunk-q9t419cy.js",
+      "/$bunfs/root/chunk-qbj85p5d.js",
+      "/$bunfs/root/chunk-qbkny8c5.js",
+      "/$bunfs/root/chunk-qbkye00h.js",
+      "/$bunfs/root/chunk-qde2tnsd.js",
+      "/$bunfs/root/chunk-qebvq2dv.js",
+      "/$bunfs/root/chunk-qecx6c5f.js",
+      "/$bunfs/root/chunk-qf3g3s52.js",
+      "/$bunfs/root/chunk-qgc07e0v.js",
+      "/$bunfs/root/chunk-qhyjynt2.js",
+      "/$bunfs/root/chunk-qjqknwmf.js",
+      "/$bunfs/root/chunk-qk0szmvy.js",
+      "/$bunfs/root/chunk-qk4czw7a.js",
+      "/$bunfs/root/chunk-qknczch1.js",
+      "/$bunfs/root/chunk-qmg8h11v.js",
+      "/$bunfs/root/chunk-qp65fq4n.js",
+      "/$bunfs/root/chunk-qpqx74we.js",
+      "/$bunfs/root/chunk-qqtdqnsc.js",
+      "/$bunfs/root/chunk-qqwn3mqj.js",
+      "/$bunfs/root/chunk-qrw8p75p.js",
+      "/$bunfs/root/chunk-qw1q6jrh.js",
+      "/$bunfs/root/chunk-qw3r8m1b.js",
+      "/$bunfs/root/chunk-qzd3ctzr.js",
+      "/$bunfs/root/chunk-r020r5k0.js",
+      "/$bunfs/root/chunk-r0eytj7t.js",
+      "/$bunfs/root/chunk-r0zntpz7.js",
+      "/$bunfs/root/chunk-r2k0db06.js",
+      "/$bunfs/root/chunk-r2rtby1t.js",
+      "/$bunfs/root/chunk-r56ee0tg.js",
+      "/$bunfs/root/chunk-r5qwvn4g.js",
+      "/$bunfs/root/chunk-r6qnww51.js",
+      "/$bunfs/root/chunk-r71h3n7n.js",
+      "/$bunfs/root/chunk-r7knrqph.js",
+      "/$bunfs/root/chunk-r7qmv84c.js",
+      "/$bunfs/root/chunk-r84gnnfj.js",
+      "/$bunfs/root/chunk-r8a0733h.js",
+      "/$bunfs/root/chunk-r8qadpnz.js",
+      "/$bunfs/root/chunk-r8zwnnhc.js",
+      "/$bunfs/root/chunk-r93mxs6w.js",
+      "/$bunfs/root/chunk-rahhvb43.js",
+      "/$bunfs/root/chunk-ras5x31x.js",
+      "/$bunfs/root/chunk-rbh5cmbe.js",
+      "/$bunfs/root/chunk-rc6hsx71.js",
+      "/$bunfs/root/chunk-rd8hwc06.js",
+      "/$bunfs/root/chunk-rdgqqdzf.js",
+      "/$bunfs/root/chunk-reqsp5g5.js",
+      "/$bunfs/root/chunk-reqxv9mk.js",
+      "/$bunfs/root/chunk-rgde7f27.js",
+      "/$bunfs/root/chunk-rgyh7vkb.js",
+      "/$bunfs/root/chunk-rhjdxrmc.js",
+      "/$bunfs/root/chunk-rjna5317.js",
+      "/$bunfs/root/chunk-rjr7s0a5.js",
+      "/$bunfs/root/chunk-rkfrrrqh.js",
+      "/$bunfs/root/chunk-rmyzjj97.js",
+      "/$bunfs/root/chunk-rn20y6yd.js",
+      "/$bunfs/root/chunk-rnz7xrfp.js",
+      "/$bunfs/root/chunk-rphetd6g.js",
+      "/$bunfs/root/chunk-rptge3r8.js",
+      "/$bunfs/root/chunk-rqsafy80.js",
+      "/$bunfs/root/chunk-rt7477ym.js",
+      "/$bunfs/root/chunk-rv642vym.js",
+      "/$bunfs/root/chunk-rvphxmf9.js",
+      "/$bunfs/root/chunk-rwkxt94c.js",
+      "/$bunfs/root/chunk-rzq8vrew.js",
+      "/$bunfs/root/chunk-s036xw0e.js",
+      "/$bunfs/root/chunk-s03mx5ca.js",
+      "/$bunfs/root/chunk-s24yvcpd.js",
+      "/$bunfs/root/chunk-s32t5fka.js",
+      "/$bunfs/root/chunk-s3mpawxd.js",
+      "/$bunfs/root/chunk-s51qzvps.js",
+      "/$bunfs/root/chunk-s51r6xcj.js",
+      "/$bunfs/root/chunk-s594qjbh.js",
+      "/$bunfs/root/chunk-s59bq91w.js",
+      "/$bunfs/root/chunk-s5s1g2r3.js",
+      "/$bunfs/root/chunk-s75ca8vs.js",
+      "/$bunfs/root/chunk-s80xexkt.js",
+      "/$bunfs/root/chunk-s8pck3rc.js",
+      "/$bunfs/root/chunk-s9c778s0.js",
+      "/$bunfs/root/chunk-s9t2x1f5.js",
+      "/$bunfs/root/chunk-sbrseark.js",
+      "/$bunfs/root/chunk-sc0k4y0y.js",
+      "/$bunfs/root/chunk-schz63e0.js",
+      "/$bunfs/root/chunk-scyryyyy.js",
+      "/$bunfs/root/chunk-sdc3h71m.js",
+      "/$bunfs/root/chunk-sdt9gqy7.js",
+      "/$bunfs/root/chunk-se01tym6.js",
+      "/$bunfs/root/chunk-sf0jgyqc.js",
+      "/$bunfs/root/chunk-sg0hbyaf.js",
+      "/$bunfs/root/chunk-sgkmmn2w.js",
+      "/$bunfs/root/chunk-sgzgzzb5.js",
+      "/$bunfs/root/chunk-sh32792d.js",
+      "/$bunfs/root/chunk-sh51y7yj.js",
+      "/$bunfs/root/chunk-sjtrb194.js",
+      "/$bunfs/root/chunk-sm3bnxhm.js",
+      "/$bunfs/root/chunk-snazqj1s.js",
+      "/$bunfs/root/chunk-snj4ccyb.js",
+      "/$bunfs/root/chunk-sp7rjdek.js",
+      "/$bunfs/root/chunk-sq19k4re.js",
+      "/$bunfs/root/chunk-sq5bg7bf.js",
+      "/$bunfs/root/chunk-srem9zsp.js",
+      "/$bunfs/root/chunk-srvwq7jj.js",
+      "/$bunfs/root/chunk-sv6t7v34.js",
+      "/$bunfs/root/chunk-svmfwv2x.js",
+      "/$bunfs/root/chunk-syb80f1m.js",
+      "/$bunfs/root/chunk-syp2xe9z.js",
+      "/$bunfs/root/chunk-szqjgyw3.js",
+      "/$bunfs/root/chunk-t02rr4qv.js",
+      "/$bunfs/root/chunk-t051rn9e.js",
+      "/$bunfs/root/chunk-t17r8fg2.js",
+      "/$bunfs/root/chunk-t2s0vkxx.js",
+      "/$bunfs/root/chunk-t2wb9mz5.js",
+      "/$bunfs/root/chunk-t3hhk4a4.js",
+      "/$bunfs/root/chunk-t4ae96zk.js",
+      "/$bunfs/root/chunk-t55bfahx.js",
+      "/$bunfs/root/chunk-t6ahzpt7.js",
+      "/$bunfs/root/chunk-t6anqa4j.js",
+      "/$bunfs/root/chunk-t6vkgc07.js",
+      "/$bunfs/root/chunk-t79gt725.js",
+      "/$bunfs/root/chunk-t935c0hn.js",
+      "/$bunfs/root/chunk-t993t6y2.js",
+      "/$bunfs/root/chunk-t9qpa8db.js",
+      "/$bunfs/root/chunk-ta0jv4a4.js",
+      "/$bunfs/root/chunk-tbnpqnyt.js",
+      "/$bunfs/root/chunk-tcg2b56s.js",
+      "/$bunfs/root/chunk-tcm4jhe7.js",
+      "/$bunfs/root/chunk-tdvtpsd2.js",
+      "/$bunfs/root/chunk-tegaqhxv.js",
+      "/$bunfs/root/chunk-tex305x7.js",
+      "/$bunfs/root/chunk-tfrn9jh8.js",
+      "/$bunfs/root/chunk-tg3tfq91.js",
+      "/$bunfs/root/chunk-thr3mmav.js",
+      "/$bunfs/root/chunk-tkepzc5h.js",
+      "/$bunfs/root/chunk-tmbdcwft.js",
+      "/$bunfs/root/chunk-tnc1wb02.js",
+      "/$bunfs/root/chunk-tns4xj35.js",
+      "/$bunfs/root/chunk-tnv6xkg5.js",
+      "/$bunfs/root/chunk-tq56ew86.js",
+      "/$bunfs/root/chunk-trynpg3y.js",
+      "/$bunfs/root/chunk-tw92tr6r.js",
+      "/$bunfs/root/chunk-tx7spaj7.js",
+      "/$bunfs/root/chunk-ty0r7sa2.js",
+      "/$bunfs/root/chunk-tzs3s31e.js",
+      "/$bunfs/root/chunk-v0h73zz6.js",
+      "/$bunfs/root/chunk-v0y2d8ee.js",
+      "/$bunfs/root/chunk-v14avpdm.js",
+      "/$bunfs/root/chunk-v1c4w440.js",
+      "/$bunfs/root/chunk-v3b6gz5p.js",
+      "/$bunfs/root/chunk-v5r0yxpc.js",
+      "/$bunfs/root/chunk-v5w2t8gr.js",
+      "/$bunfs/root/chunk-v66jm760.js",
+      "/$bunfs/root/chunk-vbsh4xeg.js",
+      "/$bunfs/root/chunk-vcn04045.js",
+      "/$bunfs/root/chunk-vd77cg74.js",
+      "/$bunfs/root/chunk-vdpdwdvt.js",
+      "/$bunfs/root/chunk-vdy6f4yq.js",
+      "/$bunfs/root/chunk-vecj8twx.js",
+      "/$bunfs/root/chunk-vffvsvvf.js",
+      "/$bunfs/root/chunk-vfp1ydec.js",
+      "/$bunfs/root/chunk-vh4ggmcp.js",
+      "/$bunfs/root/chunk-vh6jqvxt.js",
+      "/$bunfs/root/chunk-vha8hr20.js",
+      "/$bunfs/root/chunk-vhmz5jh0.js",
+      "/$bunfs/root/chunk-vjetjyj4.js",
+      "/$bunfs/root/chunk-vk00drv7.js",
+      "/$bunfs/root/chunk-vk02vj6w.js",
+      "/$bunfs/root/chunk-vm3b4zey.js",
+      "/$bunfs/root/chunk-vmwfxeg5.js",
+      "/$bunfs/root/chunk-vmwr1ee4.js",
+      "/$bunfs/root/chunk-vnt67ag0.js",
+      "/$bunfs/root/chunk-vppwwe5r.js",
+      "/$bunfs/root/chunk-vqdy7gdj.js",
+      "/$bunfs/root/chunk-vrbpnk00.js",
+      "/$bunfs/root/chunk-vrm1w9zg.js",
+      "/$bunfs/root/chunk-vrm5v0ta.js",
+      "/$bunfs/root/chunk-vt3wxa4q.js",
+      "/$bunfs/root/chunk-vwfycd8d.js",
+      "/$bunfs/root/chunk-vxjrz2d6.js",
+      "/$bunfs/root/chunk-vygt57n9.js",
+      "/$bunfs/root/chunk-vyx0nxv6.js",
+      "/$bunfs/root/chunk-vz1devs3.js",
+      "/$bunfs/root/chunk-vz2m8j61.js",
+      "/$bunfs/root/chunk-w1jap45v.js",
+      "/$bunfs/root/chunk-w1tfxd5k.js",
+      "/$bunfs/root/chunk-w2ravkgh.js",
+      "/$bunfs/root/chunk-w488ph1y.js",
+      "/$bunfs/root/chunk-w4jc43n2.js",
+      "/$bunfs/root/chunk-w4zhc38k.js",
+      "/$bunfs/root/chunk-w5yav6fr.js",
+      "/$bunfs/root/chunk-w78bp7e4.js",
+      "/$bunfs/root/chunk-w8db6ytr.js",
+      "/$bunfs/root/chunk-w94cy4et.js",
+      "/$bunfs/root/chunk-wambcbc3.js",
+      "/$bunfs/root/chunk-wb3x8gjq.js",
+      "/$bunfs/root/chunk-wba5j756.js",
+      "/$bunfs/root/chunk-wbge8p7g.js",
+      "/$bunfs/root/chunk-wchsap03.js",
+      "/$bunfs/root/chunk-wcjf01jy.js",
+      "/$bunfs/root/chunk-wcr104hb.js",
+      "/$bunfs/root/chunk-wdbbywcf.js",
+      "/$bunfs/root/chunk-wdyt424j.js",
+      "/$bunfs/root/chunk-we43vwss.js",
+      "/$bunfs/root/chunk-weykqb5x.js",
+      "/$bunfs/root/chunk-wf918jgf.js",
+      "/$bunfs/root/chunk-whgkjmx2.js",
+      "/$bunfs/root/chunk-whve58xq.js",
+      "/$bunfs/root/chunk-wmg8rwcp.js",
+      "/$bunfs/root/chunk-wmycy5f7.js",
+      "/$bunfs/root/chunk-wn3mk0qg.js",
+      "/$bunfs/root/chunk-wpwa8wh9.js",
+      "/$bunfs/root/chunk-wqf4861z.js",
+      "/$bunfs/root/chunk-wr1fq3j2.js",
+      "/$bunfs/root/chunk-wr56qfbb.js",
+      "/$bunfs/root/chunk-wsmw6vd3.js",
+      "/$bunfs/root/chunk-wt6rm7wz.js",
+      "/$bunfs/root/chunk-wtyz2tb0.js",
+      "/$bunfs/root/chunk-wvtqz6ne.js",
+      "/$bunfs/root/chunk-wyhfdar9.js",
+      "/$bunfs/root/chunk-wyrxjc9j.js",
+      "/$bunfs/root/chunk-x1v6dzm6.js",
+      "/$bunfs/root/chunk-x1z0hvse.js",
+      "/$bunfs/root/chunk-x29985h8.js",
+      "/$bunfs/root/chunk-x2nsdkh0.js",
+      "/$bunfs/root/chunk-x2zzfx83.js",
+      "/$bunfs/root/chunk-x34y2q2q.js",
+      "/$bunfs/root/chunk-x399z4tw.js",
+      "/$bunfs/root/chunk-x4b8r1ph.js",
+      "/$bunfs/root/chunk-x6dqsspy.js",
+      "/$bunfs/root/chunk-x73xxyrn.js",
+      "/$bunfs/root/chunk-x7pngckw.js",
+      "/$bunfs/root/chunk-x98n2eff.js",
+      "/$bunfs/root/chunk-xawedgwj.js",
+      "/$bunfs/root/chunk-xc9sny3e.js",
+      "/$bunfs/root/chunk-xdc9tqz9.js",
+      "/$bunfs/root/chunk-xesgf0p8.js",
+      "/$bunfs/root/chunk-xggfp097.js",
+      "/$bunfs/root/chunk-xgnwhyhk.js",
+      "/$bunfs/root/chunk-xkks19nf.js",
+      "/$bunfs/root/chunk-xkzpt9pj.js",
+      "/$bunfs/root/chunk-xn1ewqf0.js",
+      "/$bunfs/root/chunk-xqq1rer8.js",
+      "/$bunfs/root/chunk-xrcq6fdz.js",
+      "/$bunfs/root/chunk-xrwxhys4.js",
+      "/$bunfs/root/chunk-xt99khzc.js",
+      "/$bunfs/root/chunk-xtnzjr9g.js",
+      "/$bunfs/root/chunk-xw70bytk.js",
+      "/$bunfs/root/chunk-xx8fs380.js",
+      "/$bunfs/root/chunk-xxej47y5.js",
+      "/$bunfs/root/chunk-xybk7ggj.js",
+      "/$bunfs/root/chunk-y0mt1efp.js",
+      "/$bunfs/root/chunk-y0nbeykn.js",
+      "/$bunfs/root/chunk-y30v25xa.js",
+      "/$bunfs/root/chunk-y33enxea.js",
+      "/$bunfs/root/chunk-y34rvzg6.js",
+      "/$bunfs/root/chunk-y371wfzn.js",
+      "/$bunfs/root/chunk-y3c9q1jn.js",
+      "/$bunfs/root/chunk-y4ansndm.js",
+      "/$bunfs/root/chunk-y58hge7w.js",
+      "/$bunfs/root/chunk-y5wnkdwg.js",
+      "/$bunfs/root/chunk-y5yfay1g.js",
+      "/$bunfs/root/chunk-y6zm4y48.js",
+      "/$bunfs/root/chunk-y8bhqk9z.js",
+      "/$bunfs/root/chunk-y8dmxepr.js",
+      "/$bunfs/root/chunk-y8e6rqja.js",
+      "/$bunfs/root/chunk-y967y2v2.js",
+      "/$bunfs/root/chunk-y9x60x20.js",
+      "/$bunfs/root/chunk-yb426y0t.js",
+      "/$bunfs/root/chunk-ybj1hypj.js",
+      "/$bunfs/root/chunk-ybmr0z89.js",
+      "/$bunfs/root/chunk-ybx7m64q.js",
+      "/$bunfs/root/chunk-yc7bn1pd.js",
+      "/$bunfs/root/chunk-ycjkv5be.js",
+      "/$bunfs/root/chunk-ycyddwn6.js",
+      "/$bunfs/root/chunk-ydky7r6f.js",
+      "/$bunfs/root/chunk-yen8keh2.js",
+      "/$bunfs/root/chunk-yer713pk.js",
+      "/$bunfs/root/chunk-yeshj250.js",
+      "/$bunfs/root/chunk-yf41gfe2.js",
+      "/$bunfs/root/chunk-yg35rntn.js",
+      "/$bunfs/root/chunk-yg7arr4s.js",
+      "/$bunfs/root/chunk-ygfwd6j8.js",
+      "/$bunfs/root/chunk-yhnwx4kh.js",
+      "/$bunfs/root/chunk-yjwcw5tf.js",
+      "/$bunfs/root/chunk-yjzg219y.js",
+      "/$bunfs/root/chunk-yk41gxr5.js",
+      "/$bunfs/root/chunk-ykraxpq6.js",
+      "/$bunfs/root/chunk-yky93wp0.js",
+      "/$bunfs/root/chunk-ypytazwv.js",
+      "/$bunfs/root/chunk-yqta1mr5.js",
+      "/$bunfs/root/chunk-yrazzd4f.js",
+      "/$bunfs/root/chunk-yrs75gf9.js",
+      "/$bunfs/root/chunk-ysn6en8t.js",
+      "/$bunfs/root/chunk-yt80a328.js",
+      "/$bunfs/root/chunk-yvgse63f.js",
+      "/$bunfs/root/chunk-yyzj2554.js",
+      "/$bunfs/root/chunk-z0nrggsy.js",
+      "/$bunfs/root/chunk-z184ewc2.js",
+      "/$bunfs/root/chunk-z1mnwnvd.js",
+      "/$bunfs/root/chunk-z23cft8p.js",
+      "/$bunfs/root/chunk-z3c86v0j.js",
+      "/$bunfs/root/chunk-z4m1x8h1.js",
+      "/$bunfs/root/chunk-z5ahxebs.js",
+      "/$bunfs/root/chunk-z5sertkj.js",
+      "/$bunfs/root/chunk-z9kjvk7t.js",
+      "/$bunfs/root/chunk-z9vmsc2z.js",
+      "/$bunfs/root/chunk-zas9hchv.js",
+      "/$bunfs/root/chunk-zb2qaaf0.js",
+      "/$bunfs/root/chunk-zb6r0tg4.js",
+      "/$bunfs/root/chunk-zghdp2d6.js",
+      "/$bunfs/root/chunk-zgt0zba0.js",
+      "/$bunfs/root/chunk-zj79z01y.js",
+      "/$bunfs/root/chunk-zk0yxkwh.js",
+      "/$bunfs/root/chunk-zk2j6fw9.js",
+      "/$bunfs/root/chunk-zn6eg8ks.js",
+      "/$bunfs/root/chunk-znny91c6.js",
+      "/$bunfs/root/chunk-zq84ct3s.js",
+      "/$bunfs/root/chunk-zqc59yxf.js",
+      "/$bunfs/root/chunk-zrwyntyg.js",
+      "/$bunfs/root/chunk-zs5n1skv.js",
+      "/$bunfs/root/chunk-zs8z8s1y.js",
+      "/$bunfs/root/chunk-zsqrqsc2.js",
+      "/$bunfs/root/chunk-ztrtmme9.js",
+      "/$bunfs/root/chunk-ztvkra0t.js",
+      "/$bunfs/root/chunk-zvs26ka6.js",
+      "/$bunfs/root/chunk-zvv79hhm.js",
+      "/$bunfs/root/chunk-zwade18a.js",
+      "/$bunfs/root/chunk-zwrhrvby.js",
+      "/$bunfs/root/chunk-zx3kz5f6.js",
+      "/$bunfs/root/chunk-zx41awvc.js",
+      "/$bunfs/root/chunk-zzkr0d17.js",
+      "/$bunfs/root/chunk-zzmvp6pn.js",
+      "/$bunfs/root/chunk-zzs2634h.js",
+      "/$bunfs/root/claude-code.d.ts-6f0ea913.txt.zst",
+      "/$bunfs/root/clipboard-napi.node",
+      "/$bunfs/root/design-6m4nsdef.md",
+      "/$bunfs/root/designHowTo-p8zjfw0e.md",
+      "/$bunfs/root/designTwoSteps-g0bev2xr.md",
+      "/$bunfs/root/permissions_external-64ee756a.txt.zst",
+      "/$bunfs/root/plugin-eval-quickref-5ce92d66.md.zst",
+      "/$bunfs/root/simple_plan-s5yyk7xh.txt",
+      "/$bunfs/root/slides-zdpeg77q.md",
+      "/$bunfs/root/slidesHowTo-09m4dbj2.md",
+      "/$bunfs/root/slidesTwoSteps-1shjmnfb.md",
+      "/$bunfs/root/state-library.js-wy8y4843.txt",
+      "/$bunfs/root/template.html-fb05d44d.txt.zst",
+      "/$bunfs/root/three_subagents_with_critique-bd1egk7q.txt",
+      "/$bunfs/root/visual_plan-9bza2qe2.txt",
+      "/$bunfs/root/workshop-page.html-a89c848b.txt.zst"
+    ],
+    "rewrites": [
+      {
+        "file": "/$bunfs/root/chunk-cxjvwxsa.js",
+        "start": 551400,
+        "end": 551453,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-q9t419cy.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cxjvwxsa.js",
+        "start": 566337,
+        "end": 566390,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-bctebss4.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 31642,
+        "end": 31685,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/simple_plan-s5yyk7xh.txt"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 31728,
+        "end": 31771,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/visual_plan-9bza2qe2.txt"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 31814,
+        "end": 31875,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/three_subagents_with_critique-bd1egk7q.txt"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 273804,
+        "end": 273857,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 657070,
+        "end": 657123,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-dnbwz1aj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 700510,
+        "end": 700563,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-xc9sny3e.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 700591,
+        "end": 700644,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-xc9sny3e.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 700684,
+        "end": 700737,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-xc9sny3e.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 700766,
+        "end": 700819,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-20a2nr82.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 839254,
+        "end": 839307,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-49nt6bnx.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 839473,
+        "end": 839526,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-rd8hwc06.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 842537,
+        "end": 842590,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 846176,
+        "end": 846229,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-5h754ap0.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1070338,
+        "end": 1070391,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9mb48fme.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1075501,
+        "end": 1075554,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9mb48fme.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1082566,
+        "end": 1082619,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-c4g8hk5v.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1286123,
+        "end": 1286176,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tx7spaj7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1286197,
+        "end": 1286250,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tx7spaj7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1286278,
+        "end": 1286331,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-28k9amxe.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658451,
+        "end": 1658504,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-6bzdyyph.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658517,
+        "end": 1658570,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-wr1fq3j2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658583,
+        "end": 1658636,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-eehn12er.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658648,
+        "end": 1658701,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8g0fg1nj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658749,
+        "end": 1658802,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-sp7rjdek.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658850,
+        "end": 1658903,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-hgmmdjqg.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658916,
+        "end": 1658969,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-yjzg219y.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1658989,
+        "end": 1659042,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-2h6x4979.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1659082,
+        "end": 1659135,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-5ys86m6n.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1659148,
+        "end": 1659201,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9zrwtax3.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1666064,
+        "end": 1666117,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-b51tm3s7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1970608,
+        "end": 1970661,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tx7spaj7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1970689,
+        "end": 1970742,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-88n00hjp.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2010143,
+        "end": 2010196,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-y30v25xa.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2073426,
+        "end": 2073479,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-w94cy4et.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2073554,
+        "end": 2073607,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-djga69st.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2085982,
+        "end": 2086035,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-g5k2mt8p.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2086061,
+        "end": 2086114,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-sgzgzzb5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2229749,
+        "end": 2229802,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-15pqxcn0.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2594597,
+        "end": 2594650,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-f288bh89.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2606324,
+        "end": 2606377,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zb6r0tg4.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2668046,
+        "end": 2668099,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-f288bh89.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2718130,
+        "end": 2718183,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-f288bh89.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 2758113,
+        "end": 2758166,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-phyxetfg.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3248715,
+        "end": 3248768,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-jz2sf54g.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3248803,
+        "end": 3248856,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0yyymdp2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3248890,
+        "end": 3248943,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fmckca2a.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3248974,
+        "end": 3249027,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zzs2634h.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3249060,
+        "end": 3249113,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-s9c778s0.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3254831,
+        "end": 3254884,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ektt5fwj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3267885,
+        "end": 3267938,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-r5qwvn4g.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3324670,
+        "end": 3324723,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-vz2m8j61.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3515945,
+        "end": 3515998,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4yk6z6y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3543968,
+        "end": 3544021,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3588713,
+        "end": 3588766,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tx7spaj7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3588771,
+        "end": 3588824,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-88n00hjp.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3606088,
+        "end": 3606141,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-h1v4fv0m.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3606188,
+        "end": 3606241,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8m1fq7y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3606425,
+        "end": 3606478,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-bg1tv4aj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3692826,
+        "end": 3692879,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9ejtrehj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 3692884,
+        "end": 3692937,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-1hgk3eea.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4076336,
+        "end": 4076389,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-kz6eke73.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4119617,
+        "end": 4119670,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-vz2m8j61.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4122266,
+        "end": 4122319,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8q243sk8.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4122382,
+        "end": 4122435,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8q243sk8.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4122474,
+        "end": 4122527,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-a11wcqh5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4122560,
+        "end": 4122613,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-a11wcqh5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4122644,
+        "end": 4122697,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9sbwexnk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4294430,
+        "end": 4294483,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-xw70bytk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4295192,
+        "end": 4295245,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-c4g8hk5v.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4546039,
+        "end": 4546092,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-j9a7ayd6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4546623,
+        "end": 4546676,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-qde2tnsd.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4560884,
+        "end": 4560937,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4p3b8r8s.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 4659958,
+        "end": 4660011,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4p3b8r8s.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-rptge3r8.js",
+        "start": 68493,
+        "end": 68546,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-pwr1sghy.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-whgkjmx2.js",
+        "start": 8430,
+        "end": 8483,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4b6490e9.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-bx1nhgzb.js",
+        "start": 204102,
+        "end": 204155,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tw92tr6r.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-tkepzc5h.js",
+        "start": 7243,
+        "end": 7296,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-tkepzc5h.js",
+        "start": 7832,
+        "end": 7885,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-15pqxcn0.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-p7b21nkd.js",
+        "start": 32875,
+        "end": 32923,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/state-library.js-wy8y4843.txt"
+      },
+      {
+        "file": "/$bunfs/root/chunk-p7b21nkd.js",
+        "start": 74055,
+        "end": 74108,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0rpvgntj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gef68xj8.js",
+        "start": 34668,
+        "end": 34721,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4b6490e9.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hq9p3vge.js",
+        "start": 2505,
+        "end": 2558,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-44cwbnrm.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hq9p3vge.js",
+        "start": 2579,
+        "end": 2632,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0fdma4bg.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hq9p3vge.js",
+        "start": 5903,
+        "end": 5956,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0evjc5gs.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hq9p3vge.js",
+        "start": 6268,
+        "end": 6321,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0evjc5gs.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4f75j7cy.js",
+        "start": 1777,
+        "end": 1830,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0ynn782m.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sm3bnxhm.js",
+        "start": 2233,
+        "end": 2286,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-tx7spaj7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sm3bnxhm.js",
+        "start": 4020,
+        "end": 4073,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-me7tpsme.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-d7tqj43x.js",
+        "start": 668,
+        "end": 719,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/plugin-eval-quickref-5ce92d66.md.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-zx41awvc.js",
+        "start": 2286,
+        "end": 2339,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-a11wcqh5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-zx41awvc.js",
+        "start": 2535,
+        "end": 2588,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-caman2jk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 1484,
+        "end": 1537,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4kvft9zw.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 1592,
+        "end": 1645,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4kvft9zw.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 1869,
+        "end": 1922,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0vq4eqbt.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 4258,
+        "end": 4311,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4kvft9zw.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 4398,
+        "end": 4451,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-e23h7m0d.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 4529,
+        "end": 4582,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-dtg3c3n7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 5322,
+        "end": 5375,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4kvft9zw.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 5814,
+        "end": 5867,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zzmvp6pn.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 6584,
+        "end": 6637,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-e23h7m0d.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-x1v6dzm6.js",
+        "start": 7218,
+        "end": 7271,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zzmvp6pn.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-afq7rdjh.js",
+        "start": 931,
+        "end": 984,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4b6490e9.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-afq7rdjh.js",
+        "start": 1009,
+        "end": 1062,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-1gahhhn6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cpxwxt65.js",
+        "start": 3669,
+        "end": 3722,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 13112,
+        "end": 13165,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 15442,
+        "end": 15495,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-br0dmkp2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 15516,
+        "end": 15569,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ey3689yf.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16259,
+        "end": 16312,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-br0dmkp2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16344,
+        "end": 16397,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9yqkfeew.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16413,
+        "end": 16466,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-mn41whmz.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16533,
+        "end": 16586,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-a11wcqh5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16632,
+        "end": 16685,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-20v91205.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16713,
+        "end": 16766,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ktf1x2js.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nq8z0wsm.js",
+        "start": 16789,
+        "end": 16842,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-j9a7ayd6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 3892,
+        "end": 3945,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0evjc5gs.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4112,
+        "end": 4165,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4ej953jh.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4196,
+        "end": 4249,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0evjc5gs.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4258,
+        "end": 4311,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-n1qm3xcb.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4517,
+        "end": 4570,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-s594qjbh.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4681,
+        "end": 4734,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-e23h7m0d.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4780,
+        "end": 4833,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4ej953jh.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-m6w6w83e.js",
+        "start": 4920,
+        "end": 4973,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-83e5qj7d.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 4756,
+        "end": 4809,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-gj0j5fxk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 4994,
+        "end": 5047,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-q599xhwj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5261,
+        "end": 5314,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-gj0j5fxk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5382,
+        "end": 5435,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-wmycy5f7.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5443,
+        "end": 5496,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-gah7b8tw.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5532,
+        "end": 5585,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-reqxv9mk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5593,
+        "end": 5646,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-9q7rk5sh.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5682,
+        "end": 5735,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-eqp4tcmq.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5743,
+        "end": 5796,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-z184ewc2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5832,
+        "end": 5885,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-wtyz2tb0.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5893,
+        "end": 5946,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-3mja6xtv.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 5982,
+        "end": 6035,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-62f22w4z.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6043,
+        "end": 6096,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-2v7s4a2d.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6132,
+        "end": 6185,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-djzbzbdg.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6193,
+        "end": 6246,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-7343v0qy.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6282,
+        "end": 6335,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-h7fmm0bj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6343,
+        "end": 6396,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-at9t2pt5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fw94rtj6.js",
+        "start": 6417,
+        "end": 6470,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-dnfm03mx.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9mb48fme.js",
+        "start": 668,
+        "end": 720,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/permissions_external-64ee756a.txt.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k4b512v8.js",
+        "start": 1044,
+        "end": 1097,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k4b512v8.js",
+        "start": 1177,
+        "end": 1230,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k4b512v8.js",
+        "start": 1310,
+        "end": 1363,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k4b512v8.js",
+        "start": 1446,
+        "end": 1499,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-qebvq2dv.js",
+        "start": 4699,
+        "end": 4747,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/claude-code.d.ts-6f0ea913.txt.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-zzs2634h.js",
+        "start": 17818,
+        "end": 17871,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4b6490e9.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2jb0trbw.js",
+        "start": 698,
+        "end": 736,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/clipboard-napi.node"
+      },
+      {
+        "file": "/$bunfs/root/chunk-eqp4tcmq.js",
+        "start": 20846,
+        "end": 20899,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-gj0j5fxk.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-eqp4tcmq.js",
+        "start": 20924,
+        "end": 20977,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-vcn04045.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vd77cg74.js",
+        "start": 4772,
+        "end": 4825,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vd77cg74.js",
+        "start": 6017,
+        "end": 6070,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-g5k2mt8p.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-tzs3s31e.js",
+        "start": 37377,
+        "end": 37430,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-88n00hjp.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-pbrbnfk3.js",
+        "start": 3810,
+        "end": 3863,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-pbrbnfk3.js",
+        "start": 10164,
+        "end": 10217,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vrm5v0ta.js",
+        "start": 25638,
+        "end": 25691,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-h1v4fv0m.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vrm5v0ta.js",
+        "start": 25768,
+        "end": 25821,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-0x4jr6a6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-q599xhwj.js",
+        "start": 42115,
+        "end": 42168,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-2m52wv10.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-q599xhwj.js",
+        "start": 42172,
+        "end": 42225,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-f8dgwhbe.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-q599xhwj.js",
+        "start": 42229,
+        "end": 42282,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-z184ewc2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-q599xhwj.js",
+        "start": 42286,
+        "end": 42339,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4zq03m5v.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-q599xhwj.js",
+        "start": 44730,
+        "end": 44783,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-5pgmsdby.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-rt7477ym.js",
+        "start": 49564,
+        "end": 49617,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zs8z8s1y.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-rt7477ym.js",
+        "start": 49673,
+        "end": 49726,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-6dn7nmax.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-rt7477ym.js",
+        "start": 49851,
+        "end": 49904,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zs8z8s1y.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-rt7477ym.js",
+        "start": 49965,
+        "end": 50018,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-6dn7nmax.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42170,
+        "end": 42223,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-2m52wv10.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42227,
+        "end": 42280,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-f8dgwhbe.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42284,
+        "end": 42337,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-eqp4tcmq.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42341,
+        "end": 42394,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-vcn04045.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42398,
+        "end": 42451,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-2an3bps9.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42455,
+        "end": 42508,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-20jrwbrq.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 42512,
+        "end": 42565,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4zq03m5v.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-gj0j5fxk.js",
+        "start": 49595,
+        "end": 49648,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-5pgmsdby.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-39rys53e.js",
+        "start": 1886,
+        "end": 1939,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fx202h6s.js",
+        "start": 84533,
+        "end": 84586,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8q243sk8.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fx202h6s.js",
+        "start": 84609,
+        "end": 84662,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-8q243sk8.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fx202h6s.js",
+        "start": 118996,
+        "end": 119049,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-fx202h6s.js",
+        "start": 119083,
+        "end": 119136,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-01jwcbqt.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-p2ckaped.js",
+        "start": 13123,
+        "end": 13176,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-zs8z8s1y.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-p2ckaped.js",
+        "start": 13359,
+        "end": 13412,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-6dn7nmax.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-5nrks403.js",
+        "start": 91206,
+        "end": 91259,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-hj10z4ec.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vcn04045.js",
+        "start": 14026,
+        "end": 14079,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z5sertkj.js",
+        "start": 668,
+        "end": 704,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/SKILL-f2840619.md.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z5sertkj.js",
+        "start": 743,
+        "end": 788,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/SKILL_COMPOSED-a8900b24.md.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z5sertkj.js",
+        "start": 827,
+        "end": 872,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/template.html-fb05d44d.txt.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-1qmh4b58.js",
+        "start": 2584,
+        "end": 2637,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-1qmh4b58.js",
+        "start": 3668,
+        "end": 3721,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-1qmh4b58.js",
+        "start": 6318,
+        "end": 6371,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cv40zr57.js",
+        "start": 668,
+        "end": 704,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/SKILL-e92179a2.md.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cv40zr57.js",
+        "start": 743,
+        "end": 797,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/artifact-workshop.html-8587e777.txt.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cv40zr57.js",
+        "start": 836,
+        "end": 886,
+        "kind": "embedded-file",
+        "specifier": "/$bunfs/root/workshop-page.html-a89c848b.txt.zst"
+      },
+      {
+        "file": "/$bunfs/root/chunk-ppz3c3wg.js",
+        "start": 2665,
+        "end": 2718,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2m52wv10.js",
+        "start": 5734,
+        "end": 5787,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2m52wv10.js",
+        "start": 5833,
+        "end": 5886,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2m52wv10.js",
+        "start": 5929,
+        "end": 5982,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2m52wv10.js",
+        "start": 6038,
+        "end": 6091,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-1xmw07c1.js",
+        "start": 7116,
+        "end": 7169,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 668,
+        "end": 705,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/design-6m4nsdef.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 712,
+        "end": 754,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/designHowTo-p8zjfw0e.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 761,
+        "end": 806,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/designTwoSteps-g0bev2xr.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 813,
+        "end": 850,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/slides-zdpeg77q.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 857,
+        "end": 899,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/slidesHowTo-09m4dbj2.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6dn7nmax.js",
+        "start": 906,
+        "end": 951,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/slidesTwoSteps-1shjmnfb.md"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4zq03m5v.js",
+        "start": 13158,
+        "end": 13211,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fw94rtj6.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4zq03m5v.js",
+        "start": 16112,
+        "end": 16165,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-yen8keh2.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-6sbnd9bv.js",
+        "start": 946,
+        "end": 999,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-z23cft8p.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 1087,
+        "end": 1140,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4yk6z6y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 1217,
+        "end": 1270,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4yk6z6y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 1345,
+        "end": 1398,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4yk6z6y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 2434,
+        "end": 2487,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ndr1xq5f.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 2990,
+        "end": 3043,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ndr1xq5f.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 3067,
+        "end": 3120,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-4yk6z6y5.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 3435,
+        "end": 3488,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-fc0pdzsj.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-cyv5xs50.js",
+        "start": 3664,
+        "end": 3717,
+        "kind": "static-require",
+        "specifier": "/$bunfs/root/chunk-ndr1xq5f.js"
+      },
+      {
+        "file": "/$bunfs/root/chunk-y8bhqk9z.js",
+        "start": 698,
+        "end": 735,
+        "kind": "helper-require",
+        "specifier": "/$bunfs/root/audio-capture.node"
+      }
+    ],
+    "native_imports": [
+      {
+        "file": "/$bunfs/root/chunk-cxjvwxsa.js",
+        "start": 551378,
+        "specifier": "child_process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g263vvvn.js",
+        "start": 1322162,
+        "specifier": "bun:ffi"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 789,
+        "specifier": "constants"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 4777,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 6658,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 6694,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 7627,
+        "specifier": "assert"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 15895,
+        "specifier": "assert"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 15945,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-z1mnwnvd.js",
+        "start": 18164,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-qp65fq4n.js",
+        "start": 1411,
+        "specifier": "perf_hooks"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 1302,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 1810,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 2278,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 2875,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 4480,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 5691,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 5894,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 6739,
+        "specifier": "child_process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9py7rh29.js",
+        "start": 7153,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 702,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 725,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 2266,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 2280,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 21925,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 21939,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 21953,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 21967,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 21982,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 22001,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 22013,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 22036,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 34022,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 34034,
+        "specifier": "tty"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 35621,
+        "specifier": "tty"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 35634,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 37985,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 38008,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 38022,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 38037,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-dz7bwjyz.js",
+        "start": 38062,
+        "specifier": "assert"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 5820,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 5833,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 5848,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 5864,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 18567,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 19096,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 30521,
+        "specifier": "undici"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 33685,
+        "specifier": "undici"
+      },
+      {
+        "file": "/$bunfs/root/chunk-19kr5wet.js",
+        "start": 33749,
+        "specifier": "undici"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 89005,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 117795,
+        "specifier": "process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 118908,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 119225,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 119510,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-hesrqedr.js",
+        "start": 120271,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-9f88agae.js",
+        "start": 1308,
+        "specifier": "bun:ffi"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g9a2nkn9.js",
+        "start": 80342,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g9a2nkn9.js",
+        "start": 85227,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-g9a2nkn9.js",
+        "start": 120569,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 1461,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 1478,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 2812,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 2827,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 2841,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 6856,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 6871,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 6887,
+        "specifier": "assert"
+      },
+      {
+        "file": "/$bunfs/root/chunk-agxkvasb.js",
+        "start": 6923,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-bhxa600q.js",
+        "start": 922,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 1750,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 1767,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 1794,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 1819,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 6729,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-nxs4y5k6.js",
+        "start": 17738,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-xt99khzc.js",
+        "start": 932,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-1sc4f8cg.js",
+        "start": 856,
+        "specifier": "process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-75wa44pa.js",
+        "start": 856,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-522z2r9s.js",
+        "start": 808,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-kz6eke73.js",
+        "start": 51445,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-kz6eke73.js",
+        "start": 54782,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-kz6eke73.js",
+        "start": 54796,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-kz6eke73.js",
+        "start": 54808,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-kz6eke73.js",
+        "start": 54824,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 807,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 818,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 1216,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 1231,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 1518,
+        "specifier": "fs/promises"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 1863,
+        "specifier": "fs/promises"
+      },
+      {
+        "file": "/$bunfs/root/chunk-sc0k4y0y.js",
+        "start": 2154,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 10486,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 15183,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 16057,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 17062,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 19238,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 20442,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-jtj604tj.js",
+        "start": 22669,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 128940,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 136792,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 136804,
+        "specifier": "process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 137673,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 137689,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-b7bg1650.js",
+        "start": 138307,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 10909,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 10940,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 44075,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 44087,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 46588,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 46607,
+        "specifier": "process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 46628,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 59387,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 61287,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 61299,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 61311,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 64995,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 68850,
+        "specifier": "querystring"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 68871,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 87486,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 87500,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 87512,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 106722,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 113350,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 113364,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 115326,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 115338,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 115354,
+        "specifier": "https"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 131117,
+        "specifier": "child_process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 131140,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 136515,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 139538,
+        "specifier": "child_process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 139561,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 139589,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 139601,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-4b4ymzed.js",
+        "start": 152045,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 776,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 3766,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 3782,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 4485,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 4507,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 4939,
+        "specifier": "crypto"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 4964,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 8046,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 8268,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 8290,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 9586,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-vppwwe5r.js",
+        "start": 9609,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k5d96zre.js",
+        "start": 760,
+        "specifier": "child_process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-k5d96zre.js",
+        "start": 782,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-apze82q3.js",
+        "start": 2060,
+        "specifier": "bun:ffi"
+      },
+      {
+        "file": "/$bunfs/root/chunk-0767nrfd.js",
+        "start": 13112,
+        "specifier": "bun:ffi"
+      },
+      {
+        "file": "/$bunfs/root/chunk-htg09580.js",
+        "start": 4567,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-htg09580.js",
+        "start": 4586,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-2sdfen6a.js",
+        "start": 7094,
+        "specifier": "bun:ffi"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 24854,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 24876,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 259209,
+        "specifier": "zlib"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 259223,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 263318,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 263330,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 5186,
+        "specifier": "process"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 10965,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 13182,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 22377,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 43114,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 52992,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 53008,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 78693,
+        "specifier": "buffer"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 78724,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 171729,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 171741,
+        "specifier": "path"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 176811,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 186669,
+        "specifier": "zlib"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 205953,
+        "specifier": "dns"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 206019,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 212166,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 212179,
+        "specifier": "http"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 212216,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 217509,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 217524,
+        "specifier": "os"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 225386,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 225401,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 225468,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 238204,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 279181,
+        "specifier": "events"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 279197,
+        "specifier": "stream"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 294258,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 294281,
+        "specifier": "zlib"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 294310,
+        "specifier": "tls"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 309746,
+        "specifier": "http2"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 309761,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 337889,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 346914,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 346940,
+        "specifier": "util"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 355471,
+        "specifier": "net"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 388248,
+        "specifier": "url"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 389617,
+        "specifier": "fs"
+      },
+      {
+        "file": "/$bunfs/root/chunk-yhnwx4kh.js",
+        "start": 389629,
+        "specifier": "path"
+      }
+    ],
+    "remaining_dynamic_calls": [
+      {
+        "file": "/$bunfs/root/chunk-y6zm4y48.js",
+        "start": 7258,
+        "kind": "helper-dynamic-require"
+      },
+      {
+        "file": "/$bunfs/root/chunk-8skcamyq.js",
+        "start": 1043,
+        "kind": "helper-dynamic-require"
+      },
+      {
+        "file": "/$bunfs/root/chunk-47scf3az.js",
+        "start": 24885,
+        "kind": "helper-dynamic-require"
+      }
+    ],
+    "actual_file_bytes": 107220152
+  },
+  "admission": "构建通过不自动授信；必须对最终哈希执行原生回归、常驻隔离和配对性能验收后登记"
+}

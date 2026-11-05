@@ -1,0 +1,34 @@
+[
+  {
+    "binary": "original",
+    "mode": "version",
+    "exit_code": 0,
+    "duration_seconds": 0.019,
+    "stdout": "2.1.293 (Claude Code)\n",
+    "stderr": ""
+  },
+  {
+    "binary": "original",
+    "mode": "modules",
+    "exit_code": 0,
+    "duration_seconds": 0.1574,
+    "stdout": "{\"bun\":\"1.4.3\",\"K_t\":\"function\",\"Re\":\"function\",\"Kc\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"transition\":\"function\",\"permissions\":\"function\"}\n",
+    "stderr": ""
+  },
+  {
+    "binary": "upx-fast",
+    "mode": "version",
+    "exit_code": 0,
+    "duration_seconds": 1.0177,
+    "stdout": "2.1.293 (Claude Code)\n",
+    "stderr": ""
+  },
+  {
+    "binary": "upx-fast",
+    "mode": "modules",
+    "exit_code": 0,
+    "duration_seconds": 1.1407,
+    "stdout": "{\"bun\":\"1.4.3\",\"K_t\":\"function\",\"Re\":\"function\",\"Kc\":\"function\",\"yN\":\"function\",\"Ree\":\"function\",\"Nst\":\"function\",\"transition\":\"function\",\"permissions\":\"function\"}\n",
+    "stderr": ""
+  }
+]

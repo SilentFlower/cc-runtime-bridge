@@ -1,0 +1,11 @@
+$ bun scripts/test-ui.ts
+
+Running 3 tests using 1 worker
+
+(node:119243) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/browser/logs.spec.ts:38:1 › 列表、四页签、脱敏复制和真实采集边界 (3.9s)
+  ✓  2 tests/browser/logs.spec.ts:72:1 › 类别、时间和同会话关联筛选 (1.9s)
+  ✓  3 tests/browser/logs.spec.ts:90:1 › 手机详情可读，原文及模型内容只作为安全文本 (1.8s)
+
+  3 passed (11.1s)

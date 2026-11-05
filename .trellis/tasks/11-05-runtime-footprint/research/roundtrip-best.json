@@ -1,0 +1,27 @@
+[
+  {
+    "args": [
+      "-t",
+      "/tmp/ccrb-footprint-study-i7_zyco2/claude-upx-best"
+    ],
+    "exit_code": 0,
+    "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\ntesting /tmp/ccrb-footprint-study-i7_zyco2/claude-upx-best [OK]\n\nTested 1 file.\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "-d",
+      "-o",
+      "/tmp/ccrb-footprint-study-i7_zyco2/roundtrip-best",
+      "/tmp/ccrb-footprint-study-i7_zyco2/claude-upx-best"
+    ],
+    "exit_code": 0,
+    "stdout": "                       Ultimate Packer for eXecutables\n                          Copyright (C) 1996 - 2026\nUPX 5.3.0       Markus Oberhumer, Laszlo Molnar & John Reiser   Oct 28th 2026\n\n        File size         Ratio      Format      Name\n   --------------------   ------   -----------   -----------\n 252755128 <-  78602720   31.10%   linux/amd64   roundtrip-best\n\nUnpacked 1 file.\n",
+    "stderr": ""
+  },
+  {
+    "roundtrip_bytes": 252755128,
+    "roundtrip_sha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978",
+    "matches_original": true
+  }
+]

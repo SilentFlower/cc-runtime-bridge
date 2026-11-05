@@ -1,0 +1,14 @@
+{
+  "compact": {
+    "service_setup_ms_single_sample": 4931.615791,
+    "first_http_complete_ms_single_sample": 2746.1442289999995,
+    "warm_http_complete_ms_median_six": 10.363197000001037,
+    "condition": "HTTP 控制面及日志启用、TLS CONNECT 合成上游；与裸协议基准不同，不直接相减计算开销"
+  },
+  "original": {
+    "service_setup_ms_single_sample": 759.125291,
+    "first_http_complete_ms_single_sample": 784.971686,
+    "warm_http_complete_ms_median_six": 10.188499999999976,
+    "condition": "HTTP 控制面及日志启用、TLS CONNECT 合成上游；与裸协议基准不同，不直接相减计算开销"
+  }
+}

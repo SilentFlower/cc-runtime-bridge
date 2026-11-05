@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "case": "missing_resource",
+      "rejected": true,
+      "exit_code": 1,
+      "final_output_absent": true,
+      "errors": [
+        "error: 构建步骤失败：unshare，退出码=111，固定 293 依赖转换或原生构建失败"
+      ],
+      "seconds": 9.525997644999734
+    },
+    {
+      "case": "oversize",
+      "rejected": true,
+      "exit_code": 1,
+      "final_output_absent": true,
+      "errors": [
+        "error: 完整可执行产物超出体积目标：27933053 > 27933052"
+      ],
+      "seconds": 71.41473885599771
+    }
+  ]
+}

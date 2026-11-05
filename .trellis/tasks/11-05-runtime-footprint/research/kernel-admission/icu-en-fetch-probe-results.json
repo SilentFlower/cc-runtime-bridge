@@ -1,0 +1,42 @@
+[
+  {
+    "name": "original293",
+    "code": 0,
+    "stdout": "{\"bun\":\"1.4.3\",\"revision\":\"eecfd55debb281c3fe3518098b1a49f76429637c\",\"results\":[{\"mode\":\"global\",\"status\":200},{\"mode\":\"session\",\"status\":200}]}\n",
+    "stderr": "",
+    "observed": [
+      {
+        "mode": "global",
+        "cch": "3c621",
+        "expected": "3c621",
+        "valid": true
+      },
+      {
+        "mode": "session",
+        "cch": "3c621",
+        "expected": "3c621",
+        "valid": true
+      }
+    ]
+  },
+  {
+    "name": "icu-en",
+    "code": 0,
+    "stdout": "{\"bun\":\"1.4.3\",\"revision\":\"eecfd55debb281c3fe3518098b1a49f76429637c\",\"results\":[{\"mode\":\"global\",\"status\":200},{\"mode\":\"session\",\"status\":200}]}\n",
+    "stderr": "",
+    "observed": [
+      {
+        "mode": "global",
+        "cch": "3c621",
+        "expected": "3c621",
+        "valid": true
+      },
+      {
+        "mode": "session",
+        "cch": "3c621",
+        "expected": "3c621",
+        "valid": true
+      }
+    ]
+  }
+]
