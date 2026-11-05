@@ -162,3 +162,15 @@ export interface RuntimeJob {
   request_id: string;
   prepared: PreparedInput;
 }
+
+/** 账号常驻进程接收的私有指令，进程和请求归属分别绑定。 */
+export type WorkerCommand =
+  | { type: 'request_start'; schema_version: 2; worker_id: string; request_id: string; prepared: PreparedInput }
+  | { type: 'request_cancel'; schema_version: 2; worker_id: string; request_id: string }
+  | { type: 'worker_shutdown'; schema_version: 2; worker_id: string };
+
+/** 常驻进程输出；请求载荷解包后继续使用外部 schema 1。 */
+export type WorkerFrame =
+  | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number }
+  | { type: 'request_event'; schema_version: 2; worker_id: string; request_id: string; payload: RuntimePayload }
+  | { type: 'worker_idle'; schema_version: 2; worker_id: string; request_id: string };

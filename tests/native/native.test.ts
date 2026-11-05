@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import { connect } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { readConfig, startServer, type RunningServer } from '../../src/control/server';
 import type { HeaderPair } from '../../src/shared/contracts';
-import { createEngine } from '../../src/control/engine';
+import { createEngine, type Engine } from '../../src/control/engine';
 
 const isolated = process.env.CCRB_NATIVE_ISOLATED === '1';
 const native = isolated ? describe : describe.skip;
@@ -23,6 +23,9 @@ native('官方 293 的无外网回环链路', () => {
   const sockets = new Set<Duplex>();
   const upstreamSecret = 'ccrb-upstream-secret-canary';
   let expectedResponse = '';
+  let nativeEngine: Engine;
+  let setupMs = 0;
+  const timings: { previousPid: number | null; pid: number | null; completeMs: number }[] = [];
 
   beforeAll(async () => {
     if (Bun.spawnSync(['ip', 'link', 'set', 'lo', 'up']).exitCode !== 0) throw new Error('无法在独立网络空间启用回环接口');
@@ -98,9 +101,12 @@ native('官方 293 的无外网回环链路', () => {
       CCRB_TIMEOUT_MS: '15000',
     });
     // 模拟凭据仅由原生端持有的配置路径，控制层不能依赖预先知道密钥来脱敏。
-    const nativeEngine = await createEngine(config.engine);
+    const setupStarted = performance.now();
+    nativeEngine = await createEngine(config.engine);
     app = await startServer({ ...config, engine: { ...config.engine, apiKey: undefined } }, nativeEngine);
     base = 'http://127.0.0.1:' + app.server.port;
+    setupMs = performance.now() - setupStarted;
+    expect(nativeEngine.workerPid).toBeNull();
   }, 30000);
 
   afterAll(async () => {
@@ -109,11 +115,18 @@ native('官方 293 的无外网回环链路', () => {
     if (proxy) await new Promise<void>(resolve => proxy.close(() => resolve()));
     if (upstream) await upstream.stop(true);
     if (root) await rm(root, { recursive: true, force: true });
+    const report = process.env.CCRB_NATIVE_REPORT;
+    if (report) {
+      await mkdir(dirname(report), { recursive: true });
+      await writeFile(report, JSON.stringify({ setupMs, binarySha256: nativeEngine.binarySha256, conditions: 'HTTP 控制面及日志启用、TLS CONNECT 合成上游；与裸协议基准不同，不直接相减计算开销', timings }, null, 2));
+    }
   });
 
   async function send(body: Record<string, unknown>, context: Record<string, unknown> = {}, headers: HeaderPair[] = []): Promise<{ response: Response; raw: string; id: string }> {
+    const started = performance.now(), previousPid = nativeEngine.workerPid;
     const response = await fetch(base + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body, context, headers }) });
     const raw = await response.text();
+    timings.push({ previousPid, pid: nativeEngine.workerPid, completeMs: performance.now() - started });
     return { response, raw, id: response.headers.get('x-ccrb-request-id')! };
   }
 
@@ -279,6 +292,7 @@ native('官方 293 的无外网回环链路', () => {
       body: JSON.stringify({ request_id: 'native-cancel', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '取消验证' }], stream: true } }),
     });
     const reader = response.body!.getReader(); void reader.closed.catch(() => {});
+    const canceledPid = nativeEngine.workerPid;
     await reader.read(); cancel.abort(); await reader.cancel().catch(() => {});
     let state: string | undefined;
     for (let i = 0; i < 100; i++) {
@@ -291,6 +305,68 @@ native('官方 293 的无外网回环链路', () => {
     mode = 'normal';
     const next = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '取消后的下一请求' }], stream: false });
     expect(next.response.status).toBe(200); expect(next.raw).toBe(expectedResponse);
+    expect(nativeEngine.workerPid).not.toBe(canceledPid);
+    expect(requests.length - count).toBe(2);
+  });
+
+  test('相同 session 的多轮保持同一 PID，主子代理与 Unicode 正文不串入下一轮', async () => {
+    mode = 'normal';
+    const sessionId = '55555555-5555-4555-8555-555555555555';
+    let pid: number | null = null;
+    for (let i = 0; i < 6; i++) {
+      const promptId = '66666666-6666-4666-8666-' + String(i).padStart(12, '0');
+      const text = '第 ' + i + ' 轮：中文 العربية ภาษาไทย e\u0301 👨‍👩‍👧‍👦';
+      const count = requests.length;
+      const extra = i % 2 === 0 ? {} : { agentId: 'child-' + i, parentAgentId: 'parent-' + i, agentType: 'Explore' };
+      const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: text }], stream: false }, { sessionId, promptId, ...extra });
+      expect(result.response.status).toBe(200);
+      expect(requests.length - count).toBe(1);
+      pid ??= nativeEngine.workerPid;
+      expect(nativeEngine.workerPid).toBe(pid);
+      const request = requests.at(-1)!;
+      const headers = new Headers(request.headers);
+      expect(headers.get('x-claude-code-prompt-id')).toBe(promptId);
+      expect(headers.get('x-claude-code-session-id')).toBe(sessionId);
+      expect(headers.get('x-claude-code-agent-id')).toBe(i % 2 ? 'child-' + i : null);
+      expect(request.raw).toContain('cc_prompt_id=' + promptId);
+      expect(JSON.stringify(request.body.messages)).toContain(text);
+      if (i) expect(request.raw).not.toContain('第 ' + (i - 1) + ' 轮');
+      assertCch(request.raw);
+      await app.store.flush();
+      expect((await app.store.detail(result.id))?.request.binarySha256).toBe(nativeEngine.binarySha256);
+    }
+  });
+
+  test('进程意外退出后下一作业重建，不重放已完成请求', async () => {
+    const pid = nativeEngine.workerPid!;
+    process.kill(pid, 'SIGKILL');
+    for (let i = 0; i < 100 && nativeEngine.workerPid; i++) await Bun.sleep(10);
+    const count = requests.length;
+    const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '崩溃后的下一轮' }], stream: false });
+    expect(result.response.status).toBe(200);
+    expect(nativeEngine.workerPid).not.toBe(pid);
+    expect(requests.length - count).toBe(1);
+  });
+
+  test('流中进程被终止时保留已返回字节，收口后下一轮重建且不重放', async () => {
+    mode = 'slow';
+    const count = requests.length;
+    const response = await fetch(base + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request_id: 'native-stream-crash', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '流中故障验证' }], stream: true } }) });
+    const reader = response.body!.getReader();
+    const first = await reader.read();
+    expect(Buffer.from(first.value!).toString()).toContain('message_start');
+    const pid = nativeEngine.workerPid!;
+    process.kill(pid, 'SIGKILL');
+    while (!(await reader.read()).done) {}
+    await app.store.flush();
+    const detail = await app.store.detail('native-stream-crash');
+    expect(detail?.request.state).toBe('error');
+    expect(detail?.captures.find(item => item.stage === 'upstream_response')?.status).toBe('incomplete');
+    expect(requests.length - count).toBe(1);
+    mode = 'normal';
+    const next = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '流故障后的下一轮' }], stream: false });
+    expect(next.response.status).toBe(200);
+    expect(nativeEngine.workerPid).not.toBe(pid);
     expect(requests.length - count).toBe(2);
   });
 });

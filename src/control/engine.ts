@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import type { PreparedInput, RuntimeEvent, RuntimeJob, RuntimePayload } from '../shared/contracts';
-import { decodeRuntimeEvent, runtimeEvent } from '../shared/protocol';
+import type { PreparedInput, RuntimeEvent, RuntimePayload, WorkerCommand } from '../shared/contracts';
+import { decodeWorkerFrame, runtimeEvent } from '../shared/protocol';
 import { BridgeError, errorText } from '../shared/errors';
-import { PROFILE_293, verifyBinary } from '../runtime/profile';
+import { PROFILE_293, runtimeFileStamp, verifyRuntime, verifyExecutionImage, type RuntimeIdentity, type VerifiedRuntime } from '../runtime/profile';
 
 /** 运行时启动配置，均来自控制配置，不从调用方请求头读取。 */
 export interface EngineConfig {
@@ -25,118 +25,270 @@ export interface EngineConfig {
 export interface Engine {
   readonly name: string;
   readonly binarySha256: string | null;
+  readonly workerPid: number | null;
   /** 执行单轮请求并等待事件消费者。
    * @param prepared 已验证请求。
    * @param signal 取消信号。
    * @param emit 有背压的事件接收器。
-   * @return 作业已结束。
+   * @return 作业及工作进程清理已结束。
    */
   run(prepared: PreparedInput, signal: AbortSignal, emit: (event: RuntimeEvent) => Promise<void>): Promise<void>;
+  /** 关闭常驻工作进程并取消执行中的作业。
+   * @return 所有进程已退出。
+   */
+  close(): Promise<void>;
 }
 
-/** 固定官方二进制的单作业进程引擎。 */
+/** 握手、作业及进程故障使用同一可收口承诺。 */
+interface Completion { promise: Promise<void>; resolve(): void; reject(error: unknown): void }
+
+function completion(): Completion {
+  let resolve!: () => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<void>((done, fail) => { resolve = done; reject = fail; });
+  void promise.catch(() => {});
+  return { promise, resolve, reject };
+}
+
+/** 每一物理进程独占读取器和活动作业，旧代次不能访问新代次字段。 */
+interface WorkerProcess {
+  id: string;
+  child: Bun.Subprocess<'pipe', 'pipe', 'pipe'>;
+  verified: VerifiedRuntime;
+  ready: Completion;
+  stopped: Completion;
+  loop: Promise<void>;
+  initialized: boolean;
+  failed: boolean;
+  current: {
+    id: string;
+    done: Completion;
+    emit(event: RuntimeEvent): Promise<void>;
+    terminal: boolean;
+    prepared: boolean;
+    headers: boolean;
+    retire: boolean;
+  } | null;
+}
+
+/** 固定账号、惰性启动并串行复用的官方原生引擎。 */
 export class NativeEngine implements Engine {
   readonly name = 'claude-code/2.1.293';
-  readonly binarySha256 = PROFILE_293.sha256;
+  private readonly config: EngineConfig;
+  private identity: RuntimeIdentity | null = null;
+  private stamp = '';
+  private worker: WorkerProcess | null = null;
   private running = false;
+  private closed = false;
+  private activeAbort: AbortController | null = null;
+  private inFlight: Completion | null = null;
 
-  /** 保存显式的账号运行环境。
-   * @param config 控制配置。
+  /** 绑定不可按请求变更的账号及运行环境。
+   * @param config 显式控制配置。
    */
-  constructor(private readonly config: EngineConfig) {}
+  constructor(config: EngineConfig) { this.config = Object.freeze({ ...config }); }
 
-  /** 在启动时只读校验程序和构建产物。
+  /** 读取实际执行体身份，不以来源哈希冒充内存展开载荷。
+   * @return 已核验的执行体 SHA256。
+   */
+  get binarySha256(): string { return this.identity?.imageSha256 ?? PROFILE_293.sha256; }
+
+  /** 只读当前 PID；查询不会初始化 CC。
+   * @return 当前工作进程 PID，未启动或已失效时为空。
+   */
+  get workerPid(): number | null { return this.worker?.child.pid ?? null; }
+
+  /** 只读核验程序和原版预加载入口。
    * @return 校验完成，不发账号或模型请求。
    */
   async verify(): Promise<void> {
     if (!this.config.binaryPath || !this.config.home || !this.config.configDir) throw new BridgeError('native_configuration', '原生模式需要 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME 和 CCRB_CLAUDE_CONFIG_DIR', 503);
-    await verifyBinary(this.config.binaryPath);
-    await readFile(this.config.preloadPath);
+    const verified = await verifyRuntime(this.config.binaryPath);
+    try {
+      if (verified.identity.kind === 'original') await readFile(this.config.preloadPath);
+      this.identity = verified.identity;
+      this.stamp = verified.stamp;
+    } finally { await verified.handle.close(); }
   }
 
-  /** 启动一个隔离的原生作业，结束后不保留全局会话状态。
-   * @param prepared 已完成入口验证的输入。
-   * @param signal 调用方取消。
-   * @param emit 有背压的事件接收器。
-   * @return 原生进程和协议均已结束。
-   */
-  async run(prepared: PreparedInput, signal: AbortSignal, emit: (event: RuntimeEvent) => Promise<void>): Promise<void> {
-    if (this.running) throw new BridgeError('runtime_busy', '单账号运行时正在处理其他请求', 429);
-    this.running = true;
-    const config = this.config;
-    let child: ReturnType<typeof Bun.spawn> | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let forceKill: ReturnType<typeof setTimeout> | undefined;
-    const cancel = (): void => {
-      if (!child) return;
-      try { child.stdin && typeof child.stdin !== 'number' && 'write' in child.stdin && child.stdin.write(JSON.stringify({ type: 'request_cancel' }) + '\n'); } catch {}
-      forceKill = setTimeout(() => child?.kill('SIGKILL'), 1500);
-    };
+  private fail(worker: WorkerProcess, error: unknown): void {
+    if (worker.failed) return;
+    worker.failed = true;
+    if (this.worker === worker) this.worker = null;
+    worker.ready.reject(error);
+    worker.stopped.reject(error);
+    worker.current?.done.reject(error);
+    worker.child.kill('SIGKILL');
+  }
+
+  private async retire(worker: WorkerProcess): Promise<void> {
+    this.fail(worker, new BridgeError('runtime_closed', '工作进程已关闭', 502));
+    await worker.loop;
+  }
+
+  private send(worker: WorkerProcess, command: WorkerCommand): void {
+    if (worker.failed) throw new BridgeError('runtime_exit', '工作进程已失效', 502);
+    worker.child.stdin.write(JSON.stringify(command) + '\n');
+  }
+
+  private async read(worker: WorkerProcess): Promise<void> {
+    const diagnostics = (async () => {
+      const reader = worker.child.stderr.getReader();
+      while (!(await reader.read()).done) {}
+    })().catch(error => this.fail(worker, error));
     try {
-      if (signal.aborted) throw new DOMException('请求已取消', 'AbortError');
-      // 每次作业校验二进制，避免官方自动更新后仍按旧内部符号执行。
-      await verifyBinary(config.binaryPath!);
-      const env: Record<string, string> = {
-        HOME: config.home!,
-        CLAUDE_CONFIG_DIR: config.configDir!,
-        PATH: process.env.PATH ?? '/usr/bin:/bin',
-        LANG: 'C.UTF-8',
-        BUN_OPTIONS: '--preload ' + resolve(config.preloadPath),
-        CCRB_REQUEST_ID: prepared.input.request_id,
-        CLAUDE_CODE_ENTRYPOINT: 'sdk-cli',
-        CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge',
-        CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1',
-        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-        DISABLE_AUTOUPDATER: '1',
-        DISABLE_TELEMETRY: '1',
-        DISABLE_ERROR_REPORTING: '1',
-      };
-      if (config.apiKey) env.ANTHROPIC_API_KEY = config.apiKey;
-      if (config.oauthToken) env.CLAUDE_CODE_OAUTH_TOKEN = config.oauthToken;
-      if (config.proxyUrl) env.HTTPS_PROXY = config.proxyUrl;
-      if (config.caFile) env.NODE_EXTRA_CA_CERTS = config.caFile;
-      const processHandle = Bun.spawn([config.binaryPath!, '--version'], { cwd: config.cwd, env, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
-      child = processHandle;
-      signal.addEventListener('abort', cancel, { once: true });
-      if (signal.aborted) cancel();
-      timer = setTimeout(cancel, config.timeoutMs);
-      const job: RuntimeJob = { type: 'request_start', schema_version: 1, request_id: prepared.input.request_id, prepared };
-      processHandle.stdin.write(JSON.stringify(job) + '\n');
-      // 诊断始终排空，但不把包含本机路径或未知内容的 stderr 原样写进日志。
-      const diagnostics = (async () => {
-        const diagnosticReader = processHandle.stderr.getReader();
-        while (!(await diagnosticReader.read()).done) {}
-      })();
-      const reader = processHandle.stdout.getReader();
-      const decoder = new TextDecoder();
+      const reader = worker.child.stdout.getReader();
+      const decoder = new TextDecoder('utf-8', { fatal: true });
       let pending = '';
-      let terminal = false;
       while (true) {
         const next = await reader.read();
         if (next.done) break;
         pending += decoder.decode(next.value, { stream: true });
-        if (pending.length > 24 * 1024 * 1024) throw new BridgeError('runtime_protocol', '运行时事件超过接收上限', 502);
+        if (Buffer.byteLength(pending) > 24 * 1024 * 1024) throw new BridgeError('runtime_protocol', '运行时事件超过接收上限', 502);
         let index: number;
         while ((index = pending.indexOf('\n')) >= 0) {
           const line = pending.slice(0, index);
           pending = pending.slice(index + 1);
-          if (!line) continue;
-          const event = decodeRuntimeEvent(line, prepared.input.request_id);
-          if (event.type === 'ready' && event.version !== PROFILE_293.version) throw new BridgeError('runtime_version', '运行时版本不匹配', 502);
-          if (event.type === 'completed' || event.type === 'error') terminal = true;
-          await emit(event);
+          if (!line) throw new BridgeError('runtime_protocol', '工作进程返回空帧', 502);
+          const frame = decodeWorkerFrame(line, worker.id);
+          if (frame.type === 'worker_ready') {
+            if (worker.initialized || frame.version !== PROFILE_293.version || frame.pid !== worker.child.pid) throw new BridgeError('runtime_protocol', '工作进程握手不匹配或重复', 502);
+            await Promise.race([verifyExecutionImage(worker.child.pid, worker.verified.identity), worker.stopped.promise]);
+            worker.initialized = true;
+            worker.ready.resolve();
+            continue;
+          }
+          const active = worker.current;
+          if (!worker.initialized || !active || frame.request_id !== active.id) throw new BridgeError('runtime_protocol', '工作进程事件不能归到当前作业', 502);
+          if (frame.type === 'worker_idle') {
+            if (!active.terminal) throw new BridgeError('runtime_protocol', '工作进程在终态前宣布空闲', 502);
+            worker.current = null;
+            active.done.resolve();
+            continue;
+          }
+          if (active.terminal) throw new BridgeError('runtime_protocol', '工作进程在终态后返回事件', 502);
+          const payload = frame.payload;
+          if (payload.type === 'cc_prepared') {
+            if (active.prepared || active.headers) throw new BridgeError('runtime_protocol', '工作进程重复构造请求', 502);
+            active.prepared = true;
+          } else if (payload.type === 'response_headers') {
+            if (!active.prepared || active.headers) throw new BridgeError('runtime_protocol', '工作进程响应头顺序错误', 502);
+            active.headers = true;
+          } else if (payload.type === 'response_chunk' && !active.headers) throw new BridgeError('runtime_protocol', '响应头之前出现正文', 502);
+          if (payload.type === 'completed' || payload.type === 'error') {
+            if (payload.type === 'completed' && ['success', 'http_error'].includes(payload.state) && !active.headers) throw new BridgeError('runtime_protocol', '工作进程缺少响应头', 502);
+            active.terminal = true;
+            active.retire = payload.type === 'error' || ['canceled', 'error'].includes(payload.state);
+          }
+          // 消费者等待期间仍可由取消/故障解除背压，避免孤儿进程和永久挂起。
+          await Promise.race([active.emit(runtimeEvent(active.id, payload)), worker.stopped.promise]);
         }
       }
-      await diagnostics;
-      const exit = await processHandle.exited;
-      if (pending.trim() || !terminal || exit !== 0) throw new BridgeError('runtime_exit', signal.aborted ? '请求已取消' : '运行时在完整终态前退出', 502);
-    } finally {
-      if (timer) clearTimeout(timer);
-      if (forceKill) clearTimeout(forceKill);
-      signal.removeEventListener('abort', cancel);
-      if (child) { child.kill('SIGKILL'); await child.exited; }
-      this.running = false;
+      decoder.decode();
+      throw new BridgeError('runtime_exit', pending ? '工作进程退出时存在截断帧' : '工作进程在关闭前退出', 502);
+    } catch (error) { this.fail(worker, error); }
+    finally {
+      await Promise.all([diagnostics, worker.child.exited]);
+      await worker.verified.handle.close();
     }
+  }
+
+  private async getWorker(signal: AbortSignal): Promise<WorkerProcess> {
+    if (!this.identity) await this.verify();
+    if (await runtimeFileStamp(this.config.binaryPath!) !== this.stamp) throw new BridgeError('runtime_identity', '运行时文件身份发生改变', 503);
+    if (this.worker && !this.worker.failed) return this.worker;
+    const verified = await verifyRuntime(this.config.binaryPath!);
+    try {
+      if (this.closed || signal.aborted) throw new DOMException('请求已取消', 'AbortError');
+      if (verified.stamp !== this.stamp) throw new BridgeError('runtime_identity', '运行时文件身份发生改变', 503);
+      const config = this.config;
+      const id = randomUUID();
+      const env: Record<string, string> = {
+        HOME: config.home!, CLAUDE_CONFIG_DIR: config.configDir!, PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8',
+        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'sdk-cli', CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge',
+        CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+        DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
+      };
+      if (verified.identity.kind === 'original') env.BUN_OPTIONS = '--preload ' + resolve(config.preloadPath);
+      if (config.apiKey) env.ANTHROPIC_API_KEY = config.apiKey;
+      if (config.oauthToken) env.CLAUDE_CODE_OAUTH_TOKEN = config.oauthToken;
+      if (config.proxyUrl) env.HTTPS_PROXY = config.proxyUrl;
+      if (config.caFile) env.NODE_EXTRA_CA_CERTS = config.caFile;
+      // 通过已核验 FD 启动确切 inode，避免校验后路径原子替换导致执行另一文件。
+      const child = Bun.spawn(['/proc/' + process.pid + '/fd/' + verified.handle.fd, '--version'], { cwd: config.cwd, env, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
+      const worker: WorkerProcess = { id, child, verified, ready: completion(), stopped: completion(), loop: Promise.resolve(), initialized: false, failed: false, current: null };
+      this.worker = worker;
+      worker.loop = this.read(worker);
+      return worker;
+    } catch (error) { await verified.handle.close(); throw error; }
+  }
+
+  /** 在账号常驻进程中执行一轮；失败作业不会隐式重放。
+   * @param prepared 已验证的请求和上下文。
+   * @param signal 调用方取消信号。
+   * @param emit 有背压的事件消费者。
+   * @return 唯一终态和匹配空闲确认均已收到。
+   */
+  async run(prepared: PreparedInput, signal: AbortSignal, emit: (event: RuntimeEvent) => Promise<void>): Promise<void> {
+    if (this.closed) throw new BridgeError('runtime_closed', '引擎已经关闭', 503);
+    if (this.running) throw new BridgeError('runtime_busy', '单账号运行时正在处理其他请求', 429);
+    this.running = true;
+    const budget = new AbortController();
+    this.activeAbort = budget;
+    const finished = completion();
+    this.inFlight = finished;
+    const combined = AbortSignal.any([signal, budget.signal]);
+    let worker = this.worker;
+    let forceKill: ReturnType<typeof setTimeout> | undefined;
+    const cancel = (): void => {
+      if (!worker || worker.failed) return;
+      if (!worker.current) { this.fail(worker, combined.reason); return; }
+      try { this.send(worker, { type: 'request_cancel', schema_version: 2, worker_id: worker.id, request_id: prepared.input.request_id }); } catch {}
+      forceKill ??= setTimeout(() => worker && this.fail(worker, combined.reason), 1500);
+    };
+    combined.addEventListener('abort', cancel, { once: true });
+    const timer = setTimeout(() => budget.abort(new BridgeError('request_timeout', '请求超过运行预算', 504)), this.config.timeoutMs);
+    let reusable = false;
+    try {
+      if (combined.aborted) throw combined.reason;
+      worker = await this.getWorker(combined);
+      if (combined.aborted) { cancel(); throw combined.reason; }
+      await worker.ready.promise;
+      await Promise.race([emit(runtimeEvent(prepared.input.request_id, { type: 'ready', version: PROFILE_293.version })), worker.stopped.promise]);
+      if (combined.aborted) throw combined.reason;
+      const active = { id: prepared.input.request_id, done: completion(), emit, terminal: false, prepared: false, headers: false, retire: false };
+      worker.current = active;
+      this.send(worker, { type: 'request_start', schema_version: 2, worker_id: worker.id, request_id: active.id, prepared });
+      await active.done.promise;
+      if (combined.aborted) throw combined.reason;
+      reusable = !active.retire && !worker.failed;
+    } finally {
+      clearTimeout(timer);
+      if (forceKill) clearTimeout(forceKill);
+      combined.removeEventListener('abort', cancel);
+      if (worker && !reusable) await this.retire(worker);
+      this.running = false;
+      this.activeAbort = null;
+      this.inFlight = null;
+      finished.resolve();
+    }
+  }
+
+  /** 停止本轮并释放常驻进程，重复关闭安全。
+   * @return 当前工作进程和读取循环均已结束。
+   */
+  async close(): Promise<void> {
+    this.closed = true;
+    this.activeAbort?.abort(new DOMException('引擎正在关闭', 'AbortError'));
+    const worker = this.worker;
+    if (worker && !this.running && worker.initialized && !worker.failed) {
+      const forceKill = setTimeout(() => this.fail(worker, new Error('工作进程关闭超时')), 1500);
+      try {
+        this.send(worker, { type: 'worker_shutdown', schema_version: 2, worker_id: worker.id });
+        await worker.loop;
+      } finally { clearTimeout(forceKill); }
+    } else if (worker) await this.retire(worker);
+    await this.inFlight?.promise;
   }
 }
 
@@ -144,6 +296,12 @@ export class NativeEngine implements Engine {
 export class DemoEngine implements Engine {
   readonly name = 'demo/fixture';
   readonly binarySha256 = null;
+  readonly workerPid = null;
+
+  /** 演示引擎没有持久进程。
+   * @return 无资源需要释放。
+   */
+  async close(): Promise<void> {}
 
   /** 产生可审计的合成响应，不启动官方程序。
    * @param prepared 已验证输入。

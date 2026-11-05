@@ -46,7 +46,9 @@ bun run build
 bun run start
 ```
 
-启动和每轮作业都会校验二进制。原生初始化失败会明确报错。每个作业创建一个官方进程，单账号串行执行，最多接纳 16 个执行中或排队作业。它复用官方消息构造和原生发送；API 工具仅作为 schema 和历史数据传入，返回的 tool_use 交给调用方。
+启动及每次加载新工作进程都会校验完整二进制，暖复用前检查文件身份。首个请求惰性启动，正常作业复用同一单账号进程，每轮新建原生会话根；取消或异常后隔离重建，不重放当前请求。最多接纳 16 个执行中或排队作业。它复用官方消息构造和原生发送；API 工具仅作为 schema 和历史数据传入，返回的 tool_use 交给调用方。
+
+可从固定原版构建 **25.18 MiB** 的桥接专用运行时，构建、产物身份、内存开销、原版回退和性能验证见 [运行时说明](docs/runtime.md)。
 
 ## 接口与日志
 
@@ -80,6 +82,7 @@ bun run test:ui
 - [请求头策略](docs/header-policy.md)
 - [请求日志与展示](docs/request-logs.md)
 - [接口合同与配置](docs/api.md)
+- [轻量运行时与常驻执行](docs/runtime.md)
 - [293 离线研究](docs/research/claude-code-293-study.md)
 - [首版需求](.trellis/tasks/11-05-native-runtime-logs/prd.md)
 - [技术设计](.trellis/tasks/11-05-native-runtime-logs/design.md)

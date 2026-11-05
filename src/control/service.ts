@@ -187,5 +187,6 @@ export class BridgeService {
     this.closing = true;
     for (const controller of this.controllers) controller.abort();
     await this.queue;
+    await this.engine.close();
   }
 }

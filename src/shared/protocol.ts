@@ -1,4 +1,4 @@
-import type { HeaderPair, RuntimeEvent, RuntimeJob, RuntimePayload } from './contracts';
+import type { HeaderPair, RuntimeEvent, RuntimeJob, RuntimePayload, WorkerCommand, WorkerFrame } from './contracts';
 import { BridgeError, isObject } from './errors';
 
 function headerPairs(value: unknown): value is HeaderPair[] {
@@ -43,5 +43,42 @@ export function decodeRuntimeJob(value: unknown): RuntimeJob {
  * @return 可序列化事件。
  */
 export function runtimeEvent(requestId: string, payload: RuntimePayload): RuntimeEvent {
-  return { schema_version: 1, request_id: requestId, ...payload };
+  return { ...payload, schema_version: 1, request_id: requestId };
+}
+
+/** 校验账号常驻进程收到的指令。
+ * @param value 私有管道解析得到的对象。
+ * @param workerId 本物理进程的唯一归属。
+ * @return 已验证指令；旧协议及跨进程指令明确失败。
+ */
+export function decodeWorkerCommand(value: unknown, workerId: string): WorkerCommand {
+  if (!isObject(value) || value.schema_version !== 2 || value.worker_id !== workerId) throw new BridgeError('runtime_protocol', '工作进程指令归属不匹配', 502);
+  if (value.type === 'worker_shutdown') return value as unknown as WorkerCommand;
+  if (typeof value.request_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.request_id)) throw new BridgeError('runtime_protocol', '工作进程缺少有效请求归属', 502);
+  if (value.type === 'request_cancel') return value as unknown as WorkerCommand;
+  if (value.type !== 'request_start') throw new BridgeError('runtime_protocol', '未知工作进程指令', 502);
+  // 复用同一 PreparedInput 边界，不允许包装协议绕过原有作业校验。
+  decodeRuntimeJob({ ...value, schema_version: 1 });
+  return value as unknown as WorkerCommand;
+}
+
+/** 校验常驻进程输出的握手及请求事件。
+ * @param line 完整 JSONL 行。
+ * @param workerId 读取循环绑定的物理进程归属。
+ * @return 已验证帧；具体请求状态顺序由引擎统一校验。
+ */
+export function decodeWorkerFrame(line: string, workerId: string): WorkerFrame {
+  const value: unknown = JSON.parse(line);
+  if (!isObject(value) || value.schema_version !== 2 || value.worker_id !== workerId) throw new BridgeError('runtime_protocol', '工作进程事件归属不匹配', 502);
+  if (value.type === 'worker_ready' && typeof value.version === 'string' && Number.isSafeInteger(value.pid) && Number(value.pid) > 0) return value as unknown as WorkerFrame;
+  if (typeof value.request_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.request_id)) throw new BridgeError('runtime_protocol', '工作进程事件缺少有效请求归属', 502);
+  if (value.type === 'worker_idle') return value as unknown as WorkerFrame;
+  if (value.type === 'request_event' && isObject(value.payload)) {
+    const payload = value.payload;
+    if (['schema_version', 'request_id', 'worker_id'].some(key => key in payload)) throw new BridgeError('runtime_protocol', '请求载荷不能覆盖协议归属', 502);
+    decodeRuntimeEvent(JSON.stringify({ ...payload, schema_version: 1, request_id: value.request_id }), value.request_id);
+    if (payload.type === 'ready') throw new BridgeError('runtime_protocol', '请求事件不能替代工作进程握手', 502);
+    return value as unknown as WorkerFrame;
+  }
+  throw new BridgeError('runtime_protocol', '工作进程帧格式错误', 502);
 }

@@ -1,0 +1,104 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createInterface } from 'node:readline';
+import { once } from 'node:events';
+import { randomUUID } from 'node:crypto';
+import type { RuntimePayload, WorkerFrame } from '../../shared/contracts';
+import { decodeWorkerCommand } from '../../shared/protocol';
+import { BridgeError, errorText } from '../../shared/errors';
+import { Redactor } from '../../control/redaction';
+import { prepareInput } from '../../control/header-policy';
+import { parseInput } from '../../shared/input';
+import type { NativeBindings, NativeSession } from './native';
+import { PROFILE_293 } from './source-profile';
+import { generateNativeRequest, runNativeJob } from './job';
+
+/** 在固定账号环境中启动串行常驻循环。
+ * @param bindings 来自固定源程序的原生绑定。
+ * @return 控制管道关闭且当前作业已收口。
+ */
+export async function startWorker(bindings: NativeBindings): Promise<void> {
+  const workerId = process.env.CCRB_WORKER_ID;
+  if (!workerId || !/^[a-f0-9-]{36}$/.test(workerId)) throw new Error('缺少工作进程归属');
+  const functions = [bindings.core.Re, bindings.core.Kc, bindings.core.K_t, bindings.api.yN, bindings.api.Ree, bindings.context.Nst, bindings.state.F, bindings.state.nEr, bindings.state.yLs, bindings.state.t_, bindings.permissions.su];
+  if (functions.some(value => typeof value !== 'function')) throw new Error('固定版本的内部接口不匹配');
+  await bindings.context.Nst();
+  const base = bindings.state.F();
+  const storage = new AsyncLocalStorage<{ session: NativeSession }>();
+  bindings.state.yLs(() => storage.getStore());
+  // 固定源的 SDK/构造依赖是惰性初始化；就绪前只做本地构造，并在原生发送前中止。
+  // 初始化根与业务根隔离，不产生上游请求、请求事件或持久业务日志；其成本计入总启动时间。
+  const bootstrap = prepareInput(parseInput({ request_id: 'local-bootstrap', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '本地初始化' }], max_tokens: 64, stream: false }, context: { sessionId: randomUUID(), promptId: randomUUID() } }));
+  const session = bindings.state.nEr({ host: base.host, id: bootstrap.context.sessionId, project: base.project });
+  await storage.run({ session }, async () => {
+    bindings.state.t_(bootstrap.context.sessionId, 'resume');
+    await generateNativeRequest(bootstrap, bindings.core, bindings.permissions, new AbortController().signal);
+  });
+  const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
+  let current: { id: string; abort: AbortController; finished: Promise<void> } | null = null;
+  let closing = false;
+  let finish!: () => void;
+  const closed = new Promise<void>(resolve => { finish = resolve; });
+  const write = async (frame: WorkerFrame): Promise<void> => {
+    if (!process.stdout.write(JSON.stringify(frame) + '\n')) await once(process.stdout, 'drain');
+  };
+  const stop = (): void => {
+    closing = true;
+    input.close();
+    if (current) {
+      current.abort.abort();
+      void current.finished.finally(finish);
+    } else finish();
+  };
+  const fatal = (): void => {
+    // 畸形或跨代次输入无法安全归到当前请求，退出由控制层收口，不能改写为下一轮事件。
+    process.stderr.write('工作进程协议错误，已隔离\n');
+    process.exit(111);
+  };
+  input.on('line', (line: string) => {
+    try {
+      if (closing || Buffer.byteLength(line) > 24 * 1024 * 1024) throw new Error('指令状态或长度错误');
+      const command = decodeWorkerCommand(JSON.parse(line), workerId);
+      if (command.type === 'worker_shutdown') { stop(); return; }
+      if (command.type === 'request_cancel') {
+        if (!current || current.id !== command.request_id) throw new Error('取消归属错误');
+        current.abort.abort();
+        return;
+      }
+      if (current) throw new Error('常驻进程只允许串行作业');
+      const abort = new AbortController();
+      const redactor = new Redactor();
+      let active = true;
+      let terminal = false;
+      let retire = false;
+      const emit = async (payload: RuntimePayload): Promise<void> => {
+        if (!active || terminal) throw new Error('本轮终态后仍有事件');
+        if (payload.type === 'completed' || payload.type === 'error') terminal = true;
+        await write({ type: 'request_event', schema_version: 2, worker_id: workerId, request_id: command.request_id, payload });
+      };
+      // 相同 sessionId 也新建根；迟到异步回调仍绑定旧根，不会改写下一轮账本及请求日志。
+      const session = bindings.state.nEr({ host: base.host, id: command.prepared.context.sessionId, project: base.project });
+      const finished = Promise.resolve().then(() => storage.run({ session }, async () => {
+        try {
+          bindings.state.t_(command.prepared.context.sessionId, 'resume');
+          await runNativeJob(command.prepared, bindings, abort.signal, redactor, emit);
+        } catch (error) {
+          retire = true;
+          if (terminal) throw error;
+          if (abort.signal.aborted) await emit({ type: 'completed', attempt: 1, state: 'canceled' });
+          else await emit({ type: 'error', error: redactor.text(errorText(error)), ...(error instanceof BridgeError ? { code: error.code, status: error.status } : {}) });
+        } finally {
+          active = false;
+        }
+        if (!terminal) throw new Error('本轮缺少终态');
+        await write({ type: 'worker_idle', schema_version: 2, worker_id: workerId, request_id: command.request_id });
+        current = null;
+        if (retire || abort.signal.aborted || closing) stop();
+      })).catch(fatal);
+      current = { id: command.request_id, abort, finished };
+    } catch { fatal(); }
+  });
+  input.on('close', () => { if (!closing) stop(); });
+  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid });
+  await closed;
+  storage.disable();
+}

@@ -104,7 +104,12 @@ describe('控制、持久日志与查询', () => {
 class FixtureEngine implements Engine {
   readonly name = 'test/fixture';
   readonly binarySha256 = null;
+  readonly workerPid = null;
   calls = 0;
+  /** 合成夹具没有持久进程。
+   * @return 无需释放资源。
+   */
+  async close(): Promise<void> {}
   /** 设置响应行为。
    * @param kind 失败、缺失终态或持续流。
    */
