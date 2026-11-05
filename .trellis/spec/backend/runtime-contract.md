@@ -25,6 +25,7 @@
 - 轻量入口仅接纳固定登记的外层及执行体身份，外部 manifest 不授信。当前基底为原版 Bun 1.4.3；原生代码保留，ICU 仅按固定 C.UTF-8 环境保留 root/en、完整字符/规范化数据和全部分词规则/字典。它是桥接专用程序，不能宣称具备通用 CLI 的全部 Intl locale 定制。
 - BCJ2/LZMA2 与静态 C SDK 加载器单文件分发；载荷 SHA256 自校验后写入封存 memfd 并 fexecve，同 PID 执行，控制层再核对 /proc/<pid>/exe。运行不依赖原版、提取目录或构建工具；磁盘、内存文件与 RSS 分列，不把内存展开当作内存节省。
 - 原生模式显式提供 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR；可提供 CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN、CCRB_PROXY_URL、CCRB_CA_FILE。子进程使用环境白名单。
+- 启动工作进程与配对性能脚本统一设置 CLAUDE_CODE_ENTRYPOINT=cli，由原生代码生成 User-Agent 的 cli 入口段及 billing 的 cc_entrypoint=cli；requestClass、agentKind 和父子身份仍独立按真实上下文生成。切换入口须重建进程，历史 sdk-cli 日志保留原采样值，不能仅替换日志或正文中的标签。
 - 每个引擎绑定一个账号环境，首个模型作业惰性启动，正常串行作业复用一个物理进程，最多 16 个执行中或排队作业。HOME、配置、凭据来源、代理及 cwd 不按请求切换；更换配置须关闭并重建引擎。服务关闭后不再接收作业，并等待队列和常驻进程退出。
 - worker_ready 晚于原生绑定、Nst 与本地构造依赖初始化；本地初始化使用独立根，发送前中止，不发模型请求或业务事件，成本计入总启动时间。每轮经 nEr 创建全新原生根，AsyncLocalStorage/yLs 绑定作用域，再调用 t_；同 sessionId 也不能复用上一轮账本、请求日志及取消状态。
 - 请求只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。
@@ -70,6 +71,7 @@
 ```
 
 - 错误用法：只收到 completed 就重用进程，或把分发文件 SHA 写作内存执行体 SHA。正确做法是等待 idle，并分别登记外层与执行体、核对实际执行体身份。
+- 正常入口：主会话与子代理均使用 cc_entrypoint=cli，但保持各自 requestClass 和 agentContext；入口标识一致不代表把子代理改为主会话。
 
 ### 6. Tests Required
 
@@ -77,6 +79,7 @@
 - tests/unit/profile.test.ts：错误二进制不执行、不回退。
 - tests/unit/engine.test.ts、worker-protocol.test.ts：同 PID 与哈希次数、文件替换、错归属/载荷覆盖、双终态/缺 idle、迟到帧、取消、背压和关闭；错误作业不得重放。
 - tests/native/native.test.ts：无外网 TLS 上游独立核对 CCH、metadata/session/prompt、六类请求、thinking/工具历史、非流式、HTTP/SSE 错误及取消后下一请求；实际模型发送次数必须符合 attempt=1。
+- 同一原生套件分别核对原版与精简版的 User-Agent 包含 (external, cli, client-app/cc-runtime-bridge)，billing 包含 cc_entrypoint=cli；最终 CCH 继续由实际 TLS 接收正文独立验证，不用标签替换或日志投影代替原生生成。
 - 原版与登记轻量文件运行同一原生套件，核对同 session 多轮、Unicode、空闲及流中崩溃后的重建。独立部署须隐藏原版/源码/构建目录后仍能运行；重复生成核对分发及执行体 SHA256。
 - scripts/benchmark-runtime.ts 固定并校验 vm2api 标杆，交错五个新进程、每进程六轮；直接采样总启动到首轮、就绪后首轮及暖复用中位数，均须 ≤标杆 1.10 倍。完整必需部署文件总量 ≤27933052 B；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。
 - 原生验证仅使用专用 HOME、合成凭据和 unshare 网络命名空间；不能因测试失败切换真实账号。

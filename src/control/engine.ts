@@ -205,7 +205,7 @@ export class NativeEngine implements Engine {
       const id = randomUUID();
       const env: Record<string, string> = {
         HOME: config.home!, CLAUDE_CONFIG_DIR: config.configDir!, PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8',
-        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'sdk-cli', CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge',
+        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge',
         CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
         DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
       };

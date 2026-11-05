@@ -135,6 +135,7 @@ native('官方 293 的无外网回环链路', () => {
     expect(JSON.stringify(decoded)).toBe(raw);
     const billing = (decoded.system as { text: string }[]).find(block => block.text?.startsWith('x-anthropic-billing-header:'));
     expect(billing).toBeDefined();
+    expect(billing!.text).toContain('cc_entrypoint=cli;');
     const cch = /cch=([0-9a-f]{5})/.exec(billing!.text)?.[1];
     expect(cch).not.toBe('00000');
     billing!.text = billing!.text.replace(/cch=[0-9a-f]{5}/, 'cch=00000');
@@ -167,6 +168,7 @@ native('官方 293 的无外网回环链路', () => {
     expect(JSON.stringify(request.body.metadata)).toContain(session);
     expect(request.raw).toContain('cc_prompt_id=' + prompt + ';');
     expect(headers.get('user-agent')).toContain('2.1.293');
+    expect(headers.get('user-agent')).toContain('(external, cli, client-app/cc-runtime-bridge)');
     expect(request.body.messages).toMatchObject([{ role: 'user', content: [{ type: 'text', text: '原生主请求' }] }]);
     assertCch(request.raw);
     await app.store.flush();
