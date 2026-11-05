@@ -34,25 +34,27 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 | --- | --- |
 | model | 必填；由实际官方构造器处理 |
 | messages | 必填；user / assistant，文本或内容块数组 |
-| system | 业务文本，或仅含 type/text 的文本块 |
-| tools | API schema 通过原生 extraToolSchemas 输入；不注册本地执行器 |
+| system | 省略使用 CLI 默认正文；显式文本或仅含 type/text 的文本块完整替换正文，对应 --system-prompt；空文本与空数组同样是替换 |
+| tools | 省略或 [] 均无工具；非空数组为完整列表，不加入 CC 内置、延迟或搜索工具；schema 经原生 extraToolSchemas 输入 |
 | tool_choice | 由原生工具选择参数表达，发送前校验保留 |
 | max_tokens、temperature | 映射原生输出预算和温度参数，发送前校验 |
 | thinking | disabled、enabled、adaptive；enabled 需要不小于 1024 的 budget_tokens |
 | output_config | effort、format；模型或原生能力不能表达时返回 422 |
 | stream | true 返回原始 SSE；false 或省略返回原始 JSON |
 
-工具调用、工具结果、thinking 及签名等历史通过内部消息实体输入。发送前对显式字段做保留检查；文本字符串与等价文本块按相同语义比较，原生添加的缓存等字段允许保留。会被合并、删除或改变含义的历史明确拒绝，不宣称完整兼容任意 Messages 历史。
+工具调用、工具结果、thinking 及签名等历史通过内部消息实体输入。发送前对显式字段做保留检查；文本字符串与等价文本块按相同语义比较，原生添加的缓存等字段允许保留。业务内容、角色或内容块顺序无法保留时明确拒绝，不宣称完整兼容任意 Messages 历史。
+
+普通主请求使用固定 293 交互终端 CLI 的原生身份、提示词、权限、环境和技能等提醒，工具仅来自调用方显式列表；默认正文及提醒根据实际工具集生成。业务 system 替换默认正文，身份及 billing 仍由原生链路装配。原生补充消息逐项关联，不能以忽略全部 system-reminder 代替业务保留校验。自定义工具 schema 是桥接的结构化接口能力，不表示终端 --tools 接受任意 schema。
 
 已封口的 x-anthropic-billing-header system 前缀、显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未知合法端到端请求头采用默认保留策略。
 
-原生默认参数与所选模型相关。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。调用方应按实际需要明确选择受支持参数。
+省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。调用方应按实际需要明确选择受支持参数。
 
 ## 上下文
 
 支持 main、subagent、workflow、compaction、auxiliary、side_reply。requestClass 可由 context 或相应 x-claude-code-* 头提供，两处冲突时拒绝。
 
-- 无分类或 agent 身份时生成普通主上下文，source 标明 bridge-default。
+- 无分类或 agent 身份时生成普通主上下文，querySource=repl_main_thread，source 标明 bridge-default；普通用户输入采用 human 来源，纯工具结果不伪装为新的人类输入。
 - 显式 agentKind=main 可提供 root agentId；单独提供 agentId 默认按子代理处理。
 - 子代理需要 agentId，workflow 还需要 workflowRunId；父 agent、agent 类型、session 和 prompt 一起传给原生链路。
 - agentKind 支持 main、subagent、teammate；类别与身份冲突返回错误。
@@ -61,11 +63,15 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 账号工作进程惰性启动、串行常驻，每轮建立独立原生会话根并以 session transition 恢复指定会话身份。正常完成后复用进程，取消或异常后隔离重建；不重放当前请求。它保留请求关联，不在本地维护可执行的用户代理循环。原版和精简版的构建与身份合同见 [运行时说明](runtime.md)。
 
+子代理指定已加载的原生 agentType 且省略 system 时，使用其官方定义；未知类型需提供业务 system。未提供 agentType 时保留调用方上下文，使用通用 CLI 正文，不猜测自定义代理定义。workflow、compaction、auxiliary、side_reply 保留原生类别和父子关联；该分类不会自动创建终端中的工作流、压缩任务、标题或其它辅助推理。输出风格产生无法与已解析主来源一致的配置时，在发送前拒绝。
+
 ## 响应与取消
 
 HTTP 状态、合法端到端响应头及响应逻辑字节原样返回。content-length、content-encoding、连接级字段与 set-cookie 不沿用，以适配原生 Response 可能已解压的内容。
 
 响应附加 x-ccrb-request-id 和 x-ccrb-engine。工具调用事件直接返回，不执行调用方工具。禁用模型隐式重试，每个日志记录仅有 attempt=1。
+
+调用方显式声明的工具也仅参与请求构造，tool_use 仍交给调用方处理；即使上游返回声明外的 Bash，桥接也不在本机执行命令、文件操作或技能，不启动后续代理轮次。本地初始化只构造参数、不发送；业务请求在同一 SDK 的 fetchOverride 中校验后由 Ree 唯一发送，响应由桥接独占，读取收口后取消原生解析。
 
 客户端断开、请求预算耗尽和服务关闭会取消当前作业并解除背压。HTTP 头发出后直接结束逻辑流，不拼接新事件；SSE 调用方须检查 message_stop，不能以 HTTP 200 判定完整完成。日志将 HTTP 错误、流内错误、缺失终态、本地错误和取消分开记录。
 
@@ -91,6 +97,8 @@ Bun 读取本机 .env；该文件已被 Git 忽略。参考仓库 .env.example�
 | CCRB_TIMEOUT_MS | 包含排队的请求预算 90000，允许 1000–600000 |
 
 真实 OAuth、账号刷新及生产请求仍需独立验收。本项目不会读取现有 cc2api 配置来自动接管账号。
+
+显式配置的 API key 按 CLI 原生规则在专用配置中记录本地使用确认，仅保存官方标识，不保存完整密钥。专用配置中已拒绝的密钥会失败，不覆盖原决定；该操作不登录或刷新账号。
 
 ## 只读查询
 

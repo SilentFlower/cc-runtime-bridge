@@ -28,4 +28,10 @@ describe('持久日志的脱敏与字节边界', () => {
     expect(redactor.text('连接失败：proxy-password')).not.toContain('proxy-password');
     expect(redactor.text('HTTP://proxy:other-password@example.invalid')).toBe('HTTP://[REDACTED]@example.invalid');
   });
+  test('长正文内的不同协议凭据全部脱敏，保留无凭据 URL 和业务文本', () => {
+    const redactor = new Redactor();
+    const prefix = '普通说明 abcdefghijklmnopqrstuvwxyz '.repeat(3000);
+    const value = prefix + ' https://public.invalid/a socks5://user:first-secret@proxy.invalid HTTP://other:second-secret@other.invalid custom+scheme://name:third-secret@host.invalid';
+    expect(redactor.text(value)).toBe(prefix + ' https://public.invalid/a socks5://[REDACTED]@proxy.invalid HTTP://[REDACTED]@other.invalid custom+scheme://[REDACTED]@host.invalid');
+  });
 });

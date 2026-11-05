@@ -11,7 +11,10 @@ function headerPairs(value: unknown): value is HeaderPair[] {
  * @return 经过边界验证的事件。
  */
 export function decodeRuntimeEvent(line: string, requestId: string): RuntimeEvent {
-  const value: unknown = JSON.parse(line);
+  return validateRuntimeEvent(JSON.parse(line), requestId);
+}
+
+function validateRuntimeEvent(value: unknown, requestId: string): RuntimeEvent {
   if (!isObject(value) || value.schema_version !== 1 || value.request_id !== requestId || typeof value.type !== 'string') throw new BridgeError('runtime_protocol', '运行时消息与请求不匹配', 502);
   let valid = false;
   switch (value.type) {
@@ -70,13 +73,18 @@ export function decodeWorkerCommand(value: unknown, workerId: string): WorkerCom
 export function decodeWorkerFrame(line: string, workerId: string): WorkerFrame {
   const value: unknown = JSON.parse(line);
   if (!isObject(value) || value.schema_version !== 2 || value.worker_id !== workerId) throw new BridgeError('runtime_protocol', '工作进程事件归属不匹配', 502);
+  if (value.type === 'worker_error') {
+    if (value.code !== 'native_configuration' || value.status !== 503 || typeof value.error !== 'string' || !value.error.trim() || Buffer.byteLength(value.error) > 2048 || Object.keys(value).some(key => !['type', 'schema_version', 'worker_id', 'code', 'status', 'error'].includes(key))) throw new BridgeError('runtime_protocol', '工作进程初始化错误帧格式错误', 502);
+    return value as unknown as WorkerFrame;
+  }
   if (value.type === 'worker_ready' && typeof value.version === 'string' && Number.isSafeInteger(value.pid) && Number(value.pid) > 0) return value as unknown as WorkerFrame;
   if (typeof value.request_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.request_id)) throw new BridgeError('runtime_protocol', '工作进程事件缺少有效请求归属', 502);
   if (value.type === 'worker_idle') return value as unknown as WorkerFrame;
   if (value.type === 'request_event' && isObject(value.payload)) {
     const payload = value.payload;
     if (['schema_version', 'request_id', 'worker_id'].some(key => key in payload)) throw new BridgeError('runtime_protocol', '请求载荷不能覆盖协议归属', 502);
-    decodeRuntimeEvent(JSON.stringify({ ...payload, schema_version: 1, request_id: value.request_id }), value.request_id);
+    // 同一 JSONL 已经解析；直接校验对象，避免完整 CLI 正文再次编码和解析。
+    validateRuntimeEvent({ ...payload, schema_version: 1, request_id: value.request_id }, value.request_id);
     if (payload.type === 'ready') throw new BridgeError('runtime_protocol', '请求事件不能替代工作进程握手', 502);
     return value as unknown as WorkerFrame;
   }

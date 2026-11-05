@@ -43,6 +43,7 @@
 - 类别、agent 类型、agent ID、父 agent ID、会话及 billing 子代理标记作为一组处理。
 - 如需映射标识，须稳定映射整个关联链；不默认重铸全部标识。
 - 普通 API 无来源分类时，可以建立桥接器自己的普通主调用上下文，日志标明来自默认值。
+- 普通主来源为 repl_main_thread，human 只用于实际主会话用户输入；工具结果、代理和辅助消息不借用 human 来源。
 - 当前版本不能表达的显式上下文明确拒绝，不靠改名掩盖。
 
 子代理须提供 agentId，workflow 还须提供 workflowRunId。promptId 必须为 UUID；不提供时由桥接器生成。独立 root agentId 通过 context.agentKind=main 明示。main 与显式子代理上下文冲突时返回错误，不能猜测调用身份。
@@ -54,6 +55,8 @@ anthropic-version 必须与原生值一致；anthropic-beta 只能要求本次�
 请求头黑名单不决定哪些 JSON 字段可以丢弃。正文逐字段适配，无法支持的显式参数明确报告。
 
 293 的 JS 参数可能仍含 cch=00000，原生链路会继续处理。此前的参数不能冒充最终正文，实际长度与编码由最终发送链路决定。
+
+User-Agent 由原生 CLI 生成，不主动附加 SDK client-app。CLI 的交互请求构造与 -p 打印模式有不同提示词和上下文；仅出现 cc_entrypoint=cli 不能证明内容对齐。本机 TLS 接收端的 wire_final 样本与 cc_prepared、生产自动采集能力分别记录，历史样本保留原值。
 
 ## 规范依据
 

@@ -29,7 +29,7 @@ interface Sample {
   ready_ms: number;
   startup_to_first_complete_ms: number;
   ready_to_first_complete_ms: number;
-  jobs: { elapsed_ms: number; upstream_requests: number; response_bytes: number }[];
+  jobs: { elapsed_ms: number; upstream_requests: number; response_bytes: number; outbound_json_bytes: number; system_json_bytes: number; declared_tools: number | null }[];
   rss_ready: number;
   rss_after: number;
   rss_peak: number;
@@ -59,7 +59,7 @@ async function memory(pid: number): Promise<{ rss: number; peak: number }> {
   return { rss: Number(/^VmRSS:\s+(\d+)/m.exec(status)?.[1] ?? 0) * 1024, peak: Number(/^VmHWM:\s+(\d+)/m.exec(status)?.[1] ?? 0) * 1024 };
 }
 
-async function* readFrames(stream: ReadableStream<Uint8Array>): AsyncGenerator<{ at: number; frame: Record<string, unknown> }> {
+async function* readFrames(stream: ReadableStream<Uint8Array>, decode?: (line: string) => unknown): AsyncGenerator<{ at: number; frame: Record<string, unknown> }> {
   const reader = stream.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
   let pending = '';
@@ -72,7 +72,7 @@ async function* readFrames(stream: ReadableStream<Uint8Array>): AsyncGenerator<{
       let index: number;
       while ((index = pending.indexOf('\n')) >= 0) {
         const line = pending.slice(0, index); pending = pending.slice(index + 1);
-        const frame: unknown = JSON.parse(line);
+        const frame: unknown = decode ? decode(line) : JSON.parse(line);
         if (!isObject(frame) || typeof frame.type !== 'string') throw new Error('性能协议帧格式错误');
         yield { at: performance.now(), frame };
       }
@@ -137,7 +137,7 @@ export async function benchmarkRuntime(args: string[]): Promise<void> {
         await writeFile(join(config, '.claude.json'), JSON.stringify({ userID: 'a'.repeat(64) }));
         const initialDisk = await disk(home);
         const workerId = randomUUID();
-        const env = { HOME: home, CLAUDE_CONFIG_DIR: config, PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG: 'C.UTF-8', ANTHROPIC_API_KEY: 'offline-fixture-key', ANTHROPIC_BASE_URL: 'http://127.0.0.1:' + upstream.port, NO_PROXY: '127.0.0.1,localhost', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', CLAUDE_CODE_NATIVE_SLOTS: '20', CCRB_WORKER_ID: workerId, CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge', CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1' };
+        const env = { HOME: home, CLAUDE_CONFIG_DIR: config, PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG: 'C.UTF-8', ANTHROPIC_API_KEY: 'offline-fixture-key', ANTHROPIC_BASE_URL: 'http://127.0.0.1:' + upstream.port, NO_PROXY: '127.0.0.1,localhost', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_AUTOUPDATER: '1', DISABLE_AUTO_COMPACT: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', CLAUDE_CODE_NATIVE_SLOTS: '20', CCRB_WORKER_ID: workerId, CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1' };
         const requests = Array.from({ length: 6 }, (_, index) => {
           const id = 'bench-' + trial + '-' + index;
           return variant === 'compact' ? { type: 'request_start', schema_version: 2, worker_id: workerId, request_id: id, prepared: prepareInput(parseInput({ request_id: id, body: input })) } : { type: 'job_start', job_id: id, slot_id: '', request: input };
@@ -145,7 +145,7 @@ export async function benchmarkRuntime(args: string[]): Promise<void> {
         const started = performance.now();
         const child = Bun.spawn([variant === 'compact' ? binary : reference], { env, cwd: home, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
         const diagnostics = (async () => { const reader = child.stderr.getReader(); while (!(await reader.read()).done) {} })();
-        const iterator = readFrames(child.stdout);
+        const iterator = readFrames(child.stdout, variant === 'compact' ? line => decodeWorkerFrame(line, workerId) : undefined);
         let peak = 0;
         const poll = setInterval(() => { void memory(child.pid).then(value => { peak = Math.max(peak, value.peak); }).catch(() => {}); }, 10);
         try {
@@ -155,6 +155,7 @@ export async function benchmarkRuntime(args: string[]): Promise<void> {
           while (!readyAt) {
             const { at, frame } = await nextFrame(iterator);
             if (variant === 'compact') {
+              if (frame.type === 'worker_error') throw new Error('精简运行时配置失败：' + String(frame.error));
               if (frame.type !== 'worker_ready' || frame.worker_id !== workerId || frame.pid !== child.pid || frame.version !== '2.1.293') throw new Error('精简运行时握手不匹配');
               readyAt = at;
             } else {
@@ -183,7 +184,6 @@ export async function benchmarkRuntime(args: string[]): Promise<void> {
             while (!completedAt) {
               const { at, frame } = await nextFrame(iterator);
               if (variant === 'compact') {
-                decodeWorkerFrame(JSON.stringify(frame), workerId);
                 if (frame.worker_id !== workerId || frame.request_id !== 'bench-' + trial + '-' + index) throw new Error('精简性能事件跨请求');
                 if (frame.type === 'request_event') {
                   const payload = frame.payload;
@@ -217,7 +217,8 @@ export async function benchmarkRuntime(args: string[]): Promise<void> {
             if (observed.length - before !== 1) throw new Error('性能请求出现重放或漏发');
             const actual = observed.at(-1)!;
             if (actual.model !== input.model || actual.max_tokens !== input.max_tokens || actual.stream !== true || !JSON.stringify(actual.messages).includes('Print integers.')) throw new Error('性能请求输入语义不同');
-            jobs.push({ elapsed_ms: completedAt - sent, upstream_requests: observed.length - before, response_bytes: variant === 'compact' ? responseBytes : Buffer.byteLength(responseBody) });
+            jobs.push({ elapsed_ms: completedAt - sent, upstream_requests: observed.length - before, response_bytes: variant === 'compact' ? responseBytes : Buffer.byteLength(responseBody),
+              outbound_json_bytes: Buffer.byteLength(JSON.stringify(actual)), system_json_bytes: Buffer.byteLength(JSON.stringify(actual.system ?? null)), declared_tools: Array.isArray(actual.tools) ? actual.tools.length : null });
             if (!index) firstAt = completedAt;
             await Bun.sleep(10);
           }

@@ -92,7 +92,7 @@ export class RequestTrace {
     if (event.type === 'cc_prepared') {
       this.sentAt = performance.now();
       this.redactor.register(event.headers);
-      this.capture('cc_prepared', event.body, event.headers, this.options.engine.startsWith('demo') ? 'demo_fixture' : 'claude_code_293_sdk', 'json_before_native_transport');
+      this.capture('cc_prepared', event.body, event.headers, this.options.engine.startsWith('demo') ? 'demo_fixture' : 'claude_code_293_cli_prepared', 'json_before_native_transport');
       const captured = this.captures.get('cc_prepared')!;
       captured.observedBytes = event.body_bytes;
       captured.sha256 = event.body_sha256;

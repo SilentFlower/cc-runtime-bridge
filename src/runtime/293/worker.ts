@@ -4,13 +4,33 @@ import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import type { RuntimePayload, WorkerFrame } from '../../shared/contracts';
 import { decodeWorkerCommand } from '../../shared/protocol';
-import { BridgeError, errorText } from '../../shared/errors';
+import { BridgeError, errorText, isObject } from '../../shared/errors';
 import { Redactor } from '../../control/redaction';
 import { prepareInput } from '../../control/header-policy';
 import { parseInput } from '../../shared/input';
 import type { NativeBindings, NativeSession } from './native';
-import { PROFILE_293 } from './source-profile';
+import { NATIVE_EXPORTS_293, PROFILE_293 } from './source-profile';
 import { generateNativeRequest, runNativeJob } from './job';
+import { initializeCli } from './cli';
+
+const WORKER_ID = /^[a-f0-9-]{36}$/;
+
+/** 在握手前报告受控配置失败，等待管道写入后才允许入口退出。
+ * @param error 原生初始化异常；未知异常使用通用说明。
+ * @return 错误帧已交给控制层，或管道不可用时仅写固定诊断。
+ */
+export async function reportStartupFailure(error: unknown): Promise<void> {
+  const workerId = process.env.CCRB_WORKER_ID;
+  const redactor = new Redactor();
+  redactor.register({ apiKey: process.env.ANTHROPIC_API_KEY, oauthToken: process.env.CLAUDE_CODE_OAUTH_TOKEN, proxyUrl: process.env.HTTPS_PROXY });
+  const message = error instanceof BridgeError && error.code === 'native_configuration' && error.status === 503 ? error.message : '固定运行时初始化失败';
+  try {
+    if (!workerId || !WORKER_ID.test(workerId)) throw new Error('缺少工作进程归属');
+    const frame: WorkerFrame = { type: 'worker_error', schema_version: 2, worker_id: workerId, code: 'native_configuration', status: 503, error: redactor.preview(message, 2048).text || '固定运行时初始化失败' };
+    // stdout.write 返回值只表示背压；退出前还必须等待写入回调，避免丢失短错误帧。
+    await new Promise<void>((resolve, reject) => process.stdout.write(JSON.stringify(frame) + '\n', error => error ? reject(error) : resolve()));
+  } catch { process.stderr.write('固定运行时初始化失败\n'); }
+}
 
 /** 在固定账号环境中启动串行常驻循环。
  * @param bindings 来自固定源程序的原生绑定。
@@ -18,10 +38,17 @@ import { generateNativeRequest, runNativeJob } from './job';
  */
 export async function startWorker(bindings: NativeBindings): Promise<void> {
   const workerId = process.env.CCRB_WORKER_ID;
-  if (!workerId || !/^[a-f0-9-]{36}$/.test(workerId)) throw new Error('缺少工作进程归属');
-  const functions = [bindings.core.Re, bindings.core.Kc, bindings.core.K_t, bindings.api.yN, bindings.api.Ree, bindings.context.Nst, bindings.state.F, bindings.state.nEr, bindings.state.yLs, bindings.state.t_, bindings.permissions.su];
-  if (functions.some(value => typeof value !== 'function')) throw new Error('固定版本的内部接口不匹配');
-  await bindings.context.Nst();
+  if (!workerId || !WORKER_ID.test(workerId)) throw new Error('缺少工作进程归属');
+  for (const [role, names] of Object.entries(NATIVE_EXPORTS_293)) {
+    const module = bindings[role as keyof NativeBindings] as unknown as Record<string, unknown>;
+    for (const name of names) {
+      const value = module?.[name];
+      if (role === 'cliFiles' && name === 'dC' && Number.isSafeInteger(value) && Number(value) > 0) continue;
+      if (role === 'cliTools' && name === 'Bq' && isObject(value) && ['getAllBaseTools', 'getTools', 'assembleToolPool'].every(key => typeof value[key] === 'function')) continue;
+      if (typeof value !== 'function') throw new Error('固定版本的内部接口不匹配');
+    }
+  }
+  await initializeCli(bindings);
   const base = bindings.state.F();
   const storage = new AsyncLocalStorage<{ session: NativeSession }>();
   bindings.state.yLs(() => storage.getStore());
@@ -31,7 +58,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
   const session = bindings.state.nEr({ host: base.host, id: bootstrap.context.sessionId, project: base.project });
   await storage.run({ session }, async () => {
     bindings.state.t_(bootstrap.context.sessionId, 'resume');
-    await generateNativeRequest(bootstrap, bindings.core, bindings.permissions, new AbortController().signal);
+    await generateNativeRequest(bootstrap, bindings, new AbortController().signal);
   });
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
   let current: { id: string; abort: AbortController; finished: Promise<void> } | null = null;

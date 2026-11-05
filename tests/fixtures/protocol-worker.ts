@@ -11,8 +11,13 @@ export async function fixtureWorker(scenario: string): Promise<void> {
   const frame = (type: string, fields: Record<string, unknown> = {}): void => { process.stdout.write(JSON.stringify({ schema_version: 2, worker_id: id, type, ...fields }) + '\n'); };
   if (scenario === 'startup_exit') process.exit(17);
   if (scenario === 'startup_wait') await Bun.sleep(10000);
+  if (scenario === 'startup_error' || scenario === 'startup_error_wrong_worker') {
+    await new Promise<void>((resolve, reject) => process.stdout.write(JSON.stringify({ schema_version: 2, worker_id: scenario === 'startup_error' ? id : 'other-worker', type: 'worker_error', code: 'native_configuration', status: 503, error: '专用 CLI 配置已拒绝当前显式密钥' }) + '\n', error => error ? reject(error) : resolve()));
+    process.exit(111);
+  }
   frame('worker_ready', { version: '2.1.293', pid: process.pid });
   if (scenario === 'duplicate_ready') frame('worker_ready', { version: '2.1.293', pid: process.pid });
+  if (scenario === 'startup_error_after_ready') frame('worker_error', { code: 'native_configuration', status: 503, error: '不应在握手后接纳' });
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
   await new Promise<void>(resolve => {
     input.on('close', resolve);

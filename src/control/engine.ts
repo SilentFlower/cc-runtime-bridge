@@ -151,6 +151,10 @@ export class NativeEngine implements Engine {
           pending = pending.slice(index + 1);
           if (!line) throw new BridgeError('runtime_protocol', '工作进程返回空帧', 502);
           const frame = decodeWorkerFrame(line, worker.id);
+          if (frame.type === 'worker_error') {
+            if (worker.initialized || worker.current) throw new BridgeError('runtime_protocol', '初始化错误帧只能在握手前返回', 502);
+            throw new BridgeError(frame.code, frame.error, frame.status);
+          }
           if (frame.type === 'worker_ready') {
             if (worker.initialized || frame.version !== PROFILE_293.version || frame.pid !== worker.child.pid) throw new BridgeError('runtime_protocol', '工作进程握手不匹配或重复', 502);
             await Promise.race([verifyExecutionImage(worker.child.pid, worker.verified.identity), worker.stopped.promise]);
@@ -185,6 +189,7 @@ export class NativeEngine implements Engine {
         }
       }
       decoder.decode();
+      if (!worker.initialized && !pending) throw new BridgeError('native_configuration', '固定运行时在初始化完成前退出', 503);
       throw new BridgeError('runtime_exit', pending ? '工作进程退出时存在截断帧' : '工作进程在关闭前退出', 502);
     } catch (error) { this.fail(worker, error); }
     finally {
@@ -205,7 +210,7 @@ export class NativeEngine implements Engine {
       const id = randomUUID();
       const env: Record<string, string> = {
         HOME: config.home!, CLAUDE_CONFIG_DIR: config.configDir!, PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8',
-        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_AGENT_SDK_CLIENT_APP: 'cc-runtime-bridge',
+        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'cli', DISABLE_AUTO_COMPACT: '1',
         CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
         DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
       };

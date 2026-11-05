@@ -1,4 +1,4 @@
-/** 已通过最终回归的精简产物身份；外部 manifest 不能自行添加授信。 */
+/** 固定登记的精简产物身份；CLI 候选须完成任务验收，外部 manifest 不能自行添加授信。 */
 export const COMPACT_RUNTIMES: readonly { launcherSha256: string; imageSha256: string; imageBytes: number }[] = [
-  { launcherSha256: '6b80ce8a3f79d199c1d267f7853354c02c72030b8e8daef90acddbbada40e321', imageSha256: '89e8a66e29a28011fb08d1a20a1d2587bbbe5cf380a8079615e5f363ca152842', imageBytes: 107220152 },
+  { launcherSha256: 'ae4fd1da7ccdb05aa205539fa998a51ded52a739c75992f5835d596573052ac2', imageSha256: 'd73e858911efbeb78642f0575722c9e6618699107432f3f7902345cbfea60e85', imageBytes: 112778424 },
 ];

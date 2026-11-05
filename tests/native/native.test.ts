@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
@@ -8,6 +8,8 @@ import type { Duplex } from 'node:stream';
 import { readConfig, startServer, type RunningServer } from '../../src/control/server';
 import type { HeaderPair } from '../../src/shared/contracts';
 import { createEngine, type Engine } from '../../src/control/engine';
+import { prepareInput } from '../../src/control/header-policy';
+import { parseInput } from '../../src/shared/input';
 
 const isolated = process.env.CCRB_NATIVE_ISOLATED === '1';
 const native = isolated ? describe : describe.skip;
@@ -18,7 +20,7 @@ native('官方 293 的无外网回环链路', () => {
   let upstream: Bun.Server<undefined>;
   let proxy: ReturnType<typeof createServer>;
   let base: string;
-  let mode: 'normal' | 'tool' | 'http_error' | 'sse_error' | 'incomplete' | 'slow' = 'normal';
+  let mode: 'normal' | 'tool' | 'local_tool' | 'http_error' | 'network_error' | 'sse_error' | 'incomplete' | 'slow' = 'normal';
   const requests: { raw: string; body: Record<string, unknown>; headers: HeaderPair[] }[] = [];
   const sockets = new Set<Duplex>();
   const upstreamSecret = 'ccrb-upstream-secret-canary';
@@ -26,6 +28,7 @@ native('官方 293 的无外网回环链路', () => {
   let nativeEngine: Engine;
   let setupMs = 0;
   const timings: { previousPid: number | null; pid: number | null; completeMs: number }[] = [];
+  const cases: { index: number; body: Record<string, unknown>; context: Record<string, unknown>; id: string }[] = [];
 
   beforeAll(async () => {
     if (Bun.spawnSync(['ip', 'link', 'set', 'lo', 'up']).exitCode !== 0) throw new Error('无法在独立网络空间启用回环接口');
@@ -66,14 +69,15 @@ native('官方 293 的无外网回环链路', () => {
           expectedResponse = JSON.stringify(message);
           return new Response(expectedResponse, { headers: { 'content-type': 'application/json', 'request-id': 'req_native_fixture', 'x-upstream-extension': 'preserved' } });
         }
+        const tool = mode === 'tool' || mode === 'local_tool';
         const events: Record<string, unknown>[] = [
           { type: 'message_start', message: { ...message, content: [], stop_reason: null } },
-          { type: 'content_block_start', index: 0, content_block: mode === 'tool' ? { type: 'tool_use', id: 'toolu_returned', name: 'lookup_status', input: {} } : { type: 'text', text: '' } },
-          { type: 'content_block_delta', index: 0, delta: mode === 'tool' ? { type: 'input_json_delta', partial_json: '{"project":"beta"}' } : { type: 'text_delta', text: '真实原生发送的离线响应' } },
+          { type: 'content_block_start', index: 0, content_block: tool ? { type: 'tool_use', id: 'toolu_returned', name: mode === 'local_tool' ? 'Bash' : 'lookup_status', input: {} } : { type: 'text', text: '' } },
+          { type: 'content_block_delta', index: 0, delta: tool ? { type: 'input_json_delta', partial_json: mode === 'local_tool' ? JSON.stringify({ command: 'touch ' + join(root, 'must-not-execute') }) : '{"project":"beta"}' } : { type: 'text_delta', text: '真实原生发送的离线响应' } },
           { type: 'content_block_stop', index: 0 },
         ];
         if (mode === 'sse_error') events.push({ type: 'error', error: { type: 'overloaded_error', message: 'fixture error' } });
-        else if (mode !== 'incomplete') events.push({ type: 'message_delta', delta: { stop_reason: mode === 'tool' ? 'tool_use' : 'end_turn' }, usage: message.usage }, { type: 'message_stop' });
+        else if (mode !== 'incomplete') events.push({ type: 'message_delta', delta: { stop_reason: tool ? 'tool_use' : 'end_turn' }, usage: message.usage }, { type: 'message_stop' });
         expectedResponse = events.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join('');
         return new Response(expectedResponse, { headers: { 'content-type': 'text/event-stream', 'request-id': 'req_native_fixture', 'x-upstream-extension': 'preserved' } });
       },
@@ -81,6 +85,7 @@ native('官方 293 的无外网回环链路', () => {
     proxy = createServer();
     proxy.on('connect', (request, socket, head) => {
       if (request.url !== 'api.anthropic.com:443') { socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'); return; }
+      if (mode === 'network_error') { socket.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'); return; }
       sockets.add(socket); socket.on('close', () => sockets.delete(socket));
       const target = connect(upstream.port!, '127.0.0.1', () => {
         socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
@@ -110,6 +115,17 @@ native('官方 293 的无外网回环链路', () => {
   }, 30000);
 
   afterAll(async () => {
+    // 只在显式指定的证据目录留存真实 TLS 观测；测试 HOME 仍会清理，完整原生提示词不进入 Git。
+    const captures = process.env.CCRB_NATIVE_CAPTURE_DIR;
+    if (captures && app) {
+      await app.store.flush();
+      const details = await Promise.all(cases.map(value => app.store.detail(value.id)));
+      await mkdir(captures, { recursive: true });
+      await writeFile(join(captures, 'requests.json'), JSON.stringify({ source: 'isolated_local_tls', real_upstream_requests: 0, binary_sha256: nativeEngine.binarySha256, cases,
+        requests: requests.map(request => ({ ...request, headers: request.headers.map(([name, value]) => [name, /authorization|api[-_]?key|cookie|token/i.test(name) ? '[REDACTED]' : value]) })),
+        details,
+      }, null, 2));
+    }
     if (app) await app.close();
     for (const socket of sockets) socket.destroy();
     if (proxy) await new Promise<void>(resolve => proxy.close(() => resolve()));
@@ -123,9 +139,10 @@ native('官方 293 的无外网回环链路', () => {
   });
 
   async function send(body: Record<string, unknown>, context: Record<string, unknown> = {}, headers: HeaderPair[] = []): Promise<{ response: Response; raw: string; id: string }> {
-    const started = performance.now(), previousPid = nativeEngine.workerPid;
+    const started = performance.now(), previousPid = nativeEngine.workerPid, index = requests.length;
     const response = await fetch(base + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body, context, headers }) });
     const raw = await response.text();
+    cases.push({ index, body, context, id: response.headers.get('x-ccrb-request-id')! });
     timings.push({ previousPid, pid: nativeEngine.workerPid, completeMs: performance.now() - started });
     return { response, raw, id: response.headers.get('x-ccrb-request-id')! };
   }
@@ -149,6 +166,37 @@ native('官方 293 的无外网回环链路', () => {
     expect(cch).toBe(expected);
   }
 
+  test('显式密钥已被专用 CLI 配置拒绝时保留 503 说明，重复请求不发送或改写决定', async () => {
+    const dedicated = join(root, 'rejected-key');
+    await mkdir(join(dedicated, 'home'), { recursive: true });
+    await mkdir(join(dedicated, 'config'));
+    const key = 'ccrb-rejected-key-canary';
+    const marker = key.trim().slice(-20);
+    const configuration = { userID: 'b'.repeat(64), customApiKeyResponses: { approved: [], rejected: [marker] } };
+    const path = join(dedicated, 'config', '.claude.json');
+    await writeFile(path, JSON.stringify(configuration));
+    const config = readConfig({ CCRB_PORT: '0', CCRB_DATA_DIR: join(dedicated, 'data'), CCRB_CLAUDE_BINARY: process.env.CCRB_TEST_CLAUDE_BINARY ?? '/root/.nvm/versions/node/v22.23.4/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe', CCRB_CLAUDE_HOME: join(dedicated, 'home'), CCRB_CLAUDE_CONFIG_DIR: join(dedicated, 'config'), CCRB_NATIVE_API_KEY: key, CCRB_PROXY_URL: 'http://127.0.0.1:1', CCRB_TIMEOUT_MS: '15000' });
+    const engine = await createEngine(config.engine);
+    const rejected = await startServer(config, engine);
+    const count = requests.length;
+    try {
+      for (const id of ['rejected-first', 'rejected-next']) {
+        const response = await fetch('http://127.0.0.1:' + rejected.server.port + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request_id: id, body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '不应发送' }], stream: false } }) });
+        expect(response.status).toBe(503);
+        expect(await response.json()).toEqual({ type: 'error', request_id: id, error: { type: 'native_configuration', message: '专用 CLI 配置已拒绝当前显式密钥' } });
+        expect(engine.workerPid).toBeNull();
+        await rejected.store.flush();
+        const detail = await rejected.store.detail(id);
+        expect(detail?.request.state).toBe('error');
+        expect(detail?.captures.find(item => item.stage === 'cc_prepared')?.status).toBe('unavailable');
+        expect(JSON.stringify(detail)).not.toContain(key);
+      }
+      const saved = JSON.parse(await readFile(path, 'utf8'));
+      expect(saved.customApiKeyResponses).toEqual(configuration.customApiKeyResponses);
+      expect(requests.length).toBe(count);
+    } finally { await rejected.close(); }
+  }, 30000);
+
   test('主请求由真实 293 构造并发送，扩展头、关联和 CCH 均一致', async () => {
     mode = 'normal'; const count = requests.length;
     const prompt = '11111111-1111-4111-8111-111111111111';
@@ -168,8 +216,8 @@ native('官方 293 的无外网回环链路', () => {
     expect(JSON.stringify(request.body.metadata)).toContain(session);
     expect(request.raw).toContain('cc_prompt_id=' + prompt + ';');
     expect(headers.get('user-agent')).toContain('2.1.293');
-    expect(headers.get('user-agent')).toContain('(external, cli, client-app/cc-runtime-bridge)');
-    expect(request.body.messages).toMatchObject([{ role: 'user', content: [{ type: 'text', text: '原生主请求' }] }]);
+    expect(headers.get('user-agent')).toBe('claude-cli/2.1.293 (external, cli)');
+    expect(JSON.stringify(request.body.messages)).toContain('原生主请求');
     assertCch(request.raw);
     await app.store.flush();
     const detail = await fetch(base + '/api/logs/' + result.id).then(r => r.json());
@@ -181,6 +229,52 @@ native('官方 293 的无外网回环链路', () => {
     expect(prepared).toContain('cch=00000');
     expect(prepared.replace(/cch=00000/, /cch=([0-9a-f]{5})/.exec(request.raw)![0])).toBe(request.raw);
     expect(detail.captures.find((capture: { stage: string }) => capture.stage === 'wire_final').status).toBe('unavailable');
+  });
+
+  test('省略工具时不注入内置声明，CLI 提示词、human 来源及模型默认参数仍走原生装配', async () => {
+    mode = 'normal'; const count = requests.length;
+    const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '请检查这条离线样本的出站参数。' }], stream: true });
+    expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    const request = requests.at(-1)!;
+    const system = (request.body.system as { text: string }[]).map(block => block.text);
+    expect(system).toContain("You are Claude Code, Anthropic's official CLI for Claude.");
+    expect(system.join('\n')).not.toContain('You are a Claude agent, built on');
+    expect(system.join('\n')).toContain('cc_turn_origin=human;');
+    expect(system.join('\n')).toContain('cc_prompt_index=1; cc_turn_index=1;');
+    const tools = request.body.tools as { name: string }[];
+    expect(tools).toEqual([]);
+    expect(request.body).toMatchObject({ max_tokens: 32000, thinking: { type: 'adaptive', display: 'updates' }, output_config: { effort: 'high' }, context_management: { edits: [{ type: 'clear_thinking_20251015', keep: 'all' }] } });
+    const messages = JSON.stringify(request.body.messages);
+    expect(messages).not.toContain('schemas are NOT loaded'); expect(messages).toContain('Sonnet 4.6');
+    assertCch(request.raw);
+  });
+
+  test('同一进程交替省略、空工具与自定义列表，每轮只声明实际工具', async () => {
+    mode = 'normal'; let pid = nativeEngine.workerPid;
+    const custom = [{ name: 'lookup_status', description: '只查询合成状态', input_schema: { type: 'object', properties: { project: { type: 'string' } }, required: ['project'], additionalProperties: false } }];
+    for (const tools of [[], custom, undefined] as const) {
+      const count = requests.length;
+      const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '请检查这条离线样本的出站参数。' }], ...(tools !== undefined ? { tools } : {}), stream: true });
+      expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+      pid ??= nativeEngine.workerPid; expect(nativeEngine.workerPid).toBe(pid);
+      const request = requests.at(-1)!;
+      expect(request.body.tools).toEqual(tools ?? []);
+      expect(JSON.stringify(request.body.messages)).not.toContain('schemas are NOT loaded');
+      assertCch(request.raw);
+    }
+  });
+
+  test.each([{ system: '你是业务助手，请保留业务系统提示词。' }, { system: '' }, { system: [] }])('显式 system 完整替换 CLI 默认正文 %#', async ({ system }) => {
+    mode = 'normal'; const count = requests.length;
+    const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '请检查这条离线样本的出站参数。' }], system, stream: true });
+    expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    const request = requests.at(-1)!;
+    const texts = (request.body.system as { text: string }[]).map(block => block.text);
+    expect(texts).toContain("You are Claude Code, Anthropic's official CLI for Claude.");
+    if (typeof system === 'string' && system) expect(texts.slice(2)).toEqual([system]);
+    else expect(texts).toHaveLength(2);
+    expect(request.body.tools).toEqual([]);
+    assertCch(request.raw);
   });
 
   test('子代理保留父子头、prompt、billing 与工具历史，返回工具不在本地执行', async () => {
@@ -225,6 +319,18 @@ native('官方 293 的无外网回环链路', () => {
     expect(result.response.headers.get('content-type')).toContain('application/json');
     expect(requests.length - count).toBe(1);
     expect(requests.at(-1)!.body.stream).toBe(false);
+    assertCch(requests.at(-1)!.raw);
+  });
+
+  test.each([false, true])('有无显式 Bash 声明均只返回工具事件，不在本机执行或继续推理 %#', async explicit => {
+    mode = 'local_tool'; const count = requests.length;
+    const tools = [{ name: 'Bash', description: '仅返回给调用方的离线工具声明', input_schema: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] } }];
+    const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '仅观察工具事件的离线样本' }], ...(explicit ? { tools } : {}), max_tokens: 64, stream: true });
+    expect(result.response.status).toBe(200); expect(result.raw).toBe(expectedResponse);
+    expect(result.raw).toContain('Bash'); expect(result.raw).toContain('must-not-execute');
+    expect(requests.length - count).toBe(1);
+    expect(requests.at(-1)!.body.tools).toEqual(explicit ? tools : []);
+    expect(await Bun.file(join(root, 'must-not-execute')).exists()).toBe(false);
     assertCch(requests.at(-1)!.raw);
   });
 
@@ -276,6 +382,42 @@ native('官方 293 的无外网回环链路', () => {
     const detail = await fetch(base + '/api/logs/' + result.id).then(r => r.json());
     expect(detail.request.state).toBe('http_error');
     expect(JSON.stringify(detail)).not.toContain(upstreamSecret);
+  });
+
+  test('原生传输失败立即收口，下一请求重建且不重放失败作业', async () => {
+    const pid = nativeEngine.workerPid, count = requests.length;
+    // 先关闭空闲连接，确保这次经过拒绝 CONNECT 的本机夹具。
+    for (const socket of sockets) socket.destroy();
+    mode = 'network_error';
+    const started = performance.now();
+    const result = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '合成传输失败' }], stream: false });
+    expect(result.response.status).toBe(502); expect(performance.now() - started).toBeLessThan(5000);
+    expect(requests.length).toBe(count);
+    await app.store.flush();
+    expect((await app.store.detail(result.id))?.request.state).toBe('error');
+    mode = 'normal';
+    const next = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '传输失败后的下一轮' }], stream: false });
+    expect(next.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    expect(nativeEngine.workerPid).not.toBe(pid); assertCch(requests.at(-1)!.raw);
+  });
+
+  test('采集输出失败时取消唯一发送并退役，下一轮不接收迟到事件', async () => {
+    mode = 'normal';
+    const pid = nativeEngine.workerPid, count = requests.length;
+    const prepared = prepareInput(parseInput({ request_id: 'native-emission-failure', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '合成采集输出失败' }], stream: true } }));
+    const started = performance.now();
+    await expect(nativeEngine.run(prepared, new AbortController().signal, async event => {
+      if (event.type === 'cc_prepared') throw new Error('合成事件消费者失败');
+    })).rejects.toThrow('合成事件消费者失败');
+    expect(performance.now() - started).toBeLessThan(5000);
+    expect(nativeEngine.workerPid).toBeNull();
+    const next = await send({ model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '采集输出失败后的新请求' }], stream: false });
+    expect(next.response.status).toBe(200); expect(next.raw).toBe(expectedResponse);
+    expect(nativeEngine.workerPid).not.toBe(pid);
+    const observed = requests.slice(count);
+    expect(observed.filter(value => JSON.stringify(value.body.messages).includes('合成采集输出失败')).length).toBeLessThanOrEqual(1);
+    expect(observed.filter(value => JSON.stringify(value.body.messages).includes('采集输出失败后的新请求'))).toHaveLength(1);
+    for (const request of observed) assertCch(request.raw);
   });
 
   test.each([['sse_error', 'stream_error'], ['incomplete', 'incomplete']] as const)('真实原生 %s 的日志终态正确', async (kind, state) => {
@@ -337,6 +479,36 @@ native('官方 293 的无外网回环链路', () => {
       await app.store.flush();
       expect((await app.store.detail(result.id))?.request.binarySha256).toBe(nativeEngine.binarySha256);
     }
+  });
+
+  test('暖进程交替模型和工具后恢复原生正文，不复用其它条件的静态文本', async () => {
+    mode = 'normal';
+    const count = requests.length;
+    const pid = nativeEngine.workerPid;
+    const variants = [
+      { model: 'claude-sonnet-4-6' },
+      { model: 'claude-opus-4-6' },
+      { model: 'claude-haiku-4-5' },
+      { model: 'claude-sonnet-4-6', tools: [] },
+      { model: 'claude-sonnet-4-6', tools: [{ name: 'static_cache_probe', description: '离线工具声明', input_schema: { type: 'object', properties: {} } }] },
+      { model: 'claude-sonnet-4-6' },
+    ];
+    const systems: unknown[][] = [];
+    for (const [index, variant] of variants.entries()) {
+      const text = '静态正文条件切换 ' + index;
+      const result = await send({ ...variant, messages: [{ role: 'user', content: text }], stream: false });
+      expect(result.response.status).toBe(200);
+      expect(nativeEngine.workerPid).toBe(pid);
+      const request = requests.at(-1)!;
+      expect(request.body.model).toBe(variant.model);
+      expect(request.raw).toContain(text);
+      if ('tools' in variant) expect(request.body.tools).toEqual(variant.tools);
+      else expect(request.body.tools).toEqual([]);
+      systems.push((request.body.system as unknown[]).slice(1));
+      assertCch(request.raw);
+    }
+    expect(requests.length - count).toBe(variants.length);
+    expect(systems.at(-1)).toEqual(systems[0]);
   });
 
   test('进程意外退出后下一作业重建，不重放已完成请求', async () => {

@@ -27,7 +27,7 @@
 
 每段保存采集来源、时间、完整性、观测字节数、保存字节数及适用哈希。wire_final 只有采集位置已验证时才成立；没有最终值就显示“未采集”，不以重算值补写。
 
-当前 wire_final 总是 unavailable。真实运行的 cc_prepared 来源为 claude_code_293_sdk；演示来源为 demo_fixture。响应以 response_logical_bytes 表示，不能称为 TLS、压缩或网络帧原文。
+默认发送链路的 wire_final 仍为 unavailable，生产自动采集能力为 false。本机隔离 TLS 接收端样本另以 offline_tls_receiver 标明实际来源；这些样本不改变生产能力状态。当前 CLI 的 cc_prepared 来源为 claude_code_293_cli_prepared，历史 SDK 记录保留原来源，演示来源为 demo_fixture。响应以 response_logical_bytes 表示，不能称为 TLS、压缩或网络帧原文。
 
 正文哈希与 CCH 核验使用明确的原始表示，不能把脱敏或格式化后的显示内容当成原始校验输入。
 

@@ -28,3 +28,11 @@ test('包装事件继续严格验证原生载荷及单次发送，不接受请�
   expect(runtimeEvent('current', payload).request_id).toBe('current');
   expect(runtimeEvent('current', payload).schema_version).toBe(1);
 });
+
+test('初始化错误帧只接纳有界配置说明，不允许混入业务归属或改变状态', () => {
+  const frame: WorkerFrame = { type: 'worker_error', schema_version: 2, worker_id: workerId, code: 'native_configuration', status: 503, error: '专用 CLI 配置已拒绝当前显式密钥' };
+  expect(decodeWorkerFrame(JSON.stringify(frame), workerId)).toEqual(frame);
+  for (const fields of [{ worker_id: 'other' }, { status: 502 }, { code: 'runtime_exit' }, { request_id: 'injected' }, { error: '' }, { error: '测'.repeat(683) }]) {
+    expect(() => decodeWorkerFrame(JSON.stringify({ ...frame, ...fields }), workerId)).toThrow();
+  }
+});

@@ -45,7 +45,8 @@ export class Redactor {
     for (const secret of [...this.secrets].sort((a, b) => b.length - a.length)) result = result.split(secret).join('[REDACTED]');
     return result
       .replace(/\bsk-ant-[A-Za-z0-9_-]+/g, '[REDACTED]')
-      .replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/:]+:[^\s/@]+@/gi, '$1[REDACTED]@')
+      // 从固定分隔符开始匹配，避免长提示词中的普通单词反复尝试协议名。
+      .replace(/:\/\/[^\s/:]+:[^\s/@]+@/g, '://[REDACTED]@')
       .replace(/("(?:access_token|refresh_token|api_key|password|secret)"\s*:\s*")[^"]*"/gi, '$1[REDACTED]"');
   }
 

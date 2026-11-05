@@ -32,6 +32,7 @@ describe('扩展、凭据与调用语义', () => {
     const result = prepareInput(parseInput({ ...body, messages: [{ role: 'user', content: '我叫 subagent，请处理' }] }));
     expect(result.context.requestClass).toBe('main');
     expect(result.context.source).toBe('bridge-default');
+    expect(result.context.querySource).toBe('repl_main_thread');
     expect(result.context.agentId).toBe(result.context.sessionId);
   });
 

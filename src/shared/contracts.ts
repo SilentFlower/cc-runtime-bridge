@@ -172,5 +172,6 @@ export type WorkerCommand =
 /** 常驻进程输出；请求载荷解包后继续使用外部 schema 1。 */
 export type WorkerFrame =
   | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number }
+  | { type: 'worker_error'; schema_version: 2; worker_id: string; code: 'native_configuration'; status: 503; error: string }
   | { type: 'request_event'; schema_version: 2; worker_id: string; request_id: string; payload: RuntimePayload }
   | { type: 'worker_idle'; schema_version: 2; worker_id: string; request_id: string };

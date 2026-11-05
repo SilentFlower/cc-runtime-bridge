@@ -62,7 +62,7 @@ export function prepareInput(input: BridgeInput): PreparedInput {
   if (requestClass === 'workflow' && !context.workflowRunId) throw new BridgeError('incomplete_context', 'workflow 请求需要 workflowRunId');
   const promptId = context.promptId ?? randomUUID();
   if (!UUID.test(promptId)) throw new BridgeError('invalid_prompt_id', 'promptId 必须为 UUID，才能在原生 billing 中保持关联');
-  let querySource = 'sdk';
+  let querySource = 'repl_main_thread';
   if (kind !== 'main' || requestClass === 'subagent' || requestClass === 'workflow') {
     const type = context.agentType;
     querySource = type && type !== 'custom' && type !== 'teammate' ? 'agent:builtin:' + type : 'agent:custom';

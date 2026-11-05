@@ -1,11 +1,49 @@
 import type { JsonObject } from '../../shared/contracts';
 
-/** 固定 293 的内部消息实体最小接口。 */
-export interface NativeMessage {
+/** 原生查询流水线中的消息或上下文记录。 */
+export interface NativeRecord extends JsonObject {
   type: string;
+  uuid?: string;
+}
+
+/** 固定 293 的内部业务消息实体。 */
+export interface NativeMessage extends NativeRecord {
+  uuid: string;
   message: { role: string; content: unknown; model?: string };
   promptId?: string;
   turnOrigin?: string;
+  turnPosition?: { promptIndex: number; turnIndex: number };
+}
+
+/** 原生工具对象；桥接只读取声明，不调用执行方法。 */
+export interface NativeTool extends JsonObject { name: string }
+
+/** 当前原生权限投影，其余字段仍由官方工厂持有。 */
+export interface NativePermission extends JsonObject { mode: string }
+
+/** 原生代理定义集合，不在桥接里重写内置代理文本。 */
+export interface NativeAgents extends JsonObject { activeAgents: JsonObject[]; allAgents: JsonObject[] }
+
+/** 查询引擎交给底层模型构造器的实际参数。 */
+export interface NativeModelCall extends JsonObject {
+  messages: NativeRecord[];
+  systemPrompt: string[];
+  thinkingConfig: JsonObject;
+  tools: NativeTool[];
+  signal: AbortSignal;
+  options: JsonObject;
+}
+
+/** 原生状态存储，生命周期限定在本轮会话根。 */
+export interface NativeStore {
+  /** 读取本轮状态快照。 @return 当前原生状态。 */
+  getState(): JsonObject;
+  /** 读取订阅快照。 @return 当前原生状态。 */
+  getSnapshot(): JsonObject;
+  /** 原子更新本轮状态。 @param update 状态变换。 @return 无返回值。 */
+  setState(update: (value: JsonObject) => JsonObject): void;
+  /** 订阅本轮变化。 @param callback 变化通知。 @return 取消订阅函数。 */
+  subscribe(callback: () => void): () => void;
 }
 
 /** 来自已核对内嵌模块的消息工厂与查询入口。 */
@@ -24,7 +62,27 @@ export interface NativeCore {
    * @param value 已核对的查询参数。
    * @return 官方异步事件序列。
    */
-  K_t(value: JsonObject): AsyncGenerator<unknown>;
+  K_t(value: NativeModelCall): AsyncGenerator<unknown>;
+  /** 生成默认 CLI system。 @param tools 实际工具的名称投影。 @param model 模型。 @return 原生段落。 */
+  VA(tools: { name: string }[], model: string): Promise<string[]>;
+  /** 应用原生 system 选择规则。 @param value 工具上下文、默认及显式正文。 @return 原生段落。 */
+  Kz(value: JsonObject): string[];
+  /** 读取实际代理定义。 @param cwd 当前项目目录。 @return 原生代理集合。 */
+  _R(cwd: string): Promise<NativeAgents>;
+  /** 读取实际命令及技能。 @param cwd 当前项目目录。 @return 原生命令。 */
+  _p(cwd: string): Promise<unknown[]>;
+  /** 构造用户上下文。 @param session 本轮原生根。 @return 官方用户上下文。 */
+  LT(session: NativeSession): Promise<JsonObject>;
+  /** 构造系统上下文。 @param session 本轮原生根。 @return 官方系统上下文。 */
+  Uz(session: NativeSession): Promise<JsonObject>;
+  /** 计算下一轮位置；历史不足时不猜测。 @param messages 已有历史。 @param origin 实际来源。 @return 可证明的位置或空。 */
+  Fyn(messages: NativeRecord[], origin: string): NativeMessage['turnPosition'];
+  /** 生成 CLI 提醒。 @param text 原始输入或空。 @param context 原生工具上下文。 @param selection IDE 选择。 @param queued 本轮待投递项。 @param stamp 原生时间工厂。 @param messages 既有历史。 @param source 查询来源。 @param options 本轮提示词属性。 @return 原生记录序列。 */
+  pie(text: string | null, context: JsonObject, selection: undefined, queued: unknown[], stamp: undefined, messages: NativeRecord[], source: string, options: JsonObject): AsyncGenerator<NativeRecord>;
+  /** 规范化原生记录。 @param messages 输入记录。 @param tools 实际原生工具。 @param model 模型。 @param options 原生规范化选项。 @return 业务与提醒对应的消息实体。 */
+  Ck(messages: NativeRecord[], tools?: NativeTool[], model?: string, options?: JsonObject): NativeMessage[];
+  /** 官方自动压缩回调，仅作为原生依赖传递；单轮桥接禁用自动压缩。 */
+  Cer: unknown;
 }
 
 /** 原生 SDK 及唯一默认发送入口。 */
@@ -58,7 +116,15 @@ export interface NativeApi {
 export interface NativeProject { originalCwd: string; projectRoot: string; cwd: string }
 
 /** 只声明本项目确实读取的原生会话字段。 */
-export interface NativeSession { host: unknown; id: string; project: NativeProject | null }
+export interface NativeSession {
+  host: unknown;
+  id: string;
+  project: NativeProject | null;
+  engineStore: {
+    /** 绑定本轮状态。 @param store 本轮独立原生状态存储。 @return 无返回值。 */
+    adopt(store: NativeStore): void;
+  };
+}
 
 /** 固定 293 根会话工厂和作用域读取器。 */
 export interface NativeState {
@@ -82,6 +148,12 @@ export interface NativeState {
    * @return 无返回值。
    */
   t_(id: string, transition: string): void;
+  /** 选择真实 CLI 的交互装配分支。 @param value 是否交互式 CLI。 @return 无返回值。 */
+  vwo(value: boolean): void;
+  /** 设置 CLI 的问题预览格式。 @param value 官方格式。 @return 无返回值。 */
+  REr(value: 'markdown'): void;
+  /** 绑定本轮模型选择。 @param model 模型名称。 @return 无返回值。 */
+  bf(model: string): void;
 }
 
 /** 原版预加载与精简静态入口共享的原生绑定。 */
@@ -94,11 +166,88 @@ export interface NativeBindings {
      * @return 初始化收口。
      */
     Nst(): Promise<void>;
+    /** 计算 CLI 默认 thinking。 @param enabled 配置中的开关。 @param config 会话 thinking。 @param model 模型。 @return 原生 thinking 配置。 */
+    kps(enabled: boolean | undefined, config: JsonObject, model: string): JsonObject;
+    /** 读取配置中的 thinking 开关。 @return 配置值或缺省。 */
+    n4(): boolean | undefined;
+    /** 更新专用 CLI 配置。 @param update 配置变换。 @return 配置写入已收口。 */
+    Ae(update: (value: JsonObject) => JsonObject): Promise<void>;
+    /** 读取密钥的本地使用决定。 @param marker 原生密钥标识。 @return 本地确认状态。 */
+    Iyr(marker: string): 'approved' | 'rejected' | 'new';
+    /** 生成官方本地密钥标识。 @param key 显式配置的密钥。 @return 官方标识。 */
+    Lle(key: string): string;
+    /** 读取有效的本地使用列表。 @param value 专用配置。 @return 已确认和已拒绝列表。 */
+    VH(value: JsonObject): { approved: string[]; rejected: string[] };
   };
   permissions: {
     /** 创建官方空权限上下文。
      * @return 原生权限对象。
      */
     su(): unknown;
+  };
+  cliTools: {
+    /** 原生目录；getAllBaseTools 返回实际内置工具，其他方法由原生上下文直接消费。 */
+    Bq: JsonObject & { getAllBaseTools: () => NativeTool[] };
+    /** 按权限取得原生工具。 @param permission 当前权限。 @param options 代理筛选。 @return 工具池。 */
+    OD(permission: NativePermission, options?: JsonObject): NativeTool[];
+  };
+  cliToolPool: {
+    /** 合并并排序工具池。 @param initial 初始工具。 @param tools 当前工具。 @param mode 权限模式。 @param declared 已声明工具。 @return 工具池。 */
+    $0t(initial: NativeTool[], tools: NativeTool[], mode: string, declared: NativeTool[]): NativeTool[];
+    /** 应用最终权限筛选。 @param tools 工具池。 @param permission 当前权限。 @return 可用工具。 */
+    F0t(tools: NativeTool[], permission: NativePermission): NativeTool[];
+  };
+  cliPermissions: {
+    /** 解析 CLI 初始权限。 @param value 显式启动选项。 @return 官方选择。 */
+    XUr(value: JsonObject): { mode: string };
+    /** 构造权限上下文。 @param value 实际工具及启动选项。 @return 原生权限。 */
+    JUr(value: JsonObject): Promise<{ toolPermissionContext: NativePermission }>;
+    /** 核对模型权限能力。 @param permission 初始权限。 @param fast 是否快速模式。 @return 原生状态变换。 */
+    B1e(permission: NativePermission, fast: boolean): Promise<{ updateContext: (permission: NativePermission) => NativePermission }>;
+    /** 收口本地已知的初始选择。 @param permission 初始权限。 @return 有效权限。 */
+    dmn(permission: NativePermission): NativePermission;
+  };
+  cliState: {
+    /** 创建原生默认状态。 @return 全新状态。 */
+    yF(): JsonObject;
+  };
+  cliStore: {
+    /** 创建本轮状态容器。 @param initial 初始状态。 @return 原生容器。 */
+    rs(initial: JsonObject): NativeStore;
+  };
+  cliLenses: {
+    /** 创建原生状态访问器。 @param get 读取状态。 @param set 更新状态。 @return 原生访问器。 */
+    f9e(get: NativeStore['getState'], set: NativeStore['setState']): JsonObject;
+  };
+  cliTasks: {
+    /** 创建本轮任务视图。 @param get 读取状态。 @param set 更新状态。 @return 原生视图。 */
+    rg(get: NativeStore['getState'], set: NativeStore['setState']): unknown;
+  };
+  cliToolState: {
+    /** 本轮独立的原生工具状态构造器。 */
+    jM: new () => unknown;
+  };
+  cliFiles: {
+    dC: number;
+    /** 创建原生读取状态。 @param limit 原生容量。 @return 本轮读取状态。 */
+    Uk(limit: number): unknown;
+  };
+  cliQuery: {
+    /** 执行 CLI 查询装配；桥接只允许首次受控模型发送，响应读取收口后取消原生解析。 @param value 原生本轮上下文及受控模型构造器。 @return 原生事件。 */
+    OM(value: JsonObject): AsyncGenerator<unknown>;
+  };
+  cliReplacements: {
+    /** 建立本轮内容追踪。 @param messages 本轮历史。 @return 原生追踪状态或缺省。 */
+    p7o(messages: NativeRecord[]): unknown;
+  };
+  cliSkills: {
+    /** 注册官方内置扩展定义。 @return 无返回值。 */
+    Hoe(): void;
+    /** 注册官方内置技能。 @return 无返回值。 */
+    $8e(): void;
+  };
+  cliSource: {
+    /** 生成 CLI 主线程来源。 @return 受输出风格影响的原生来源。 */
+    u1e(): string;
   };
 }

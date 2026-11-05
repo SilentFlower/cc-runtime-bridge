@@ -11,7 +11,7 @@ const SDK_SHA = '0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22
 const TOOL_ARCHIVE_SHA = '22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e';
 const RELEASE = 'https://github.com/ip7z/7zip/releases/download/26.05/';
 const project = resolve(import.meta.dir, '..');
-const BRIDGE_SOURCES = ['src/runtime/293/source-profile.ts', 'src/runtime/293/native.ts', 'src/runtime/293/job.ts', 'src/runtime/293/worker.ts', 'src/shared/contracts.ts', 'src/shared/protocol.ts', 'src/shared/errors.ts', 'src/shared/input.ts', 'src/control/header-policy.ts', 'src/control/redaction.ts', 'scripts/runtime/compile.ts', 'scripts/runtime/image.py', 'scripts/runtime/loader.c', 'scripts/build-runtime.ts'];
+const BRIDGE_SOURCES = ['src/runtime/293/source-profile.ts', 'src/runtime/293/native.ts', 'src/runtime/293/cli.ts', 'src/runtime/293/static-text.ts', 'src/runtime/293/job.ts', 'src/runtime/293/worker.ts', 'src/shared/contracts.ts', 'src/shared/protocol.ts', 'src/shared/errors.ts', 'src/shared/input.ts', 'src/control/header-policy.ts', 'src/control/redaction.ts', 'scripts/runtime/compile.ts', 'scripts/runtime/static-prompts.ts', 'scripts/runtime/image.py', 'scripts/runtime/loader.c', 'scripts/build-runtime.ts'];
 
 async function digest(path: string): Promise<string> {
   const hash = createHash('sha256');
@@ -94,7 +94,8 @@ export async function buildRuntime(args: string[]): Promise<void> {
     const sdkFiles = ['Bcj2.c', 'Bra.c', 'Bra86.c', 'BraIA64.c', 'CpuArch.c', 'Delta.c', 'Lzma2Dec.c', 'LzmaDec.c', '7zCrc.c', '7zCrcOpt.c', '7zAlloc.c', '7zArcIn.c', '7zBuf.c', '7zBuf2.c', '7zDec.c', '7zStream.c', 'Sha256.c', 'Sha256Opt.c'];
     const compiler = await run(['gcc', '-dumpfullversion'], root);
     const loader = join(root, 'ccrb-runtime');
-    await isolated(['gcc', '-O2', '-DNDEBUG', '-DZ7_EXTRACT_ONLY', '-ffunction-sections', '-fdata-sections', '-Wall', '-Wextra', '-Werror', '-ffile-prefix-map=' + root + '=/ccrb-build', '-I', sdk, '-I', root, join(project, 'scripts/runtime/loader.c'), join(root, 'payload.s'), ...sdkFiles.map(file => join(sdk, file)), '-Wl,--gc-sections', '-Wl,--build-id=none', '-s', '-o', loader]);
+    const gccFlags = ['-O3', '-DNDEBUG', '-DZ7_EXTRACT_ONLY', '-ffunction-sections', '-fdata-sections', '-Wall', '-Wextra', '-Werror'];
+    await isolated(['gcc', ...gccFlags, '-ffile-prefix-map=' + root + '=/ccrb-build', '-I', sdk, '-I', root, join(project, 'scripts/runtime/loader.c'), join(root, 'payload.s'), ...sdkFiles.map(file => join(sdk, file)), '-Wl,--gc-sections', '-Wl,--build-id=none', '-s', '-o', loader]);
     const bytes = (await stat(loader)).size;
     if (bytes > LIMIT_BYTES) throw new Error('完整可执行产物超出体积目标：' + bytes + ' > ' + LIMIT_BYTES);
     const launcherSha256 = await digest(loader);
@@ -104,9 +105,9 @@ export async function buildRuntime(args: string[]): Promise<void> {
       kernel: { version: closure.bun_version, revision: closure.bun_revision, sections_before_prune: image.kernel_before },
       launcher: { sha256: launcherSha256, bytes }, image: { sha256: image.image_sha256, bytes: image.image_bytes },
       deployment: { files: [{ name: output.split('/').at(-1), bytes, sha256: launcherSha256 }], total_bytes: bytes, limit_bytes: LIMIT_BYTES, required_external_files: [], existing_system_libraries: ['librt.so.1', 'libc.so.6', 'ld-linux-x86-64.so.2', 'libpthread.so.0', 'libdl.so.2', 'libm.so.6'], disk_expansion_bytes: 0, memory_file_bytes: image.image_bytes },
-      recipe: { version: 1, bridge_sources: bridgeSources, archive: packOptions, gcc: compiler.trim(), tool_sha256: TOOL_SHA, sdk_archive_sha256: SDK_SHA, sdk_files: sdkFiles, icu: { kept: image.icu_kept, removed: image.icu_removed, policy: image.locale_policy } },
+      recipe: { version: 9, bridge_sources: bridgeSources, archive: packOptions, gcc: compiler.trim(), gcc_flags: gccFlags, tool_sha256: TOOL_SHA, sdk_archive_sha256: SDK_SHA, sdk_files: sdkFiles, icu: { kept: image.icu_kept, removed: image.icu_removed, policy: image.locale_policy } },
       closure,
-      admission: '构建通过不自动授信；必须对最终哈希执行原生回归、常驻隔离和配对性能验收后登记',
+      admission: '构建通过不自动授信；必须对最终哈希执行原生回归、常驻隔离、部署验证并保留计时记录后登记',
     };
     if (await digest(source) !== PROFILE_293.sha256) throw new Error('官方来源在构建期间改变');
     for (const [path, expected] of Object.entries(bridgeSources)) if (await digest(join(project, path)) !== expected) throw new Error('桥接源码在构建期间改变：' + path);

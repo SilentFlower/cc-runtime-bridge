@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { PROFILE_293 } from '../../src/runtime/293/source-profile';
 import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
+import { BridgeError } from '../../src/shared/errors';
 
 // 身份验证只在此独立测试进程替换；生产接纳表及其他测试进程不受影响。
 let stamp = 'fixture-inode-1';
@@ -68,8 +69,16 @@ try {
     await Bun.sleep(80);
     if (engine.workerPid !== null) throw new Error('空闲期迟到帧没有隔离');
   } else {
-    try { await engine.run(prepared(1), noCancel, async () => {}); } catch { rejected = true; }
+    let failure: unknown;
+    try { await engine.run(prepared(1), noCancel, async () => {}); } catch (error) { rejected = true; failure = error; }
     if (!rejected || engine.workerPid !== null) throw new Error('故障未被拒绝或进程仍在使用');
+    if (['startup_exit', 'startup_error', 'startup_error_wrong_worker', 'startup_error_after_ready'].includes(scenario)) {
+      const configuration = scenario === 'startup_exit' || scenario === 'startup_error';
+      if (!(failure instanceof BridgeError) || failure.status !== (configuration ? 503 : 502) || failure.code !== (configuration ? 'native_configuration' : 'runtime_protocol')) throw new Error('初始化失败类型或状态丢失');
+      if (scenario === 'startup_error' && failure.message !== '专用 CLI 配置已拒绝当前显式密钥') throw new Error('受控初始化说明丢失');
+      await writeFile(preload, prefix + '"normal");');
+      await engine.run(prepared(2), noCancel, async () => {});
+    }
   }
   await engine.close();
   await engine.close();

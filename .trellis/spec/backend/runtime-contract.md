@@ -5,7 +5,7 @@
 ### 1. Scope / Trigger
 
 - 新增 HTTP API、私有 JSONL 和原生 SDK 适配，属于跨层执行合同。
-- 实现依据：src/shared/input.ts、src/control/header-policy.ts、src/control/engine.ts、src/runtime/293/{preload,worker,job}.ts。
+- 实现依据：src/shared/input.ts、src/control/header-policy.ts、src/control/engine.ts、src/runtime/293/{preload,worker,job,cli}.ts。
 - 来源版本及内部模块只由 src/runtime/293/source-profile.ts 定义，profile.ts 重导出；精简产物身份由 compact-profile.ts 单独登记，避免载荷包含自身最终哈希。内部绑定依据固定二进制实测，不得猜测混淆符号。
 
 ### 2. Signatures
@@ -18,6 +18,7 @@
 - bun scripts/build-runtime.ts --source <固定原版> --out <新产物> [--sevenzip <固定7zz>] [--sdk <固定源归档>]。
 - POST /v1/messages 接收正文；POST /api/requests 还接收 schema_version、request_id、body、headers、context。
 - decodeRuntimeEvent(line: string, requestId: string): RuntimeEvent 校验请求事件；decodeWorkerCommand(value: unknown, workerId: string): WorkerCommand 和 decodeWorkerFrame(line: string, workerId: string): WorkerFrame 是常驻管道的统一边界。
+- initializeCli(bindings: NativeBindings): Promise<void> 完成本地 CLI 初始化；prepareCli(prepared: PreparedInput, bindings: NativeBindings, system: string[] | undefined, thinking: JsonObject | undefined, abort: AbortController): Promise<CliPreparation> 生成本轮独立装配参数。
 
 ### 3. Contracts
 
@@ -26,14 +27,19 @@
 - BCJ2/LZMA2 与静态 C SDK 加载器单文件分发；载荷 SHA256 自校验后写入封存 memfd 并 fexecve，同 PID 执行，控制层再核对 /proc/<pid>/exe。运行不依赖原版、提取目录或构建工具；磁盘、内存文件与 RSS 分列，不把内存展开当作内存节省。
 - 原生模式显式提供 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR；可提供 CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN、CCRB_PROXY_URL、CCRB_CA_FILE。子进程使用环境白名单。
 - 启动工作进程与配对性能脚本统一设置 CLAUDE_CODE_ENTRYPOINT=cli，由原生代码生成 User-Agent 的 cli 入口段及 billing 的 cc_entrypoint=cli；requestClass、agentKind 和父子身份仍独立按真实上下文生成。切换入口须重建进程，历史 sdk-cli 日志保留原采样值，不能仅替换日志或正文中的标签。
+- 默认以固定 293 交互 CLI 主请求为参考，主来源为 repl_main_thread、业务用户消息采用 human；-p 的 SDK 行为仅作差异证据。原生 pie、VA/Kz/LT/Uz 及 OM 生成工具、system、提醒和默认模型参数，不手写身份句或用录制请求模板替代；工具结果及六类上下文保持实际来源。
+- tools 省略与 [] 均无工具，非空列表完整采用调用方定义，不加入 CC 内置、延迟、搜索或占位工具；原生 system 和提醒按实际列表生成，CLI 参考须使用对应工具选择。system 省略时使用 CLI 默认正文；显式值按 --system-prompt 替换，空文本/数组同样属于显式替换。显式消息、工具/thinking 和模型参数在发送前核对；工具数组即使省略也核对空列表，不能无损表达时拒绝，不静默删字段。
 - 每个引擎绑定一个账号环境，首个模型作业惰性启动，正常串行作业复用一个物理进程，最多 16 个执行中或排队作业。HOME、配置、凭据来源、代理及 cwd 不按请求切换；更换配置须关闭并重建引擎。服务关闭后不再接收作业，并等待队列和常驻进程退出。
+- 控制配置中的显式 API key 使用官方本地规则只记录使用确认标识，不保存完整密钥；已有 rejected 决定返回 native_configuration/503，不改写拒绝状态。初始化、预热及测试不能因此触发真实账号登录或付费推理。
 - worker_ready 晚于原生绑定、Nst 与本地构造依赖初始化；本地初始化使用独立根，发送前中止，不发模型请求或业务事件，成本计入总启动时间。每轮经 nEr 创建全新原生根，AsyncLocalStorage/yLs 绑定作用域，再调用 t_；同 sessionId 也不能复用上一轮账本、请求日志及取消状态。
 - 请求只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。
-- K_t 先完成构造并在发送前中止；yN 创建官方 SDK，按明确 stream 标志通过 Ree 实际发送一次。maxRetries=0；不得替换全局 fetch 或让 SDK 消费、重试原始响应。
+- OM 的 deps.callModel 仅进入一次 K_t；其 fetchOverride 取得同一官方 SDK 的正文、头及发送上下文，在显式字段核验后由 Ree 唯一发送。stream 仅按调用方明确值映射；SDK 不取得 Response，桥接独占原始逻辑响应，读取收口后立即取消原生解析。调用次数守卫禁止模型重试，不创建第二个 SDK，不替换全局 fetch；本地工具、代理循环及自动辅助压缩禁用，显式 compaction 保留。
+- 只在精简构建复用固定摘要的六个纯正文格式化函数 KLo、XLo、QLo、nNo、sNo、pNo。每次仍求值原生条件与外层钩子，每个工厂仅保留最近一次原始条件及字符串；UTF-8 键和值每项 ≤64 KiB、六项 ≤384 KiB，不代表堆或 RSS 上限。失败和超限不入缓存；整份提示词、权限/工具选择、会话段落表、memory 读取及请求正文不跨作业缓存。
 - HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
 - 私有 stdin/stdout 使用 schema_version=2、worker_id；request_start 携带 request_id/prepared，request_cancel 携带匹配 request_id，worker_shutdown 关闭进程。输出为 worker_ready(version,pid)、request_event(request_id,payload)、worker_idle(request_id)。payload 禁止覆盖 schema_version、worker_id、request_id。
+- 握手前还可返回 worker_error(code=native_configuration,status=503,error)，不带 request_id 或额外字段。error 只公开受控 BridgeError 配置说明，先脱敏且 ≤2048 UTF-8 B，未知异常用通用中文消息；入口等待帧写入完成后退出。错进程归属、握手后错误帧或畸形字段按 runtime_protocol/502 隔离，失败作业不重放。
 - 每个物理进程只有一个持续读取器。唯一终态与匹配 worker_idle 缺一不可；释放响应并等待 SDK 收口后才发 idle。重复握手、错代次/错请求、双终态、终态后事件、缺 idle、畸形或超限帧均隔离进程；读取回调和输出闭包绑定旧代次，不得归入下一作业。取消、异常或状态不明时退役，下一轮重建，不重放当前请求；取消采用 1500 ms 强制终止宽限，空闲关闭优先 shutdown，1500 ms 后仍未退出则强制终止。
-- cc_prepared 的 body_bytes、body_sha256 对应原始观测正文，headers 只在私有管道传递，控制层注册秘密后脱敏存储。stdout 不兼任普通日志。
+- cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。最终 TLS 接收样本必须标明真实来源，生产 wire_final 仍不可用，不以 cc_prepared 冒充最终值。
 - Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。其余合法端到端扩展默认保留，不允许笼统删除 x-claude-code-*。
 - 上下文为类别、agentKind、agentId、parentAgentId、agentType、sessionId、promptId、workflowRunId 的同一来源。promptId 必须为 UUID。
 - 类别支持 main、subagent、workflow、compaction、auxiliary、side_reply。子代理必须有 agentId；workflow 还需要 workflowRunId；主代理独立 agentId 须显式 agentKind=main。
@@ -79,9 +85,10 @@
 - tests/unit/profile.test.ts：错误二进制不执行、不回退。
 - tests/unit/engine.test.ts、worker-protocol.test.ts：同 PID 与哈希次数、文件替换、错归属/载荷覆盖、双终态/缺 idle、迟到帧、取消、背压和关闭；错误作业不得重放。
 - tests/native/native.test.ts：无外网 TLS 上游独立核对 CCH、metadata/session/prompt、六类请求、thinking/工具历史、非流式、HTTP/SSE 错误及取消后下一请求；实际模型发送次数必须符合 attempt=1。
-- 同一原生套件分别核对原版与精简版的 User-Agent 包含 (external, cli, client-app/cc-runtime-bridge)，billing 包含 cc_entrypoint=cli；最终 CCH 继续由实际 TLS 接收正文独立验证，不用标签替换或日志投影代替原生生成。
+- 同一原生套件分别核对原版与精简版的 User-Agent 为 claude-cli/2.1.293 (external, cli)，billing 包含 cc_entrypoint=cli；不再主动设置 SDK client-app。最终 CCH 由实际 TLS 接收正文独立验证，不用标签替换或日志投影代替原生生成；兼容与 CCH 不能解释为账号免封保证。
 - 原版与登记轻量文件运行同一原生套件，核对同 session 多轮、Unicode、空闲及流中崩溃后的重建。独立部署须隐藏原版/源码/构建目录后仍能运行；重复生成核对分发及执行体 SHA256。
-- scripts/benchmark-runtime.ts 固定并校验 vm2api 标杆，交错五个新进程、每进程六轮；直接采样总启动到首轮、就绪后首轮及暖复用中位数，均须 ≤标杆 1.10 倍。完整必需部署文件总量 ≤27933052 B；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。
+- 完整必需部署文件总量 ≤27933052 B。保留总启动到首轮、就绪后首轮及暖复用实测，初始化与解包计入启动；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。2026-11-05 用户已接受当前延迟，vm2api 相对速度不再是当前准入；scripts/benchmark-runtime.ts 仍保留固定标杆、五轮六作业和旧 1.10 诊断规则，原 passed/退出状态不修改。
+- tests/unit/{redaction,startup-failure,header-policy,profile,engine,worker-protocol}.test.ts：秘密及截断边界不泄露，调用方凭据不转发，拒绝未知身份；初始化错误保留受控原因且等待写完，取消、错帧和迟到输出隔离，不重放或遗留进程。tests/unit/{static-prompts,static-text}.test.ts 核对缓存条件变化、失败不入缓存及 UTF-8 预算；原生套件另核对模型/工具交替恢复后无串值。
 - 原生验证仅使用专用 HOME、合成凭据和 unshare 网络命名空间；不能因测试失败切换真实账号。
 
 ## Scenario: 官方运行时压缩与新版本适配
@@ -132,14 +139,15 @@
 | 归档、解码长度/SHA256、memfd 或封存/执行失败 | 加载器非零退出，不自动回退或从磁盘展开 |
 | 未登记分发文件、实际执行体不符或运行时文件被替换 | 发送前拒绝或隔离进程，不能依赖 manifest 授信 |
 | 缺 CCH、支持输入/Unicode 行为退化或多轮状态污染 | 兼容性不通过；不能删减原有覆盖换取体积 |
-| 体积、三项配对速度任一不通过 | 保留失败证据，候选不得作为达标版本交付 |
+| 部署体积超预算或安全/兼容验证不通过 | 保留失败证据，候选不得作为达标版本交付 |
+| 历史三项相对速度诊断未通过 | 保留原样本、passed=false 及退出状态；当前延迟已获用户接受，不据此声称旧性能目标达标，也不放宽安全/兼容约束 |
 
 ### 5. Scenarios and Examples
 
-- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。293 已验证最终单文件 26404920 B（25.18 MiB），它是本版结果，不是对新版本的体积保证。
-- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。内存执行体约 102.25 MiB，与磁盘 25.18 MiB 分列。
+- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。当前 CLI 产物为 27371576 B（26.10 MiB），它是本版结果，不是对新版本的体积保证；完整身份与证据见 docs/runtime.md。
+- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。当前内存执行体约 107.55 MiB，与磁盘 26.10 MiB 分列。
 - 错误用法：拿到新版本后只改 PROFILE_293.sha256，沿用旧模块名和 ICU 偏移。正确做法是先重新测定容器、原生符号及资源合同，适配构建，再对最终哈希运行全部准入；当前 293 入口继续只接受原有固定来源。
-- 错误用法：用压缩包或 --version 耗时证明体积/速度达标。正确做法是比较完整可执行部署集合，并从相同运行时协议边界直接采样总启动、就绪后首轮及暖复用；各阶段中位数不能相加代替总耗时。
+- 错误用法：用压缩包或 --version 耗时证明体积/速度达标，或把用户接受延迟改写为 benchmark 通过。正确做法是比较完整可执行部署集合，保留协议边界的总启动、就绪后首轮及暖复用实测和原诊断结论；各阶段中位数不能相加代替总耗时，不为追赶旧目标引入未验证的研究裁剪。
 
 当前版本的可执行验证入口如下；未来适配须先更新各入口内的来源/版本绑定，不能把命令成功假定为支持新版本：
 
@@ -149,11 +157,13 @@ CCRB_TEST_CLAUDE_BINARY=/绝对路径/新产物 bun run test:native
 bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /root/project/vm2api/share/wrap-cli/cli-node --output artifacts/runtime-benchmark
 ```
 
+最后一条命令为历史相对速度诊断，原 1.10 倍判断不等于当前版本的准入条件。
+
 ### 6. Tests Required
 
 - 构建负例：损坏来源/原生节、未知标志/编码/布局、越界和重复路径、缺资源、超过预算 1 B；断言失败、不生成最终产物且来源未变。当前故障夹具及原始结果保存在上述验收目录，不把临时研究脚本当作通用产品命令。
 - 闭包与独立部署：核对模块/资源摘要、原生扩展及每个残余动态调用；隐藏构建输入后完成所有支持路径，记录运行生成文件；只跑导入探针不算通过。
 - 原版及最终候选分别执行 tests/native/native.test.ts，独立核对真实 TLS CCH、头部、metadata/billing、父子与压缩标识、工具/thinking、流/非流、Unicode、原始响应和单次发送。默认 Intl、en/zh/ja/th/ar 分词、组合字符及 emoji 另作原版对照。
 - tests/unit/{profile,engine,worker-protocol}.test.ts 及 tests/integration/control.test.ts：未知身份/文件替换拒绝，同 PID 多轮的状态隔离，取消/错帧/迟到帧后重建且不重放，关闭不留孤儿进程。
-- scripts/benchmark-runtime.ts：交错且反转顺序，两方各五个新进程、每进程六轮；同输入、回环上游和响应负载，每轮一次实际发送。直接记录 startup_to_first_complete_ms、ready_to_first_complete_ms、后五轮 elapsed_ms 的原始样本，三项中位数比值均 ≤1.10；RSS、额外文件、页缓存及协议/控制面边界单列，计时期间不并行压缩。
+- scripts/benchmark-runtime.ts：交错且反转顺序，两方各五个新进程、每进程六轮；同输入、回环上游和响应负载，每轮一次实际发送。直接保留 startup_to_first_complete_ms、ready_to_first_complete_ms、后五轮 elapsed_ms 及三项中位数；旧 ≤1.10 判断只作历史诊断，不改原失败样本。RSS、额外文件、页缓存及协议/控制面边界单列，计时期间不并行压缩。
 - 重复构建：固定所有输入和工具，在独立构建目录至少两次生成，断言分发及执行体哈希一致、部署文件总量达标，重新核对 manifest 与实际 /proc 执行体；来源或配方变化后不能沿用旧产物的通过结论。全部验证继续只使用合成凭据、专用 HOME 和无外网回环。
