@@ -1,0 +1,30 @@
+{
+  "isolated": true,
+  "realUpstreamRequests": 0,
+  "results": [
+    {
+      "model": "claude-opus-5-5",
+      "status": 200,
+      "poolRequests": 1,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-5",
+      "status": 422,
+      "poolRequests": 0,
+      "error": "{\"type\":\"error\",\"error\":{\"type\":\"unsupported_parameter\",\"message\":\"原生 293 生成了无法关联到业务或原生提醒的消息块\"},\"request_id\":\"923f4de9-92d6-48c4-b2e1-122989c56ef5\"}"
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "status": 200,
+      "poolRequests": 1,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-5",
+      "status": 422,
+      "poolRequests": 0,
+      "error": "{\"type\":\"error\",\"error\":{\"type\":\"unsupported_parameter\",\"message\":\"原生 293 生成了无法关联到业务或原生提醒的消息块\"},\"request_id\":\"1a502903-4614-490b-9fc1-349d5cfc523c\"}"
+    }
+  ]
+}
