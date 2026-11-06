@@ -1,10 +1,10 @@
-import type { HeaderPair, PreparedInput, RuntimeEvent } from '../shared/contracts';
+import type { HeaderPair, PreparedInput, RuntimeEvent, NativeIngressPolicy } from '../shared/contracts';
 import { BridgeError, errorText } from '../shared/errors';
 import { parseInput } from '../shared/input';
 import { prepareInput } from './header-policy';
 import type { Engine } from './engine';
 import { LogStore } from './log-store';
-import { RequestTrace } from './trace';
+import { RequestTrace, type FinalCaptureSample } from './trace';
 
 /** 串行服务的请求预算和日志设置。 */
 interface ServiceOptions {
@@ -12,6 +12,8 @@ interface ServiceOptions {
   maxBodyBytes: number;
   timeoutMs: number;
   secrets?: Record<string, unknown>;
+  nativeIngressPolicy?: NativeIngressPolicy;
+  finalCapture?: (requestId: string) => FinalCaptureSample | null;
 }
 
 const HOP_HEADERS = new Set(['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'te', 'trailer', 'upgrade', 'content-length', 'content-encoding', 'set-cookie']);
@@ -97,7 +99,7 @@ export class BridgeService {
     let prepared: PreparedInput;
     try {
       if (this.closing) throw new BridgeError('service_closing', '服务正在关闭，不再接收作业', 503);
-      prepared = prepareInput(parseInput(raw, headers));
+      prepared = prepareInput(parseInput(raw, headers, this.options.nativeIngressPolicy));
       if (this.recentIds.has(prepared.input.request_id) || this.store.exists(prepared.input.request_id)) throw new BridgeError('duplicate_request', 'request_id 已使用，不能覆盖已有日志', 409);
       if (this.controllers.size >= 16) throw new BridgeError('queue_full', '单账号等待队列已满', 429);
     } catch (error) {
@@ -132,6 +134,8 @@ export class BridgeService {
         if (controller.signal.aborted) throw controller.signal.reason ?? new DOMException('请求已取消', 'AbortError');
         trace.start();
         await this.engine.run(prepared, controller.signal, async (event: RuntimeEvent) => {
+          // TLS 实收先于池响应；提前保存可避免响应的敏感标志值影响此前请求的预览。
+          if (event.type === 'response_headers' && this.options.finalCapture) trace.finalCapture(() => this.options.finalCapture!(trace.row.id));
           trace.event(event);
           if (event.type === 'response_headers') {
             if (gotHeaders) throw new BridgeError('runtime_protocol', '运行时重复返回响应头', 502);
@@ -148,6 +152,7 @@ export class BridgeService {
             throw new BridgeError(event.code ?? 'native_error', event.error, event.status ?? 502);
           } else if (event.type === 'completed') {
             terminal = true;
+            if (this.options.finalCapture) trace.finalCapture(() => this.options.finalCapture!(trace.row.id));
             const timedOut = controller.signal.reason instanceof BridgeError;
             trace.finish(timedOut ? 'error' : event.state, timedOut ? errorText(controller.signal.reason) : event.error);
           }
@@ -156,6 +161,7 @@ export class BridgeService {
         channel.close();
       } catch (error) {
         const canceled = controller.signal.aborted && !(controller.signal.reason instanceof BridgeError);
+        if (this.options.finalCapture) trace.finalCapture(() => this.options.finalCapture!(trace.row.id));
         trace.finish(canceled ? 'canceled' : 'error', errorText(controller.signal.reason ?? error));
         rejectHeaders(error);
         controller.abort();

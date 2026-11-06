@@ -12,8 +12,8 @@ export interface PoolFixture {
   close(): Promise<void>;
 }
 
-/** 运行 Messages 假池，必须由外层网络命名空间隔离。 @param apiKey 合成池 Key。 @return 本机服务及观测。 */
-export function startPoolFixture(apiKey: string): PoolFixture {
+/** 运行 Messages 假池，必须由外层网络命名空间隔离。 @param apiKey 合成池 Key。 @param toolFile 工具续轮读取的隔离夹具文件。 @return 本机服务及观测。 */
+export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture {
   let fixture = 'json', canceled = 0, redirected = 0;
   const calls: FixtureCall[] = [];
   const server = Bun.serve({
@@ -28,7 +28,9 @@ export function startPoolFixture(apiKey: string): PoolFixture {
       if (body.model !== POOL_MODEL) return Response.json({ type: 'error', error: { message: '模型未映射' } }, { status: 400 });
       if (chosen === 'redirect') return new Response('池重定向原文', { status: 302, headers: { location: '/redirect-target' } });
       if (['401','429','500'].includes(chosen)) return Response.json({ type: 'error', error: { message: '合成池错误回显：' + apiKey } }, { status: Number(chosen), headers: { 'x-echo-secret': apiKey } });
-      const message = { id: 'msg_pool_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: [{ type: 'text', text: chosen === 'secret' ? '前缀' + apiKey + '后缀</pre><script>globalThis.poolXss=1</script>' : '本机假池 OK' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
+      const hasToolResult = Array.isArray(body.messages) && body.messages.some(message => message && Array.isArray(message.content) && message.content.some((block: JsonObject) => block.type === 'tool_result'));
+      const tool = chosen === 'tool' && !hasToolResult && toolFile ? { type: 'tool_use', id: 'toolu_local_fixture', name: 'Read', input: { file_path: toolFile } } : null;
+      const message = { id: 'msg_pool_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: tool ? [tool] : [{ type: 'text', text: chosen === 'secret' ? '前缀' + apiKey + '后缀</pre><script>globalThis.poolXss=1</script>' : '本机假池 OK' }], stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
       if (chosen === 'json') return Response.json(message, { headers: { 'access-control-allow-credentials': 'true' } });
       if (chosen === 'secret') {
         const text = JSON.stringify(message), at = text.indexOf(apiKey) + Math.floor(apiKey.length / 2);
@@ -46,6 +48,14 @@ export function startPoolFixture(apiKey: string): PoolFixture {
           request.signal.addEventListener('abort', abort, { once: true });
           controller.enqueue(event({ type: 'message_start', message: { ...message, content: [], stop_reason: null } }));
           if (chosen === 'cancel') { timer = setInterval(() => { if (!stopped) controller.enqueue(Buffer.from(': keepalive\n\n')); }, 25); return; }
+          if (tool) {
+            controller.enqueue(event({ type: 'content_block_start', index: 0, content_block: { ...tool, input: {} } }));
+            controller.enqueue(event({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(tool.input) } }));
+            controller.enqueue(event({ type: 'content_block_stop', index: 0 }));
+            controller.enqueue(event({ type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 1 } }));
+            controller.enqueue(event({ type: 'message_stop' }));
+            stopped = true; request.signal.removeEventListener('abort', abort); controller.close(); return;
+          }
           controller.enqueue(event({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }));
           const count = chosen === 'large' ? 150 : 1;
           for (let i = 0; i < count && !stopped; i++) { controller.enqueue(event({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chosen === 'large' ? 'x'.repeat(8192) : '本机假池 OK' } })); if (chosen === 'large') await Bun.sleep(1); }

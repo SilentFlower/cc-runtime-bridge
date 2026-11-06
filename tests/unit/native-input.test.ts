@@ -14,6 +14,40 @@ function fixture(): MessageBody {
 }
 
 describe('固定 293 原生入站合同', () => {
+  test('本地 Base URL 兼容只能由启动侧打开，原始入站保持且策略沿内部合同传递', () => {
+    for (const entry of ['cli', 'sdk-cli']) {
+      const body = fixture(), billing = body.system as { text: string }[];
+      billing[0]!.text = billing[0]!.text.replace('cch=12345;', '').replace('cc_entrypoint=cli', 'cc_entrypoint=' + entry);
+      const before = structuredClone(body);
+      expect(() => parseInput(body)).toThrow();
+      expect(() => parseInput({ ...body, nativeIngressPolicy: 'local_base_url' })).toThrow();
+      expect(() => parseInput({ body, nativeIngressPolicy: 'local_base_url' })).toThrow();
+      const input = parseInput(body, [], 'local_base_url');
+      expect(input.body).toEqual(before); expect(input.nativeIngressPolicy).toBe('local_base_url');
+      expect(prepareInput(input).input.nativeIngressPolicy).toBe('local_base_url');
+      const generated = fixture();
+      const result = prepareNativeBody(input.body, generated.metadata, input.nativeIngressPolicy, generated.system);
+      expect((result.system as { text: string }[])[0]!.text).toContain('cc_entrypoint=cli;');
+      expect((result.system as { text: string }[])[0]!.text).toContain('cch=00000;');
+      expect(readNativeInput(result)?.fields.cc_turn_index).toBe('4');
+      expect(result.messages).toEqual(body.messages);
+      expect((result.system as unknown[]).slice(1)).toEqual((body.system as unknown[]).slice(1));
+      expect(body).toEqual(before);
+    }
+  });
+
+  test('兼容模式不接纳损坏证据，也不能在缺少实际 CLI 生成上下文时伪造发送入口', () => {
+    const body = fixture(), text = (body.system as { text: string }[])[0]!.text;
+    for (const billing of [text + ' cch=aaaaa;', text.replace('cch=12345', 'cch=xyz'), text.replace('cch=12345;', 'future=opaque cch=12345;'), text.replace('2.1.293', '2.1.303'), text.replace('cc_entrypoint=cli', 'cc_entrypoint=unknown')]) {
+      expect(() => parseInput({ ...body, system: [{ type: 'text', text: billing }] }, [], 'local_base_url')).toThrow();
+    }
+    expect(() => prepareNativeBody(body, body.metadata, 'local_base_url')).toThrow('CLI billing');
+    const sdk = structuredClone(body.system) as { text: string }[];
+    sdk[0]!.text = sdk[0]!.text.replace('cc_entrypoint=cli', 'cc_entrypoint=sdk-cli');
+    expect(() => prepareNativeBody(body, body.metadata, 'local_base_url', sdk)).toThrow();
+    expect(() => parseInput({ body, context: { sessionId: 'different' } }, [], 'local_base_url')).toThrow('冲突');
+  });
+
   test('普通 API 维持窄合同，原生字段及系统角色保留', () => {
     expect(() => parseInput({ model: 'm', messages: [{ role: 'user', content: 'q' }], thread: {} })).toThrow('暂不支持字段');
     const body = fixture(), input = parseInput(body), prepared = prepareInput(input);

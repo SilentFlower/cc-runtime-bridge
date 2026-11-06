@@ -33,6 +33,13 @@ test('常驻协议同时校验进程与作业归属，不接纳旧协议握手',
   expect(() => decodeWorkerFrame(JSON.stringify({ schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 0 }), workerId)).toThrow();
 });
 
+test('本地入站兼容策略在私有作业中有明确枚举且只属于原生输入', () => {
+  const command = { schema_version: 2, type: 'request_start', worker_id: workerId, request_id: prepared.input.request_id, prepared };
+  for (const policy of ['unknown', true, {}]) expect(() => decodeWorkerCommand({ ...command, prepared: { ...prepared, input: { ...prepared.input, inputFormat: 'claude_code', nativeIngressPolicy: policy } } }, workerId)).toThrow('策略');
+  expect(() => decodeWorkerCommand({ ...command, prepared: { ...prepared, input: { ...prepared.input, nativeIngressPolicy: 'local_base_url' } } }, workerId)).toThrow('策略');
+  for (const policy of ['strict', 'local_base_url']) expect(() => decodeWorkerCommand({ ...command, prepared: { ...prepared, input: { ...prepared.input, inputFormat: 'claude_code', nativeIngressPolicy: policy } } }, workerId)).not.toThrow();
+});
+
 test('包装事件继续严格验证原生载荷及单次发送，不接受请求内伪造握手', () => {
   const event: WorkerFrame = { schema_version: 2, type: 'request_event', worker_id: workerId, request_id: 'protocol-job', payload: { type: 'response_chunk', attempt: 1, data_b64: '5rWL6K+V' } };
   expect(decodeWorkerFrame(JSON.stringify(event), workerId)).toEqual(event);

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ApiMessage, BridgeInput, ContextInput, HeaderPair, MessageBody } from './contracts';
+import type { ApiMessage, BridgeInput, ContextInput, HeaderPair, MessageBody, NativeIngressPolicy } from './contracts';
 import { BridgeError, isObject } from './errors';
 import { readNativeInput, mergeNativeContext } from './native-input';
 import { validateToolChoice } from './parameters';
@@ -17,16 +17,17 @@ function validateKeys(value: Record<string, unknown>, allowed: Set<string>, owne
 /** 从未知 JSON 建立唯一的请求合同。
  * @param raw API 正文或包含 body 的内部信封。
  * @param incomingHeaders HTTP 入口携带的头。
+ * @param nativeIngressPolicy 启动侧选择的原生入站策略，默认严格。
  * @return 已验证、尚未应用头部策略的输入。
  */
-export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = []): BridgeInput {
+export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = [], nativeIngressPolicy: NativeIngressPolicy = 'strict'): BridgeInput {
   if (!isObject(raw)) throw new BridgeError('invalid_request', '请求必须是 JSON 对象');
   const envelope = 'body' in raw && !('model' in raw || 'messages' in raw) ? raw : { body: raw };
   validateKeys(envelope, new Set(['schema_version', 'request_id', 'body', 'headers', 'context']), '信封');
   if (envelope.schema_version !== undefined && envelope.schema_version !== 1) throw new BridgeError('schema_version', '不支持的内部协议版本');
   const body = envelope.body;
   if (!isObject(body)) throw new BridgeError('invalid_body', 'body 必须是对象');
-  const native = readNativeInput(body);
+  const native = readNativeInput(body, nativeIngressPolicy);
   if (!native) validateKeys(body, BODY_KEYS, '正文');
   if (typeof body.model !== 'string' || !body.model.trim()) throw new BridgeError('invalid_model', 'model 必须是非空字符串');
   if (!Array.isArray(body.messages) || body.messages.length === 0) throw new BridgeError('invalid_messages', 'messages 必须是非空数组');
@@ -68,5 +69,6 @@ export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = []): Br
     headers: rawHeaders.map(pair => [pair[0], pair[1]]) as HeaderPair[],
     context: native ? mergeNativeContext(context as ContextInput, native) : context as ContextInput,
     inputFormat: native ? 'claude_code' : 'api',
+    ...(native && nativeIngressPolicy !== 'strict' ? { nativeIngressPolicy } : {}),
   };
 }

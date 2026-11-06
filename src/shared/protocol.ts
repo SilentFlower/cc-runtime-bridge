@@ -15,7 +15,12 @@ export function decodeRuntimeEvent(line: string, requestId: string): RuntimeEven
   return validateRuntimeEvent(JSON.parse(line), requestId);
 }
 
-function validateRuntimeEvent(value: unknown, requestId: string): RuntimeEvent {
+/** 校验已解析的事件，供隔离转发边界复用同一字段合同。
+ * @param value 私有通道解析值。
+ * @param requestId 当前请求归属。
+ * @return 已验证事件。
+ */
+export function validateRuntimeEvent(value: unknown, requestId: string): RuntimeEvent {
   if (!isObject(value) || value.schema_version !== 1 || value.request_id !== requestId || typeof value.type !== 'string') throw new BridgeError('runtime_protocol', '运行时消息与请求不匹配', 502);
   let valid = false;
   switch (value.type) {
@@ -37,6 +42,7 @@ function validateRuntimeEvent(value: unknown, requestId: string): RuntimeEvent {
 export function decodeRuntimeJob(value: unknown): RuntimeJob {
   if (!isObject(value) || value.type !== 'request_start' || value.schema_version !== 1 || typeof value.request_id !== 'string' || !isObject(value.prepared)) throw new BridgeError('runtime_protocol', '无效运行时作业');
   const prepared = value.prepared;
+  if (isObject(prepared.input) && prepared.input.nativeIngressPolicy !== undefined && (!['strict', 'local_base_url'].includes(String(prepared.input.nativeIngressPolicy)) || prepared.input.inputFormat !== 'claude_code')) throw new BridgeError('runtime_protocol', '运行时原生入站策略不合法', 502);
   if (isObject(prepared.input) && prepared.input.inputFormat !== undefined && !['api', 'claude_code'].includes(String(prepared.input.inputFormat))) throw new BridgeError('runtime_protocol', '运行时接入类型不合法', 502);
   if (!isObject(prepared.input) || prepared.input.request_id !== value.request_id || !isObject(prepared.input.body) || !Array.isArray(prepared.input.body.messages) || !isObject(prepared.context) || typeof prepared.context.sessionId !== 'string' || typeof prepared.context.promptId !== 'string' || !headerPairs(prepared.headers)) throw new BridgeError('runtime_protocol', '运行时作业缺少上下文');
   return value as unknown as RuntimeJob;

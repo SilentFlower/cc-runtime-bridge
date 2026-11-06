@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Engine } from '../../src/control/engine';
 import type { PreparedInput, RuntimeEvent, RuntimePayload } from '../../src/shared/contracts';
 import { runtimeEvent } from '../../src/shared/protocol';
-import { readConfig, startServer, type RunningServer } from '../../src/control/server';
+import { readConfig, startServer, type RunningServer, type ServerStartupOptions } from '../../src/control/server';
 import { createHash } from 'node:crypto';
 import { Database } from 'bun:sqlite';
 import { BridgeService } from '../../src/control/service';
@@ -14,10 +14,10 @@ const roots: string[] = [];
 const apps: RunningServer[] = [];
 afterEach(async () => { for (const app of apps.splice(0)) await app.close(); for (const dir of roots.splice(0)) await rm(dir, { recursive: true, force: true }); });
 
-async function app(engine?: Engine, settings: Record<string, string> = {}): Promise<{ app: RunningServer; base: string; root: string }> {
+async function app(engine?: Engine, settings: Record<string, string> = {}, startup: ServerStartupOptions = {}): Promise<{ app: RunningServer; base: string; root: string }> {
   const root = await mkdtemp(join(tmpdir(), 'ccrb-control-test-')); roots.push(root);
   const cfg = readConfig({ CCRB_MODE: 'demo', CCRB_PORT: '0', CCRB_DATA_DIR: root, ...settings });
-  const running = await startServer(cfg, engine); apps.push(running);
+  const running = await startServer(cfg, engine, startup); apps.push(running);
   return { app: running, base: 'http://127.0.0.1:' + running.server.port, root };
 }
 
@@ -28,6 +28,34 @@ function post(base: string, value: unknown): Promise<Response> {
 const request = { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '本地集成测试' }], stream: true };
 
 describe('控制、持久日志与查询', () => {
+  test.each(['debug','summary','off'] as const)('独立最终采集遵守 %s，秘密先注册且原始哈希不变', async mode => {
+    const secret = 'final-capture-pool-canary', raw = JSON.stringify({ echo: secret, text: '采集正文'.repeat(800) });
+    let reads = 0;
+    const { app: running, base } = await app(undefined, { CCRB_LOG_MODE: mode, CCRB_CAPTURE_BYTES: '1024' }, { secrets: { pool_api_key: secret }, finalCapture: () => { reads++; return { body: raw, headers: [['x-api-key',secret]], capturedAt: new Date().toISOString(), httpVersion: '1.1', verified: true, note: '隔离合成样本' }; } });
+    const response = await post(base, { request_id: 'final-' + mode, body: request }); await response.text(); await running.store.flush();
+    expect(response.status).toBe(200); expect(reads).toBe(1);
+    expect((await (await fetch(base + '/api/health')).json()).nativeFinalCapture).toBe(true);
+    const value = await running.store.detail('final-' + mode);
+    if (mode === 'off') expect(value).toBeNull();
+    else {
+      const captured = value!.captures.find(item => item.stage === 'wire_final')!;
+      expect(captured.sha256).toBe(createHash('sha256').update(raw).digest('hex')); expect(JSON.stringify(value)).not.toContain(secret);
+      expect(captured.text).toBe(mode === 'summary' ? null : captured.text);
+      expect(captured.status).toBe(mode === 'debug' ? 'truncated' : 'complete');
+      if (mode === 'debug') expect(captured.text).toContain('[REDACTED]');
+    }
+  });
+
+  test('最终采集失败和缺失不改变响应终态，不用中间值补写', async () => {
+    for (const fail of [false, true]) {
+      const { app: running, base } = await app(undefined, {}, { finalCapture: () => { if (fail) throw new Error('private-error-canary'); return null; } });
+      const response = await post(base, { request_id: 'capture-failure-' + fail, body: request }); await response.text(); await running.store.flush();
+      const value = (await running.store.detail('capture-failure-' + fail))!;
+      expect(value.request.state).toBe('success'); expect(value.captures.find(item => item.stage === 'wire_final')!.status).toBe(fail ? 'failed' : 'unavailable');
+      expect(JSON.stringify(value)).not.toContain('private-error-canary');
+    }
+  });
+
   test('完整链路保留扩展头决策、原文和独立哈希，查询不再执行模型', async () => {
     const { app: running, base, root } = await app();
     const response = await post(base, { request_id: 'control-request', body: request, headers: [['x-future-header', 'kept'], ['Authorization', 'Bearer client-secret-canary']] });

@@ -10,7 +10,7 @@ export const REQUEST_LIMIT = 2 * 1024 * 1024;
 export const SYNTHETIC_KEY = 'ccrb-pool-synthetic-cc-key';
 
 /** 测试端唯一持有的池配置。 */
-export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number; timeoutMs: number }
+export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number; timeoutMs: number; mode?: 'acceptance' | 'manual' }
 /** 原始观测的哈希与脱敏预览分开保存。 */
 export interface BodySample { bytes: number; sha256: string; storedBytes: number; text: string; status: 'complete' | 'truncated' | 'incomplete' }
 /** 第二段参数只描述提交给客户端的值，不冒充池端原始头。 */
@@ -72,13 +72,14 @@ export function poolProxyEnvironment(env: Record<string, string | undefined>, li
 /** 校验目标及调用上限。 @param config 已解析的本机配置。 @return 非法配置抛出受控错误。 */
 export function validatePoolConfig(config: PoolConfig): void {
   if (typeof config.live !== 'boolean' || typeof config.apiKey !== 'string' || typeof config.baseUrl !== 'string') throw new Error('池配置字段类型不合法');
+  if (config.mode !== undefined && !['acceptance', 'manual'].includes(config.mode)) throw new Error('池运行模式不合法');
   let url: URL;
   try { url = new URL(config.baseUrl); } catch { throw new Error('池 Base URL 不合法'); }
   const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || /(^|\.)anthropic\.com$|(^|\.)claude\.ai$/i.test(url.hostname.replace(/\.$/, '')) || (config.live ? url.protocol !== 'https:' : !loopback)) throw new Error('池目标不符合显式测试边界');
   // 仅接纳常见 ASCII 令牌，避免 JSON 的引号、反斜杠或 Unicode 转义绕过原文字面脱敏。
   if (!/^[A-Za-z0-9._~-]{4,4096}$/.test(config.apiKey)) throw new Error('池凭据格式不受支持，仅接受 4–4096 位 ASCII 字母数字及 ._~-');
-  if (!Number.isSafeInteger(config.maxRequests) || config.maxRequests < 1 || config.maxRequests > (config.live ? 3 : 100) || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 50 || config.timeoutMs > 30000) throw new Error('池请求预算不合法');
+  if (!Number.isSafeInteger(config.maxRequests) || config.maxRequests < 1 || config.maxRequests > (config.mode === 'manual' ? 20 : config.live ? 3 : 100) || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 50 || config.timeoutMs > 30000) throw new Error('池请求预算不合法');
 }
 
 /** 显式轮次绑定独立账本，默认保持首轮，不能借路径穿越覆盖旧记录。 @param runId 经操作者选择的轮次。 @return artifacts 下的账本文件名。 */
@@ -140,7 +141,7 @@ export function verifyCch(raw: string): { actual: string; expected: string } {
 /** 明确第二段的必要变化。 @param raw 完整原生正文。 @param headers 原始头。 @param path 原生路径。 @param config 池配置。 @return 提交参数和无秘密诊断。 */
 export function preparePoolRequest(raw: string, headers: HeaderPair[], path: string, config: PoolConfig): { url: string; headers: HeaderPair[]; body: string; changes: PoolPrepared['changes'] } {
   const value: unknown = JSON.parse(raw);
-  if (!isObject(value) || typeof value.model !== 'string' || (config.live && (!Number.isSafeInteger(value.max_tokens) || Number(value.max_tokens) < 1 || Number(value.max_tokens) > 128))) throw new Error('模型正文或真实调用预算不合法');
+  if (!isObject(value) || typeof value.model !== 'string' || ((config.live || config.mode === 'manual') && (!Number.isSafeInteger(value.max_tokens) || Number(value.max_tokens) < 1 || Number(value.max_tokens) > (config.mode === 'manual' ? 32768 : 128)))) throw new Error('模型正文或真实调用预算不合法');
   const blocked = new Set(['host','content-length','connection','keep-alive','proxy-connection','transfer-encoding','te','trailer','upgrade','authorization','x-api-key','proxy-authorization','cookie']);
   for (const [name, content] of headers) if (name.toLowerCase() === 'connection') for (const token of content.split(',')) blocked.add(token.trim().toLowerCase());
   const changes: PoolPrepared['changes'] = [{ name: 'model', reason: '仅第二段映射为 deepseek-flash' }, { name: 'host', reason: '由池目标重建' }, { name: 'content-length', reason: '由修改后的实体长度重建' }];

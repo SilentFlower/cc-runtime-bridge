@@ -28,10 +28,10 @@ export class PrivateProcess<T> {
   }
   /** 发送结构化控制帧，不经 shell。 @param frame 合同内的指令。 @return 写入完成。 */
   async send(frame: unknown): Promise<void> { this.child.stdin.write(JSON.stringify(frame) + '\n'); await this.child.stdin.flush(); }
-  /** 在单一消费者内取得下一帧。 @param timeoutMs 等待预算。 @return 下一条已验证帧。 */
+  /** 在单一消费者内取得下一帧。 @param timeoutMs 等待预算，0 表示允许常驻通道空闲。 @return 下一条已验证帧。 */
   async next(timeoutMs = 50000): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    try { const result = await Promise.race([this.iterator.next(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('私有通道等待超时')), timeoutMs); })]); if (result.done) throw new Error('子进程提前结束'); return result.value; }
+    try { const result = await (timeoutMs === 0 ? this.iterator.next() : Promise.race([this.iterator.next(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('私有通道等待超时')), timeoutMs); })])); if (result.done) throw new Error('子进程提前结束'); return result.value; }
     finally { clearTimeout(timer); }
   }
   /** 有界关闭，超时只清理本通道创建的进程树。 @return 子进程和诊断读取均已结束。 */

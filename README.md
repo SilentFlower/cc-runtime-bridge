@@ -46,6 +46,48 @@ bun run start
 
 ## 接口
 
+### 用自己的 Claude Code 联调
+
+本地池模式提供常驻 API 和日志页，接收固定 2.1.293 客户端使用自定义 Base URL 发出的请求。链路为本地接口、隔离原生运行时、TLS 采集器、兼容 Messages 的池；模型在采集器第二段映射为 deepseek-flash。
+
+```bash
+bun run start:pool --run manual-001 \
+  --binary /你的路径/claude-2.1.293 \
+  --pool-env /你的路径/pool.env
+```
+
+池配置文件仅所有者可读（0600），使用 `CCRB_TEST_POOL_BASE_URL` 和 `CCRB_TEST_POOL_API_KEY`；也兼容 `PROJECT_REQUESTER_BASE_URL/API_KEY`。只读取地址与 Key，不读取其中的模型和 fallback。Key 不通过命令行传递，不进入原生工作进程。
+
+目前此模式需要已登记 SHA256 的原版 293 和当前预加载代码；现有轻量文件内嵌旧入口，暂不用于此模式。原有轻量运行方式保持。
+
+默认地址与日志页均为 http://127.0.0.1:8787。新开一个终端，按当前会话设置客户端（无需填写池 Key）：
+
+```bash
+unset ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8787
+export ANTHROPIC_AUTH_TOKEN=ccrb-local-client
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+claude --model claude-sonnet-4-6
+```
+
+PowerShell：
+
+```powershell
+Remove-Item Env:ANTHROPIC_API_KEY,Env:CLAUDE_CODE_OAUTH_TOKEN -ErrorAction SilentlyContinue
+$env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8787"
+$env:ANTHROPIC_AUTH_TOKEN = "ccrb-local-client"
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
+claude --model claude-sonnet-4-6
+```
+
+Base URL 不加 `/v1`。客户端模型使用上述 Claude 标识，池侧实际模型固定 deepseek-flash。当前只支持 2.1.293；可先运行 `claude --version` 核对。
+
+每轮上限 20 次池转发，单次 max_tokens 最大 32768，池超时 30 秒；客户端自动重发也占额度。启动、自检、健康检查和页面刷新不调用模型，服务端不自动重试、重定向或换模型。运行目录为 `artifacts/local-pool-runs/<run>`，保存预算账本、日志与含 PID 的 ready.json；同目录不能覆盖重置。停止用 Ctrl+C 或启动信息中的 `kill <PID>`，关闭临时终端即可结束客户端环境设置。
+
+日志详情的“最终出站采样”来自 Node TLS 实收，位于池映射之前；发送前参数与它分别展示。池映射后的参数不代表池端网络实收。原生工作进程使用合成凭据、独立 HOME/config、仅回环网络，遥测关闭。池若不支持某个原生字段，将显示实际错误，不静默删字段。
+
+### HTTP 入口
+
 - `POST /v1/messages`：接收固定 293 原生 CC 正文或受支持的 Messages API 正文。
 - `POST /api/requests`：接收带 request_id、headers、context 的信封。
 - `GET /api/logs`、`GET /api/logs/:id`：只读查询；`GET /api/health` 查看运行来源和采集故障。

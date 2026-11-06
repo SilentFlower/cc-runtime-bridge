@@ -1,12 +1,24 @@
 import { resolve, join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
-import type { HeaderPair, LogFilters } from '../shared/contracts';
+import type { HeaderPair, LogFilters, NativeIngressPolicy } from '../shared/contracts';
 import { BridgeError, errorText } from '../shared/errors';
 import type { EngineConfig, Engine } from './engine';
 import { createEngine } from './engine';
 import { LogStore } from './log-store';
 import { BridgeService } from './service';
 import { readCachePolicy, readTelemetryPolicy } from '../shared/runtime-policy';
+import type { FinalCaptureSample } from './trace';
+
+/** 本地手工池实例的只读预算，不包含地址凭据。 */
+export interface LocalPoolStatus { runId: string; model: string; live: boolean; budget: number; reserved: number; remaining: number }
+
+/** 仅启动调用方可提供的联调能力，HTTP 请求不能修改。 */
+export interface ServerStartupOptions {
+  nativeIngressPolicy?: NativeIngressPolicy;
+  secrets?: Record<string, unknown>;
+  finalCapture?: (requestId: string) => FinalCaptureSample | null;
+  localPoolStatus?: () => LocalPoolStatus;
+}
 
 /** 本地控制服务的显式配置。 */
 export interface ServerConfig {
@@ -95,15 +107,16 @@ function secured(response: Response): Response {
 
 /** 启动本地只读日志页面及显式提交接口。
  * @param config 服务配置。
- * @param injectedEngine 测试时可注入的合成引擎。
+ * @param injectedEngine 可注入的合成或隔离原生引擎。
+ * @param startup 仅启动侧可用的兼容、秘密与独立采集设置。
  * @return 已启动服务。
  */
-export async function startServer(config: ServerConfig, injectedEngine?: Engine): Promise<RunningServer> {
+export async function startServer(config: ServerConfig, injectedEngine?: Engine, startup: ServerStartupOptions = {}): Promise<RunningServer> {
   const engine = injectedEngine ?? await createEngine(config.engine);
   await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
   const store = new LogStore({ dbPath: join(config.dataDir, 'logs.sqlite'), bodyDir: join(config.dataDir, 'bodies'), retainDays: config.retainDays, debugRetainDays: Math.min(config.debugRetainDays, config.retainDays), maxBytes: config.maxLogBytes });
   await store.open();
-  const service = new BridgeService(engine, store, { mode: config.logMode, maxBodyBytes: config.maxBodyBytes, timeoutMs: config.engine.timeoutMs, secrets: { api_key: config.engine.apiKey, token: config.engine.oauthToken, proxy_url: config.engine.proxyUrl } });
+  const service = new BridgeService(engine, store, { mode: config.logMode, maxBodyBytes: config.maxBodyBytes, timeoutMs: config.engine.timeoutMs, nativeIngressPolicy: startup.nativeIngressPolicy, finalCapture: startup.finalCapture, secrets: { api_key: config.engine.apiKey, token: config.engine.oauthToken, proxy_url: config.engine.proxyUrl, ...startup.secrets } });
   let server: Bun.Server<undefined>;
   try {
     server = Bun.serve({
@@ -114,7 +127,7 @@ export async function startServer(config: ServerConfig, injectedEngine?: Engine)
           if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) return secured(Response.json({ error: '仅允许本地 Host' }, { status: 403 }));
           const origin = request.headers.get('origin');
           if (origin && origin !== url.origin) return secured(Response.json({ error: '不接受跨来源请求' }, { status: 403 }));
-          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: false, runtimePolicy: { cachePolicy: config.engine.cachePolicy ?? 'preserve', telemetry: config.engine.telemetryPolicy ?? 'off', telemetryState: engine.telemetryState ?? 'unavailable' } }));
+          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: !!startup.finalCapture, ...(startup.localPoolStatus ? { localPool: startup.localPoolStatus() } : {}), runtimePolicy: { cachePolicy: config.engine.cachePolicy ?? 'preserve', telemetry: config.engine.telemetryPolicy ?? 'off', telemetryState: engine.telemetryState ?? 'unavailable' } }));
           if (request.method === 'GET' && url.pathname === '/api/logs') return secured(Response.json(store.list(filters(url))));
           if (request.method === 'GET' && url.pathname.startsWith('/api/logs/')) {
             const id = decodeURIComponent(url.pathname.slice('/api/logs/'.length));

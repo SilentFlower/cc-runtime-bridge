@@ -20,7 +20,7 @@
 
 - CaptureStage 固定为 ingress、header_policy、cc_prepared、wire_final、upstream_response；每段绑定 attempt、capturedAt、source、representation、status、observedBytes、storedBytes、sha256、text、headers、note。
 - ingress 使用 HTTP 原始 UTF-8 正文；不能 JSON 重序列化后声称是原文。哈希使用原始观测字节，预览先脱敏、再按完整 UTF-8 字符限长。
-- cc_prepared 是 JS 原生传输前参数，CCH 可能为 00000。当前 wire_final 始终 unavailable，不能重算补写或把中间值改标签充当最终值。
+- cc_prepared 是 JS 原生传输前参数，CCH 可能为 00000。普通启动的 wire_final 仍为 unavailable；显式本地常驻池实例按下文独立合同采集，不能重算补写或把中间值改标签充当最终值。
 - context.inputFormat 可选 api / claude_code，只由输入解析写入，沿既有 context_json 持久化，不增数据库列或回填旧记录。普通 API 中间段来源为 claude_code_293_cli_prepared，原生为 claude_code_293_native_ingress_prepared；默认 preserve 的原生说明只改账号身份及 CCH 占位。显式 sub2api 实际应用时说明增加消息缓存断点处理；运行时可选 cache_policy 诊断经共享协议校验后投影到已有 capture.note，记录应用/保留/跳过及原因和位置。历史缺失字段保持可读，不把这些诊断称为真实缓存命中。demo 始终保持 demo_fixture，不能因输入是原生形状就标成实际原生发送。
 - 响应 representation=response_logical_bytes。原生 fetch 可能已解压，不称为线上压缩帧。
 - 模式 off 不新增记录；summary 保存摘要、关联、阶段状态而不保存原文和头值；debug 保存有界脱敏原文。既有历史不会因 off 删除。
@@ -123,3 +123,55 @@
 - tests/integration/pool-forwarder.test.ts → tests/pool/transport.test.ts：独立无外网空间内真实 Node rawHeaders、非法 Key 零请求、拒绝/超限、单次发送、HTTP 错误、重定向、背压、取消、超时、无池响应的本地 502、代理路由和跨请求脱敏隔离。
 - 原版/精简分别跑 test:pool 离线矩阵，核对 CCH、头部/metadata/父子归因、仅根 model 改动、准备预览、凭据边界、取消退役及结束后的目录扫描。
 - 显式真实验收独立记录三次上限、原始 CCH/哈希及 JSON/SSE/取消结果；失败保留实际结果，普通 test/typecheck/build 不访问真实池。页面验收覆盖桌面、390 像素、文本安全、三次刷新零推理及历史文件摘要不变。
+
+## Scenario: 本地 Claude Code 常驻池联调与最终采集
+
+### 1. Scope / Trigger
+
+- scripts/local-pool.ts 提供用户手工发请求的常驻 Base URL，独立于三次小预算验收；复用产品服务、原生 Engine、TLS 接收端、脱敏和日志页。
+- 默认生产启动及既有测试账本不改变；只有本地实例配置已自检采集端时，才报告 nativeFinalCapture=true。
+
+### 2. Signatures
+
+- bun run start:pool --run <新ID> --binary <固定原版293> --pool-env <受保护文件> [--port <端口>]；默认 127.0.0.1:8787。
+- startLocalPool(options: LocalPoolOptions): Promise<LocalPoolRunning>；startServer(config, injectedEngine?, startup: ServerStartupOptions = {}): Promise<RunningServer>。
+- ServerStartupOptions 包括 nativeIngressPolicy、secrets、finalCapture(requestId)、localPoolStatus()，仅启动调用方可设置，不接受 HTTP 注入。
+- FinalCaptureSample = {body, headers: HeaderPair[], httpVersion, capturedAt, verified: boolean, note}；RequestTrace.finalCapture(read: () => FinalCaptureSample | null): void。
+- LocalPoolLedger.create(path, runId, live, budget)、reserve(requestId)、finish(requestId, result)；LocalPoolEngine.takeFinalCapture(requestId) 取出并清理同请求样本。
+
+### 3. Contracts
+
+- PoolConfig.mode 显式区分 acceptance/manual；缺省沿用原验收。live 必须如实表示真实池或离线回环，不得用 false 放开外部调用。原有 URL、Key、模型映射及代理规则复用上文测试 TLS 合同。
+- CLI 手工模式固定 20 次预留、max_tokens 上限 32768、池超时 30 秒、桥接预算 45 秒；超限拒绝，不裁剪。每个入站最多一次池发送，不重试、不跟随重定向、不回退；客户端重发为新调用。旧真实验收三次/128 tokens 和首错停止保持。
+- artifacts/local-pool-runs/<run>/ledger.json 排他创建，发送前持久预留，同目录不覆盖重置；预留数是异常情况下实际尝试上界。只保存 requestId、时间、attempted、upstreamStatus、localStatus、outcome，不保存 Key 或正文。
+- /api/health.localPool 返回 runId、model、live、budget、reserved、remaining。ready.json 保存 PID/Base URL 与运行元数据；启动、自检、健康检查和页面刷新均不发模型请求。
+- 驱动环境只有 HOME/LANG/PATH，独立仅 lo 网络、专用 HOME/config、合成 Key、遥测 off；只接受固定 CONNECT 接入私有 socket。池真实 Key 仅由宿主/Node 持有，不进入原生进程、进程命令行或私有资源文件。
+- 驱动 run/cancel/shutdown 指令及 LocalDriverFrame 由集中解码器负责，沿用 RuntimeEvent 校验；同请求终态和真实 idle 收口，产生 TLS 采集时还须等待其 finished，之后才释放串行槽位。PrivateProcess.next(0) 允许常驻空闲，不能套用有限验收的空闲超时。
+- wire_final source=local_pool_node_tls_receiver，representation=http_entity_body_after_native_transport，来自 Node 实收 rawHeaders/实体/版本，采集在第二段根模型及鉴权映射前。先核对活动请求、唯一采集、会话及独立正确非零 CCH 才允许池转发；拒绝重复或错归属帧。
+- 池 Key 在 RequestTrace 创建前注册；TLS 样本在处理池响应头前保存，避免敏感名称响应标志影响此前请求预览。继续遵守 off/summary/debug、UTF-8 限长及原始哈希；脱敏预览不能用于反向校验或补造原文。
+- 提供者返回 null 表示 unavailable，异常或 verified=false 表示 failed 并显示 captureError；采集故障不改变已取得响应的模型终态、不触发重放。第二段参数与真实池端实收仍严格区分。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 必须行为 |
+| --- | --- |
+| 相同目录已有账本 | local_pool_run_exists，保留原内容，CLI 启动失败 |
+| 回环端口冲突 | local_pool_port，清理本次启动资源，零池推理 |
+| TLS 实收正文的 max_tokens 超限或缺失 | 本地拒绝 400，不裁剪、不预留池次数 |
+| 第 21 次及之后 | 本地 429/POOL_BUDGET_EXHAUSTED，不发送池，upstreamStatus=null |
+| 池连接失败或超时，尚无响应头 | 本地 502，池状态为 null，单次尝试记入预算 |
+| 取消或响应异常 | 取消传到池，原生进程退役，后续新作业可重建，当前不重放 |
+| 最终样本缺失、失败、日志截断 | 分别显示 unavailable/failed/truncated，不拿中间值补写 |
+
+### 5. Scenarios and Examples
+
+- 正常：用新轮次及受保护配置启动，再在临时终端设置 ANTHROPIC_BASE_URL=http://127.0.0.1:8787、合成 ANTHROPIC_AUTH_TOKEN，运行 claude --model claude-sonnet-4-6。池侧根 model 实际为 deepseek-flash，原生进程不取得池 Key。
+- 边界：第 20 次仍按正常路径发送，第 21 次本地拒绝；同轮目录重启不会自动恢复额度，旧报告与账本保持。
+- 错误用法：直接用有限验收脚本常驻、把 live=false 指向真实池、给 Base URL 再加 /v1，或把预览 CCH 当作原始校验输入。正确做法：显式手工入口、如实配置 live、使用服务根地址，并用 TLS 原始观测哈希核对。
+
+### 6. Tests Required
+
+- tests/unit/pool-forwarder.test.ts：显式模式、32768 边界、20 次预留、旧三次/128 限制、账本排他与真实状态。
+- tests/integration/control.test.ts：启动侧秘密、最终样本缺失/异常、off/summary/debug、原始 SHA256 与截断，采集失败不改变响应。
+- tests/integration/local-pool.test.ts 包裹 tests/local-pool：无外网模拟池，真实客户端/工具续轮/交互终端、子代理、端口冲突、取消、错误/超时/重定向、20 次上限与凭据落盘扫描；桌面及 390 像素页面、脚本安全、三次刷新零推理。
+- 原版和轻量版旧离线 15 场景继续通过；真实手工实例只检查健康/页面及隔离，不自动发送真实池推理。

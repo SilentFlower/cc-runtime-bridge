@@ -8,6 +8,7 @@ import { BodyCapture, CAPTURE_LIMIT, POOL_MODEL, decodeDriverFrame, decodeForwar
 import { poolScenes } from '../../scripts/testing/pool-scenes';
 import { safePoolSample } from '../../scripts/test-pool';
 import { renderPoolReport, servePoolReport, type PoolReport } from '../../scripts/testing/pool-report';
+import { LocalPoolLedger } from '../../scripts/testing/local-pool-ledger';
 
 const secret = 'pool-canary-over-chunks-58af';
 const config: PoolConfig = { baseUrl: 'http://127.0.0.1:1234/v1', apiKey: secret, live: false, maxRequests: 10, timeoutMs: 500 };
@@ -15,6 +16,33 @@ const redactor = new Redactor(); redactor.register({ api_key: secret });
 const empty = sample('', redactor);
 
 describe('池测试的配置、映射与有界采集', () => {
+  test('手工模式显式放开 CLI 输出上限，真实标志与旧验收限制不变', () => {
+    const manual: PoolConfig = { ...config, baseUrl: 'https://pool.example/v1', live: true, mode: 'manual', maxRequests: 20 };
+    expect(() => validatePoolConfig(manual)).not.toThrow();
+    expect(() => validatePoolConfig({ ...manual, maxRequests: 21 })).toThrow('预算');
+    expect(() => validatePoolConfig({ ...manual, live: false })).toThrow('目标');
+    const body = { model: 'claude-sonnet-4-6', max_tokens: 32000, messages: [] };
+    expect(JSON.parse(preparePoolRequest(JSON.stringify(body), [], '/v1/messages', manual).body)).toEqual({ ...body, model: POOL_MODEL });
+    for (const max_tokens of [1, 32768]) expect(() => preparePoolRequest(JSON.stringify({ ...body, max_tokens }), [], '/v1/messages', manual)).not.toThrow();
+    for (const max_tokens of [0, 32769, 1.5, undefined]) expect(() => preparePoolRequest(JSON.stringify({ ...body, max_tokens }), [], '/v1/messages', manual)).toThrow('预算');
+    expect(() => preparePoolRequest(JSON.stringify(body), [], '/v1/messages', { ...manual, mode: 'acceptance' })).toThrow('预算');
+  });
+
+  test('手工预算先持久预留，20 次耗尽且相同运行目录不能覆盖', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccrb-manual-ledger-'));
+    try {
+      const path = join(root, 'ledger.json'), ledger = await LocalPoolLedger.create(path, 'manual-unit', false, 20);
+      for (let index = 0; index < 20; index++) await ledger.reserve('request-' + index);
+      expect(ledger.status()).toMatchObject({ reserved: 20, remaining: 0, live: false });
+      await expect(ledger.reserve('over-budget')).rejects.toThrow('额度');
+      await ledger.finish('request-0', { attempted: true, upstreamStatus: null, statusCode: 502, outcome: 'error' });
+      const saved = await Bun.file(path).json();
+      expect(saved.reservations).toHaveLength(20); expect(saved.reservations[0]).toMatchObject({ attempted: true, upstreamStatus: null, localStatus: 502 });
+      await expect(LocalPoolLedger.create(path, 'manual-unit', false, 20)).rejects.toThrow();
+      expect(await Bun.file(path).json()).toEqual(saved);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   test('FBK-001：配置边界拒绝 JSON 转义和非 ASCII 凭据，不回显原值', async () => {
     const unsafe = ['pool-quote"back\\slash-canary', 'pool/escape/slash', 'pool\tcontrol', 'pool 中文', "pool'apostrophe"];
     for (const apiKey of unsafe) {

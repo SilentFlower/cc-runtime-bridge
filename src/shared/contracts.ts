@@ -6,6 +6,9 @@ export type JsonObject = Record<string, unknown>;
 /** 保留头名、大小写和重复项的输入表示。 */
 export type HeaderPair = [string, string];
 
+/** 仅由服务启动配置选择的原生入站策略，不能由 HTTP 正文授权。 */
+export type NativeIngressPolicy = 'strict' | 'local_base_url';
+
 /** 固定 293 已识别的请求类别。 */
 export type RequestClass = 'main' | 'subagent' | 'workflow' | 'compaction' | 'auxiliary' | 'side_reply';
 
@@ -49,6 +52,7 @@ export interface BridgeInput {
   headers: HeaderPair[];
   context: ContextInput;
   inputFormat?: 'api' | 'claude_code';
+  nativeIngressPolicy?: NativeIngressPolicy;
 }
 
 /** 已解析的调用上下文，各表示都以此为同一来源。 */

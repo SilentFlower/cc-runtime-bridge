@@ -5,7 +5,7 @@ import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import type { ServerResponse, IncomingMessage } from 'node:http';
 import type { HeaderPair } from '../../src/shared/contracts';
-import { isObject } from '../../src/shared/errors';
+import { BridgeError, isObject } from '../../src/shared/errors';
 import { Redactor } from '../../src/control/redaction';
 import { BodyCapture, POOL_MODEL, REQUEST_LIMIT, preparePoolRequest, sample, validatePoolConfig, type ForwarderFrame, type PoolConfig, type PoolPrepared } from './pool-common';
 
@@ -16,7 +16,7 @@ interface Pending { id: number; request: IncomingMessage; response: ServerRespon
 
 const send = async (frame: ForwarderFrame): Promise<void> => { if (!process.stdout.write(JSON.stringify(frame) + '\n')) await once(process.stdout, 'drain'); };
 
-/** 运行仅供测试使用的 Node TLS 转发器。 @return 父管道关闭后资源已收口。 */
+/** 运行有限验收或显式手工联调的 Node TLS 转发器。 @return 父管道关闭后资源已收口。 */
 async function main(): Promise<void> {
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
   const iterator = input[Symbol.asyncIterator]();
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   });
   await send({ type: 'ready', namespace: await readlink('/proc/self/ns/net'), rawHeadersMatched: probeMatched });
 
-  const forward = async (item: Pending, allowed: boolean): Promise<void> => {
+  const forward = async (item: Pending, allowed: boolean, reason?: string): Promise<void> => {
     // 响应标志头也可能被通用规则识别为秘密，不能污染下一请求的正文预览。
     const redactor = new Redactor(); redactor.register({ api_key: setup.config.apiKey });
     item.started = true; clearTimeout(item.timer);
@@ -71,8 +71,8 @@ async function main(): Promise<void> {
     const capture = new BodyCapture(); let complete = false, statusCode = 502, upstreamStatus: number | null = null, outcome = 'error', error: string | undefined, failureCode: string | undefined, prepared: PoolPrepared | undefined, responseHeaders: HeaderPair[] = [], attempted = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-      if (!allowed) throw new Error('原生最终请求未通过独立核验');
-      if (attempts >= setup.config.maxRequests) throw new Error('池请求次数达到上限');
+      if (!allowed) throw new BridgeError(reason === 'budget_exhausted' ? 'pool_budget_exhausted' : 'request_rejected', reason === 'budget_exhausted' ? '本次池联调额度已用尽' : reason === 'invalid_request' ? '请求不符合池联调限制，max_tokens 必须在 1–32768 之间' : '原生最终请求未通过独立核验', reason === 'budget_exhausted' ? 429 : 400);
+      if (attempts >= setup.config.maxRequests) throw new BridgeError('pool_budget_exhausted', '本次池请求次数达到上限', 429);
       const outgoing = preparePoolRequest(item.raw, item.headers, item.request.url!, setup.config);
       outgoing.headers.push(['connection', 'close']); outgoing.changes.push({ name: 'connection', reason: '测试池每次独立连接，避免复用陈旧连接' });
       prepared = { url: outgoing.url, model: POOL_MODEL, headers: redactor.headers(outgoing.headers), body: sample(outgoing.body, redactor), changes: outgoing.changes };
@@ -95,12 +95,12 @@ async function main(): Promise<void> {
       complete = true; item.response.end();
       outcome = statusCode >= 300 && statusCode < 400 ? 'redirect_blocked' : statusCode >= 400 ? 'http_error' : 'success';
     } catch (cause) {
-      outcome = item.abort.signal.aborted ? item.abort.signal.reason === 'caller_cancel' ? 'canceled' : 'timeout' : 'error'; error = item.abort.signal.aborted ? '池转发已取消或超时' : '池转发未完成，请检查状态与配置';
+      outcome = item.abort.signal.aborted ? item.abort.signal.reason === 'caller_cancel' ? 'canceled' : 'timeout' : 'error'; error = item.abort.signal.aborted ? '池转发已取消或超时' : cause instanceof BridgeError ? cause.message : '池转发未完成，请检查状态与配置';
       // 不保存任意异常 message；部分客户端会在异常内附带 URL、请求头或凭据。
       const fault = isObject(cause) && isObject(cause.cause) ? cause.cause : cause;
       const codes = new Set(['ENOTFOUND','EAI_AGAIN','ECONNREFUSED','ECONNRESET','ENETUNREACH','EHOSTUNREACH','ETIMEDOUT','DEPTH_ZERO_SELF_SIGNED_CERT','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_SOCKET','UND_ERR_REQ_CONTENT_LENGTH_MISMATCH','ERR_INVALID_CHAR']);
-      failureCode = item.abort.signal.aborted ? outcome === 'canceled' ? 'CALLER_CANCELED' : 'POOL_TIMEOUT' : isObject(fault) && typeof fault.code === 'string' && codes.has(fault.code) ? fault.code : attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED';
-      if (!item.response.headersSent) { statusCode = allowed ? 502 : 400; item.response.writeHead(statusCode, { 'content-type': 'application/json' }); item.response.end(JSON.stringify({ error })); }
+      failureCode = item.abort.signal.aborted ? outcome === 'canceled' ? 'CALLER_CANCELED' : 'POOL_TIMEOUT' : cause instanceof BridgeError ? cause.code.toUpperCase() : isObject(fault) && typeof fault.code === 'string' && codes.has(fault.code) ? fault.code : attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED';
+      if (!item.response.headersSent) { statusCode = cause instanceof BridgeError ? cause.status : allowed ? 502 : 400; item.response.writeHead(statusCode, { 'content-type': 'application/json', 'x-should-retry': 'false' }); item.response.end(JSON.stringify({ type: 'error', error: { type: failureCode, message: error } })); }
       else item.response.destroy();
     } finally {
       clearTimeout(item.timer); pending.delete(item.id);
@@ -115,9 +115,10 @@ async function main(): Promise<void> {
       if (!isObject(command)) throw new Error('采集控制帧不合法');
       if (command.type === 'shutdown') break;
       if ((command.type !== 'forward' && command.type !== 'reject') || !Number.isSafeInteger(command.id)) throw new Error('采集控制帧不合法');
+      if (command.reason !== undefined && !['budget_exhausted','invalid_request','invalid_capture'].includes(String(command.reason))) throw new Error('采集拒绝原因不合法');
       const item = pending.get(Number(command.id));
       if (!item || item.started) throw new Error('采集请求归属不匹配');
-      const task = forward(item, command.type === 'forward'); active.add(task); void task.finally(() => active.delete(task)).catch(() => {});
+      const task = forward(item, command.type === 'forward', command.reason as string | undefined); active.add(task); void task.finally(() => active.delete(task)).catch(() => {});
     }
   } finally {
     closing = true; input.close();

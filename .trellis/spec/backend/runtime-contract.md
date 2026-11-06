@@ -100,16 +100,16 @@
 
 ### 2. Signatures
 
-- readNativeInput(body: JsonObject): NativeInput | null；没有 billing 前缀返回 null，疑似原生但损坏时明确失败。
+- readNativeInput(body: JsonObject, policy: NativeIngressPolicy = 'strict'): NativeInput | null；没有 billing 前缀返回 null，疑似原生但损坏时明确失败。
 - mergeNativeContext(context: ContextInput, native: NativeInput): ContextInput；显式归因冲突返回 400。
-- prepareNativeBody(body: MessageBody, generatedMetadata: unknown): JsonObject；只更新账号归属及 CCH 占位。
+- prepareNativeBody(body: MessageBody, generatedMetadata: unknown, policy: NativeIngressPolicy = 'strict', generatedSystem?: unknown): JsonObject；严格分支更新账号归属及 CCH 占位，兼容分支另采用同次 SDK 实际 CLI 入口。
 - validateToolChoice(body: MessageBody, requiresAdaptive = false): void；模型能力由 bindings.context.kps(false, {type:'disabled'}, model) 实际返回值提供。
 - ensureMessages(expected: ApiMessage[], nativeMetadata: NativeMessage[], actual: unknown): void；普通 API 的规范化历史保留守卫。
 - BridgeInput.inputFormat 与 RequestContext.inputFormat 为可选 'api' | 'claude_code'；HTTP 由 parseInput 计算，不能由信封直接指定。私有作业校验 input.inputFormat，日志解码校验 context.inputFormat 的已知枚举，历史缺失保持可读。
 
 ### 3. Contracts
 
-- 原生根 system 必须为数组，首段是唯一独立 text billing 且不带 cache_control。cc_version 匹配 2.1.293.<三位十六进制>，cc_entrypoint=cli，CCH 为五位十六进制；重复字段、歧义 CCH、非法 cc_is_subagent、prompt UUID 或轮次均拒绝。这里只核对入站形状，不凭 billing 授权账号或执行。
+- 默认严格策略下，原生根 system 必须为数组，首段是唯一独立 text billing 且不带 cache_control。cc_version 匹配 2.1.293.<三位十六进制>，cc_entrypoint=cli，CCH 为五位十六进制；重复字段、歧义 CCH、非法 cc_is_subagent、prompt UUID 或轮次均拒绝。这里只核对入站形状，不凭 billing 授权账号或执行。本地 Base URL 兼容例外见下文独立场景。
 - metadata.user_id 必须是 JSON 字符串，device_id 为 64 位十六进制，account_uuid 为空或 UUID，session_id 为 UUID。session、可选 billing prompt 和主/子身份合并显式信封及原生头，冲突拒绝；子代理及 workflow 仍须提供既有合同所需关联，不能猜父子身份。
 - 默认 preserve 策略下，原生保留业务 system、messages、tools、thinking、输出配置、缓存位置及 thread/diagnostics/fallbacks/safeguards 等扩展 JSON；省略字段保持省略，原生 system 角色和消息扩展允许。不加入默认 CLI system、提醒、工具、strict 或种子默认参数。显式启用的消息缓存策略按下文独立合同处理。
 - 根 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于禁止的本机控制字段；工具 schema 内的同名业务字段不因此删除。其他扩展只作为上游数据，不改变账号、目标地址、代理或工作目录。
@@ -319,3 +319,48 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/unit/{engine,worker-protocol}.test.ts：状态来自实际握手、旧能力拒绝时零作业发送、畸形配置/状态组合拒绝，默认旧握手继续兼容。
 - tests/native/native.test.ts：原版和最终精简均执行 preserve/sub2api × off/on，真实 TLS 模型正文/CCH、响应、业务会话及 cli 入口一致；off 零上传、on 实收原生事件，无 bootstrap/其他 API/明文 HTTP forward。
 - 同一原生套件覆盖遥测 500、慢响应、有界关闭、开启后取消/退役/重建及下一业务归属；每作业只有一次模型发送，真实上游为零。使用独立合成 HOME/config，不触发真实账号或付费推理。
+
+## Scenario: 本地 Base URL 的固定 293 原生入站兼容
+
+### 1. Scope / Trigger
+
+- 固定 293 的客户端使用自定义 Base URL 时会省略 billing CCH，--print 使用 sdk-cli；常驻本地池入口需要接纳这些实际形状，默认严格入口保持原合同。
+- 仅适用于显式本地联调，不授权真实 Anthropic、不同版本、账号接管或工具执行。
+
+### 2. Signatures
+
+- NativeIngressPolicy = 'strict' | 'local_base_url'；parseInput(raw, incomingHeaders = [], nativeIngressPolicy = 'strict'): BridgeInput。
+- BridgeInput.nativeIngressPolicy 可选，只有控制层对已识别原生输入写入；decodeRuntimeJob/decodeWorkerCommand 验证已知枚举且 inputFormat 必须为 claude_code。
+- prepareNativeBody 的 policy/generatedSystem 参数来自内部作业与同次 SDK 生成值，不从外部 JSON 授权。
+
+### 3. Contracts
+
+- local_base_url 接纳固定 2.1.293.<三位十六进制>、cc_entrypoint=cli|sdk-cli；CCH 可以缺失，存在时必须恰好一个独立五位十六进制字段。扩展值内伪装 cch= 同样按歧义拒绝。
+- 其他 billing、metadata、tools、thinking、上下文与本机控制字段规则不变。原始 HTTP 入站仍按原表示保存，不在日志前改写后声称是原文。
+- 兼容分支读取同次 SDK 实际生成、经严格验证的 CLI billing，形成发送入口并补原生 CCH 占位；账号归属仍取同次 metadata。业务正文、缓存位置、会话、轮次及父子扩展保留，最终 CCH 由原生传输生成。
+- 本地模式只接纳已登记原版与当前 dist/preload.mjs。已发布轻量文件内嵌旧代码，源码更新不能使其取得新合同；重新构建并独立验证前不得混用。旧轻量严格路径继续使用原产物。
+- 常驻入口及 TLS 映射的启动与预算规则由 logging-guidelines.md 的本地常驻池场景所有，不增加可由请求控制的运行时目标配置。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 必须行为 |
+| --- | --- |
+| 默认严格入口收到无 CCH 或 sdk-cli | invalid_native_request/422，不回落普通 API |
+| 显式本地模式收到合法固定 293、缺少 CCH | 保留业务进入原生发送，最终必须在 TLS 实收独立核验 |
+| 重复、损坏或位于扩展值的歧义 CCH | 入站 422，不发送模型 |
+| HTTP 信封企图指定内部兼容策略 | 不支持字段；不能自行启用策略 |
+| 私有作业未知策略或普通 API 携带原生策略 | runtime_protocol/502 |
+| 同次 SDK CLI 上下文缺失或不合法 | native_identity/503，不伪造入口 |
+| 本地模式选择现有轻量产物 | local_pool_runtime/503，不静默回退 |
+
+### 5. Scenarios and Examples
+
+- 正常：启动侧调用 parseInput(body, headers, 'local_base_url')；原生输入内部标记策略，--print 的 sdk-cli/无 CCH 正文保留后交给真实 CLI 发送上下文处理。
+- 边界：原生 tools 省略保持无工具；有效已有 CCH 同样准备占位，子代理上下文仍须提供 agentId，冲突继续拒绝。
+- 错误用法：给 HTTP body 添加 nativeIngressPolicy 以绕过严格校验，或从预览重算 CCH 冒充最终值。正确做法：由独立启动入口启用兼容，保存实际原文，从 TLS 接收端验证最终值。
+
+### 6. Tests Required
+
+- tests/unit/native-input.test.ts：默认严格行为、cli/sdk-cli、CCH 缺失/有效/重复/损坏/扩展值歧义、实际生成上下文缺失、业务与缓存保持。
+- tests/unit/worker-protocol.test.ts：内部枚举、原生格式限定，不能靠包装改变策略。
+- tests/local-pool/gateway.test.ts：实际 --print、真实伪终端交互 CLI、Read 工具续轮、有效/缺失 CCH、子代理与 TLS 非零 CCH；测试在无外网空间运行。

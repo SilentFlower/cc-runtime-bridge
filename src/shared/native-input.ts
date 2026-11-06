@@ -1,4 +1,4 @@
-import type { ContextInput, JsonObject, MessageBody } from './contracts';
+import type { ContextInput, JsonObject, MessageBody, NativeIngressPolicy } from './contracts';
 import { BridgeError, isObject } from './errors';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,9 +20,11 @@ export interface NativeInput {
 
 /** 识别并校验完整的固定 293 原生请求；普通 API 返回空值。
  * @param body 尚未裁剪或重新组装的请求正文。
+ * @param policy 启动侧入站策略，默认要求完整 CLI billing。
  * @return 原生归因证据；缺少原生 billing 时为空，疑似原生但损坏时明确失败。
  */
-export function readNativeInput(body: JsonObject): NativeInput | null {
+export function readNativeInput(body: JsonObject, policy: NativeIngressPolicy = 'strict'): NativeInput | null {
+  if (!['strict', 'local_base_url'].includes(policy)) throw new BridgeError('invalid_native_policy', '原生入站策略不合法');
   const system = body.system;
   const blocks = Array.isArray(system) ? system : typeof system === 'string' ? [{ type: 'text', text: system }] : [];
   const candidates = blocks.map((block, index) => ({ block, index })).filter(({ block }) => isObject(block) && typeof block.text === 'string' && BILLING.test(block.text));
@@ -32,14 +34,16 @@ export function readNativeInput(body: JsonObject): NativeInput | null {
   const { block, index } = candidates[0]!;
   if (!isObject(block) || block.type !== 'text' || typeof block.text !== 'string' || block.cache_control !== undefined) invalid('原生 billing 必须为不带缓存边界的独立文本块');
   const fields: Record<string, string> = Object.create(null);
-  if (((block.text as string).match(/\bcch=/g) ?? []).length !== 1) invalid('原生 billing 的 CCH 位置存在歧义');
+  const cchCount = ((block.text as string).match(/\bcch=/g) ?? []).length;
+  if (cchCount > 1 || (policy === 'strict' && cchCount !== 1)) invalid('原生 billing 的 CCH 位置存在歧义');
   for (const part of (block.text as string).replace(BILLING, '').split(';').map(value => value.trim()).filter(Boolean)) {
     const pair = /^([a-z_][a-z0-9_]*)=([^\r\n;]+)$/.exec(part);
     if (!pair || Object.hasOwn(fields, pair[1]!)) invalid('原生 billing 字段损坏或重复');
     fields[pair![1]!] = pair![2]!;
   }
-  if (!/^2\.1\.293\.[0-9a-f]{3}$/.test(fields.cc_version ?? '') || fields.cc_entrypoint !== 'cli') invalid('当前只接纳固定 2.1.293 CLI 原生请求');
-  if (!/^[0-9a-f]{5}$/.test(fields.cch ?? '')) invalid('原生 billing 缺少有效 CCH');
+  if (cchCount !== (fields.cch === undefined ? 0 : 1)) invalid('原生 billing 的 CCH 位置存在歧义');
+  if (!/^2\.1\.293\.[0-9a-f]{3}$/.test(fields.cc_version ?? '') || !(policy === 'local_base_url' ? ['cli', 'sdk-cli'] : ['cli']).includes(fields.cc_entrypoint ?? '')) invalid('当前只接纳固定 2.1.293 CLI 原生请求');
+  if ((policy === 'strict' || fields.cch !== undefined) && !/^[0-9a-f]{5}$/.test(fields.cch ?? '')) invalid('原生 billing 缺少有效 CCH');
   if (fields.cc_is_subagent !== undefined && !['true', 'false'].includes(fields.cc_is_subagent)) invalid('原生子代理标识不合法');
   if (fields.cc_prompt_id !== undefined && !UUID.test(fields.cc_prompt_id)) invalid('原生 prompt ID 必须为 UUID');
   for (const key of ['cc_prompt_index', 'cc_turn_index']) if (fields[key] !== undefined && !/^\d+$/.test(fields[key]!)) invalid('原生轮次必须为非负整数');
@@ -62,19 +66,31 @@ export function mergeNativeContext(context: ContextInput, native: NativeInput): 
   return { ...context, ...native.context };
 }
 
-/** 从经校验的原生正文生成本次唯一发送正文，只更新账号归属和原生 CCH 占位。
+/** 从原生正文准备唯一发送，严格模式更新账号与 CCH，兼容模式另采用同次 CLI 入口。
  * @param body 原生业务正文。
  * @param generatedMetadata 同一 SDK 按专用账号生成的身份。
+ * @param policy 启动侧入站策略。
+ * @param generatedSystem 同次 SDK 实际生成的 CLI system，兼容分支用来取得真实发送入口。
  * @return 业务字段和缓存位置保持不变的请求正文。
  */
-export function prepareNativeBody(body: MessageBody, generatedMetadata: unknown): JsonObject {
-  const native = readNativeInput(body);
+export function prepareNativeBody(body: MessageBody, generatedMetadata: unknown, policy: NativeIngressPolicy = 'strict', generatedSystem?: unknown): JsonObject {
+  const native = readNativeInput(body, policy);
   if (!native || !isObject(generatedMetadata) || typeof generatedMetadata.user_id !== 'string') throw new BridgeError('native_identity', '无法取得当前账号的原生身份', 503);
   const account: unknown = JSON.parse(generatedMetadata.user_id);
   if (!isObject(account) || typeof account.device_id !== 'string' || typeof account.account_uuid !== 'string') throw new BridgeError('native_identity', '当前账号原生身份结构不匹配', 503);
   const result = structuredClone(body);
   result.metadata = { ...(body.metadata as JsonObject), user_id: JSON.stringify({ ...native.user, device_id: account.device_id, account_uuid: account.account_uuid }) };
   const blocks = result.system as JsonObject[];
-  blocks[native.billingIndex]!.text = (blocks[native.billingIndex]!.text as string).replace(/(x-anthropic-billing-header:\s*|;\s*)cch=[0-9a-f]{5}(?=\s*(?:;|$))/, '$1cch=00000');
+  let billing = blocks[native.billingIndex]!.text as string;
+  if (policy === 'local_base_url') {
+    // 自定义 Base URL 会让客户端省略 CCH；发送入口必须来自同次真实 CLI 上下文，不能靠改日志标签证明。
+    let generated: NativeInput | null;
+    try { generated = readNativeInput({ system: generatedSystem, metadata: generatedMetadata }); }
+    catch { throw new BridgeError('native_identity', '同次 CLI billing 上下文校验失败', 503); }
+    if (!generated) throw new BridgeError('native_identity', '无法取得同次 CLI billing 上下文', 503);
+    billing = billing.replace(/((?:x-anthropic-billing-header:|;)\s*cc_entrypoint=)[^;\r\n]+/, '$1' + generated.fields.cc_entrypoint);
+    if (native.fields.cch === undefined) billing = billing.trimEnd() + (billing.trimEnd().endsWith(';') ? ' ' : '; ') + 'cch=00000;';
+  }
+  blocks[native.billingIndex]!.text = billing.replace(/(x-anthropic-billing-header:\s*|;\s*)cch=[0-9a-f]{5}(?=\s*(?:;|$))/, '$1cch=00000');
   return result;
 }

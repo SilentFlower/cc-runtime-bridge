@@ -268,7 +268,7 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
       if (++calls !== 1) throw new Error('首版禁止隐式模型重试');
       const headers = generated.headers;
       if (native) {
-        generated.body = prepareNativeBody(prepared.input.body, generated.body.metadata);
+        generated.body = prepareNativeBody(prepared.input.body, generated.body.metadata, prepared.input.nativeIngressPolicy, generated.body.system);
         init.body = JSON.stringify(generated.body);
         const beta = prepared.headers.filter(([name]) => name.toLowerCase() === 'anthropic-beta').map(([, value]) => value).join(',');
         if (beta) headers.set('anthropic-beta', beta);

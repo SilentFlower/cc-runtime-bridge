@@ -6,6 +6,16 @@ import { Redactor } from './redaction';
 import { ResponseObserver } from './response-observer';
 import { describeCachePolicy } from '../shared/runtime-policy';
 
+/** 本地 TLS 接收端的完整实体样本，只能从启动侧私有采集器提供。 */
+export interface FinalCaptureSample {
+  body: string;
+  headers: HeaderPair[];
+  httpVersion: string;
+  capturedAt: string;
+  verified: boolean;
+  note: string;
+}
+
 /** 单次采集的模式、预览上限和显式秘密来源。 */
 interface TraceOptions {
   mode: 'off' | 'summary' | 'debug';
@@ -30,6 +40,7 @@ export class RequestTrace {
   private savedBytes = 0;
   private responseHeaders: HeaderPair[] = [];
   private finalized = false;
+  private finalObserved = false;
 
   /** 建立请求发生时的快照，非法输入的上下文保持未解析。
    * @param prepared 已验证输入，拒绝请求可为空。
@@ -85,6 +96,33 @@ export class RequestTrace {
    */
   start(): void { this.row.state = 'running'; this.save(); }
 
+  /** 接收独立 TLS 实测，采集失败不改变模型终态或触发重放。
+   * @param read 按当前请求取得并清理的采集提供者。
+   * @return 无。
+   */
+  finalCapture(read: () => FinalCaptureSample | null): void {
+    if (this.finalObserved) return;
+    this.finalObserved = true;
+    try {
+      const sample = read();
+      if (!sample) {
+        this.captures.get('wire_final')!.note = '本次未取得本地 TLS 最终实收，未用发送前参数补写';
+      } else {
+        this.redactor.register(sample.headers);
+        this.capture('wire_final', sample.body, sample.headers, 'local_pool_node_tls_receiver', 'http_entity_body_after_native_transport');
+        const captured = this.captures.get('wire_final')!;
+        captured.capturedAt = sample.capturedAt;
+        captured.note = this.redactor.text('HTTP/' + sample.httpVersion + '；' + sample.note);
+        if (!sample.verified) { captured.status = 'failed'; this.row.captureError = '最终 TLS 实收未通过独立核验'; }
+      }
+    } catch {
+      const captured = this.captures.get('wire_final')!;
+      captured.status = 'failed'; captured.note = '本地 TLS 采集通道失败，未用中间值补写';
+      this.row.captureError = '本地 TLS 采集通道失败';
+    }
+    this.save();
+  }
+
   /** 更新运行时事件的摘要及采集结果。
    * @param event 已验证事件。
    * @return 无。
@@ -100,6 +138,7 @@ export class RequestTrace {
       if (!this.options.engine.startsWith('demo') && this.prepared?.context.inputFormat === 'claude_code') {
         captured.source = 'claude_code_293_native_ingress_prepared';
         captured.note = event.cache_policy?.action === 'applied' ? '原生入站业务正文保留，改写账号身份、原生 CCH 占位及明确启用的消息缓存断点；此处仍为最终传输前的中间值' : '原生入站业务正文保留，仅改写账号身份及原生 CCH 占位；此处仍为最终传输前的中间值';
+        if (this.prepared.input.nativeIngressPolicy === 'local_base_url') captured.note = '本地 Base URL 原生入站保留业务正文，按同次 CLI 上下文准备入口、账号归属与 CCH 占位；此处仍为最终传输前的中间值';
       }
       if (event.cache_policy) captured.note = [captured.note, describeCachePolicy(event.cache_policy)].filter(Boolean).join('；');
       this.save();
