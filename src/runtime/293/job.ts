@@ -5,7 +5,6 @@ import { Redactor } from '../../control/redaction';
 import type { NativeBindings, NativeMessage, NativeRecord } from './native';
 import { isNativeModelCall, prepareCli } from './cli';
 import { prepareNativeBody } from '../../shared/native-input';
-import { validateToolChoice } from '../../shared/parameters';
 import { applyCachePolicy } from '../../shared/cache-policy';
 import type { CachePolicy } from '../../shared/runtime-policy';
 
@@ -138,21 +137,20 @@ export function ensureMessages(expected: PreparedInput['input']['body']['message
   if (nextBusiness !== business.length || nextMetadata !== metadata.length) unsupported('原生 293 未保留完整的业务消息或原生提醒');
 }
 
-/** 原生准备完成且已经通过业务字段核验的首发参数。 */
+/** 原生首发参数；业务用途核对字段，种子用途只取得发送上下文。 */
 interface NativeRequest { body: JsonObject; headers: Headers; agent: JsonObject }
 
-/** 调用官方 CLI 首发构造，在参数核验后交给受控发送；没有回调时仅构造。
+/** 调用官方 CLI 首发构造，按用途核验后交给受控发送；没有回调时仅构造。
  * @param prepared 已验证的业务输入及上下文。
  * @param bindings 固定版本的 CLI 装配与发送接口。
  * @param signal 本轮独立取消信号。
  * @param send 可选的唯一发送回调，必须等原始响应消费收口后才返回。
+ * @param purpose 业务构造或仅取得原生发送上下文；后者的种子正文不会发送。
  * @return 原版 CLI 构造出的参数及原生请求头。
  */
-export async function generateNativeRequest(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, send?: (target: RequestInfo | URL, init: RequestInit, request: NativeRequest, cancel: () => void) => Promise<void>): Promise<NativeRequest> {
+export async function generateNativeRequest(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, send?: (target: RequestInfo | URL, init: RequestInit, request: NativeRequest, cancel: () => void) => Promise<void>, purpose: 'business' | 'transport_context' = 'business'): Promise<NativeRequest> {
   const { body } = prepared.input;
   const thinking = body.thinking;
-  if (thinking && !['disabled', 'enabled', 'adaptive'].includes(String(thinking.type))) unsupported('不支持的 thinking.type');
-  if (thinking?.type === 'enabled' && (!Number.isSafeInteger(thinking.budget_tokens) || Number(thinking.budget_tokens) < 1024)) unsupported('enabled thinking 需要不少于 1024 的 budget_tokens');
   const output = body.output_config ?? {};
   if (Object.keys(output).some(key => !['effort', 'format'].includes(key))) unsupported('首版 output_config 只支持 effort 和 format');
   if (signal.aborted) throw new DOMException('请求已取消', 'AbortError');
@@ -177,9 +175,9 @@ export async function generateNativeRequest(prepared: PreparedInput, bindings: N
         autocompact: bindings.core.Cer, now: () => new Date().toISOString(), uuid: randomUUID,
         callModel: async function* (value: unknown) {
           if (++calls !== 1 || !isNativeModelCall(value)) throw new Error('原生 CLI 构造调用边界不匹配');
-          ensureBusinessRecords(cli.business, value.messages);
+          if (purpose === 'business') ensureBusinessRecords(cli.business, value.messages);
           const identifiers = new Set(cli.business.map(message => message.uuid));
-          const metadata = bindings.core.Ck(value.messages.filter(message => !message.uuid || !identifiers.has(message.uuid)), cli.nativeTools, body.model, { preserveTrailingThinking: true });
+          const metadata = purpose === 'business' ? bindings.core.Ck(value.messages.filter(message => !message.uuid || !identifiers.has(message.uuid)), cli.nativeTools, body.model, { preserveTrailingThinking: true }) : [];
           for await (const event of bindings.core.K_t({ ...value, options: {
             ...value.options, model: body.model, querySource: cli.querySource, requestClass: prepared.context.requestClass,
             agentContext: cli.agent, extraToolSchemas: structuredClone(body.tools ?? []), toolChoice: structuredClone(body.tool_choice),
@@ -190,13 +188,16 @@ export async function generateNativeRequest(prepared: PreparedInput, bindings: N
                 if (typeof init.body !== 'string') throw new Error('原生构造器没有提供 JSON 正文');
                 const result: unknown = JSON.parse(init.body);
                 if (!isObject(result)) throw new Error('原生正文不是 JSON 对象');
-                ensureMessages(body.messages, metadata, result.messages);
-                for (const key of ['max_tokens', 'temperature', 'tool_choice', 'output_config'] as const) {
-                  if (body[key] !== undefined) ensureSubset(body[key], result[key], key);
+                // 原生入站只借用此处的发送上下文；种子历史随后被完整替换，不能据其提醒布局拦截业务。
+                if (purpose === 'business') {
+                  ensureMessages(body.messages, metadata, result.messages);
+                  for (const key of ['max_tokens', 'temperature', 'tool_choice', 'output_config'] as const) {
+                    if (body[key] !== undefined) ensureSubset(body[key], result[key], key);
+                  }
+                  // 省略也表示无工具，不能让原生默认声明绕过保留检查。
+                  ensureSubset(body.tools ?? [], result.tools, 'tools');
+                  if (body.thinking !== undefined && !(body.thinking.type === 'disabled' && result.thinking === undefined)) ensureSubset(body.thinking, result.thinking, 'thinking');
                 }
-                // 省略也表示无工具，必须检查实际空列表，不能让原生默认声明绕过保留检查。
-                ensureSubset(body.tools ?? [], result.tools, 'tools');
-                if (body.thinking !== undefined && !(body.thinking.type === 'disabled' && result.thinking === undefined)) ensureSubset(body.thinking, result.thinking, 'thinking');
                 if (signal.aborted) throw new DOMException('请求已取消', 'AbortError');
                 captured = { body: result, headers: new Headers(init.headers), agent: cli.agent };
                 try {
@@ -253,7 +254,6 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
   redactor.register(prepared.input);
   redactor.register({ api_key: process.env.ANTHROPIC_API_KEY, token: process.env.CLAUDE_CODE_OAUTH_TOKEN });
   const { api } = bindings;
-  validateToolChoice(prepared.input.body, bindings.context.kps(false, { type: 'disabled' }, prepared.input.body.model).type === 'adaptive');
   const native = prepared.input.inputFormat === 'claude_code';
   // 原生正文已经包含业务提示词和历史。种子仅取得同一账号的发送上下文，其正文不会进入上游。
   const construction: PreparedInput = native ? { ...prepared, input: { ...prepared.input, inputFormat: 'api', body: { model: prepared.input.body.model, messages: [{ role: 'user', content: '初始化本次原生发送上下文' }], stream: prepared.input.body.stream === true } } } : prepared;
@@ -315,7 +315,7 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
       rejectResponse(error);
       throw error;
     }
-  }).catch(error => { rejectResponse(error); });
+  }, native ? 'transport_context' : 'business').catch(error => { rejectResponse(error); });
   let status = 0;
   let finalState: 'success' | 'http_error' | 'canceled' = 'success';
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;

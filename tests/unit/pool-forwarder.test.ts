@@ -16,18 +16,24 @@ const redactor = new Redactor(); redactor.register({ api_key: secret });
 const empty = sample('', redactor);
 
 describe('池测试的配置、映射与有界采集', () => {
-  test('手工模式显式放开 CLI 输出上限，真实标志与旧验收限制不变', () => {
+  test('手工模式原样转发输出预算，真实标志与旧验收限制不变', () => {
     const manual: PoolConfig = { ...config, baseUrl: 'https://pool.example/v1', live: true, mode: 'manual', maxRequests: 20 };
     expect(() => validatePoolConfig(manual)).not.toThrow();
     expect(() => validatePoolConfig({ ...manual, maxRequests: 21 })).toThrow('预算');
     expect(() => validatePoolConfig({ ...manual, maxRequests: null })).not.toThrow();
+    expect(() => validatePoolConfig({ ...manual, timeoutMs: 0 })).not.toThrow();
+    expect(() => validatePoolConfig({ ...config, timeoutMs: 0 })).toThrow('预算');
     expect(() => validatePoolConfig({ ...manual, mode: 'acceptance', maxRequests: null })).toThrow('预算');
     expect(() => validatePoolConfig({ ...config, maxRequests: null })).toThrow('预算');
     expect(() => validatePoolConfig({ ...manual, live: false })).toThrow('目标');
     const body = { model: 'claude-sonnet-4-6', max_tokens: 32000, messages: [] };
     expect(JSON.parse(preparePoolRequest(JSON.stringify(body), [], '/v1/messages', manual).body)).toEqual({ ...body, model: POOL_MODEL });
-    for (const max_tokens of [1, 32768]) expect(() => preparePoolRequest(JSON.stringify({ ...body, max_tokens }), [], '/v1/messages', manual)).not.toThrow();
-    for (const max_tokens of [0, 32769, 1.5, undefined]) expect(() => preparePoolRequest(JSON.stringify({ ...body, max_tokens }), [], '/v1/messages', manual)).toThrow('预算');
+    for (const live of [true, false]) {
+      const target = { ...manual, live, baseUrl: live ? manual.baseUrl : config.baseUrl };
+      for (const max_tokens of [1, 32768, 32769, 128000, Number.MAX_SAFE_INTEGER]) {
+        expect(JSON.parse(preparePoolRequest(JSON.stringify({ ...body, max_tokens }), [], '/v1/messages', target).body)).toEqual({ ...body, max_tokens, model: POOL_MODEL });
+      }
+    }
     expect(() => preparePoolRequest(JSON.stringify(body), [], '/v1/messages', { ...manual, mode: 'acceptance' })).toThrow('预算');
   });
 
@@ -166,11 +172,13 @@ describe('池测试的配置、映射与有界采集', () => {
     for (const raw of ['{}', '{"system":[]}', '{"system":[{"text":"x-anthropic-billing-header: cch=00000;"}]}', '{"system":[{"text":"x-anthropic-billing-header: cch=12345;"}]}']) expect(() => verifyCch(raw)).toThrow();
   });
 
-  test('私有边界拒绝畸形、截断、超限和错模型', () => {
+  test('私有边界校验结构和归属，大正文不套用业务上限', () => {
     const finished = { type: 'finished' as const, id: 1, attempted: true, outcome: 'success', statusCode: 200, upstreamStatus: 200, headers: [], response: empty };
     expect(decodeForwarderFrame(JSON.stringify(finished))).toEqual(finished);
     for (const value of [{ ...finished, id: 0 }, { ...finished, headers: [['name', 2]] }, { ...finished, response: { ...empty, sha256: '' } }, { ...finished, response: { ...empty, storedBytes: 1 } }, { ...finished, prepared: { url: 'x', model: 'gemini', headers: [], body: empty, changes: [] } }]) expect(() => decodeForwarderFrame(JSON.stringify(value))).toThrow();
-    expect(() => decodeForwarderFrame('{')).toThrow(); expect(() => decodeForwarderFrame(' '.repeat(8 * 1024 * 1024 + 1))).toThrow('超限');
+    expect(() => decodeForwarderFrame('{')).toThrow();
+    const captured = { type: 'captured' as const, id: 1, method: 'POST', path: '/v1/messages', httpVersion: '1.1', headers: [], body: 'x'.repeat(9 * 1024 * 1024) };
+    expect(decodeForwarderFrame(JSON.stringify(captured))).toEqual(captured);
     expect(() => decodeDriverFrame('{"type":"result","id":"x"}')).toThrow();
     expect(decodeDriverFrame('{"type":"driver_ready","namespace":"net:[1]","interfaces":["lo"],"envNames":["PATH"],"rejectedTargetProbe":true}').type).toBe('driver_ready');
   });

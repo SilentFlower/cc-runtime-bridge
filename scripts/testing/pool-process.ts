@@ -17,7 +17,6 @@ export class PrivateProcess<T> {
         while (true) {
           const next = await reader.read(); if (next.done) break;
           buffer += decoder.decode(next.value, { stream: true });
-          if (Buffer.byteLength(buffer) > 8 * 1024 * 1024) throw new Error('私有通道接收超限');
           let end: number;
           while ((end = buffer.indexOf('\n')) >= 0) { const line = buffer.slice(0, end); buffer = buffer.slice(end + 1); yield decode(line); }
         }

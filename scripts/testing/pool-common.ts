@@ -6,10 +6,11 @@ import { Redactor } from '../../src/control/redaction';
 
 export const POOL_MODEL = 'deepseek-flash';
 export const CAPTURE_LIMIT = 1024 * 1024;
+/** 仅用于有限自动验收的请求预算，不限制用户手工转发。 */
 export const REQUEST_LIMIT = 2 * 1024 * 1024;
 export const SYNTHETIC_KEY = 'ccrb-pool-synthetic-cc-key';
 
-/** 池联调配置；maxRequests=null 只允许手工模式不限次数。 */
+/** 池联调配置；手工 maxRequests=null 不限次数，timeoutMs=0 不附加请求总时限。 */
 export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number | null; timeoutMs: number; mode?: 'acceptance' | 'manual' }
 /** 原始观测的哈希与脱敏预览分开保存。 */
 export interface BodySample { bytes: number; sha256: string; storedBytes: number; text: string; status: 'complete' | 'truncated' | 'incomplete' }
@@ -80,7 +81,8 @@ export function validatePoolConfig(config: PoolConfig): void {
   // 仅接纳常见 ASCII 令牌，避免 JSON 的引号、反斜杠或 Unicode 转义绕过原文字面脱敏。
   if (!/^[A-Za-z0-9._~-]{4,4096}$/.test(config.apiKey)) throw new Error('池凭据格式不受支持，仅接受 4–4096 位 ASCII 字母数字及 ._~-');
   const validRequests = config.maxRequests === null ? config.mode === 'manual' : Number.isSafeInteger(config.maxRequests) && config.maxRequests >= 1 && config.maxRequests <= (config.mode === 'manual' ? 20 : config.live ? 3 : 100);
-  if (!validRequests || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 50 || config.timeoutMs > 30000) throw new Error('池请求预算不合法');
+  const validTimeout = Number.isSafeInteger(config.timeoutMs) && (config.mode === 'manual' ? config.timeoutMs >= 0 && config.timeoutMs <= 0x7fffffff : config.timeoutMs >= 50 && config.timeoutMs <= 30000);
+  if (!validRequests || !validTimeout) throw new Error('池请求预算不合法');
 }
 
 /** 显式轮次绑定独立账本，默认保持首轮，不能借路径穿越覆盖旧记录。 @param runId 经操作者选择的轮次。 @return artifacts 下的账本文件名。 */
@@ -142,7 +144,9 @@ export function verifyCch(raw: string): { actual: string; expected: string } {
 /** 明确第二段的必要变化。 @param raw 完整原生正文。 @param headers 原始头。 @param path 原生路径。 @param config 池配置。 @return 提交参数和无秘密诊断。 */
 export function preparePoolRequest(raw: string, headers: HeaderPair[], path: string, config: PoolConfig): { url: string; headers: HeaderPair[]; body: string; changes: PoolPrepared['changes'] } {
   const value: unknown = JSON.parse(raw);
-  if (!isObject(value) || typeof value.model !== 'string' || ((config.live || config.mode === 'manual') && (!Number.isSafeInteger(value.max_tokens) || Number(value.max_tokens) < 1 || Number(value.max_tokens) > (config.mode === 'manual' ? 32768 : 128)))) throw new Error('模型正文或真实调用预算不合法');
+  if (!isObject(value) || typeof value.model !== 'string') throw new Error('模型正文不合法');
+  // 自动验收继续限制付费预算；手工转发保留原生输出参数，由池判断模型能力。
+  if (config.live && config.mode !== 'manual' && (!Number.isSafeInteger(value.max_tokens) || Number(value.max_tokens) < 1 || Number(value.max_tokens) > 128)) throw new Error('真实验收调用预算不合法');
   const blocked = new Set(['host','content-length','connection','keep-alive','proxy-connection','transfer-encoding','te','trailer','upgrade','authorization','x-api-key','proxy-authorization','cookie']);
   for (const [name, content] of headers) if (name.toLowerCase() === 'connection') for (const token of content.split(',')) blocked.add(token.trim().toLowerCase());
   const changes: PoolPrepared['changes'] = [{ name: 'model', reason: '仅第二段映射为 deepseek-flash' }, { name: 'host', reason: '由池目标重建' }, { name: 'content-length', reason: '由修改后的实体长度重建' }];
@@ -154,7 +158,6 @@ export function preparePoolRequest(raw: string, headers: HeaderPair[], path: str
 
 /** 校验私有 JSONL 基础及每种字段，统一供控制端消费。 @param line 单条私有帧。 @return 已验证的采集器帧。 */
 export function decodeForwarderFrame(line: string): ForwarderFrame {
-  if (Buffer.byteLength(line) > 8 * 1024 * 1024) throw new Error('采集器帧超限');
   const value: unknown = JSON.parse(line);
   const pairs = (x: unknown): x is HeaderPair[] => Array.isArray(x) && x.every(p => Array.isArray(p) && p.length === 2 && p.every(v => typeof v === 'string'));
   const body = (x: unknown): x is BodySample => isObject(x) && Number.isSafeInteger(x.bytes) && Number(x.bytes) >= 0 && typeof x.sha256 === 'string' && /^[a-f0-9]{64}$/.test(x.sha256) && Number.isSafeInteger(x.storedBytes) && Number(x.storedBytes) >= 0 && Number(x.storedBytes) <= CAPTURE_LIMIT && typeof x.text === 'string' && Buffer.byteLength(x.text) === x.storedBytes && ['complete','truncated','incomplete'].includes(String(x.status));
@@ -162,7 +165,7 @@ export function decodeForwarderFrame(line: string): ForwarderFrame {
     if (value.type === 'ready' && typeof value.namespace === 'string' && typeof value.rawHeadersMatched === 'boolean') return value as unknown as ForwarderFrame;
     if (value.type === 'fatal' && typeof value.message === 'string') return value as unknown as ForwarderFrame;
     if (Number.isSafeInteger(value.id) && Number(value.id) > 0) {
-      if (value.type === 'captured' && ['method','path','httpVersion','body'].every(key => typeof value[key] === 'string') && Buffer.byteLength(value.body as string) <= REQUEST_LIMIT && pairs(value.headers)) return value as unknown as ForwarderFrame;
+      if (value.type === 'captured' && ['method','path','httpVersion','body'].every(key => typeof value[key] === 'string') && pairs(value.headers)) return value as unknown as ForwarderFrame;
       if (value.type === 'finished' && typeof value.attempted === 'boolean' && typeof value.outcome === 'string' && Number.isInteger(value.statusCode) && (value.upstreamStatus === null || Number.isInteger(value.upstreamStatus)) && pairs(value.headers) && body(value.response) && (value.error === undefined || typeof value.error === 'string') && (value.failureCode === undefined || typeof value.failureCode === 'string')) {
         const p = value.prepared;
         if (p === undefined || (isObject(p) && typeof p.url === 'string' && p.model === POOL_MODEL && pairs(p.headers) && body(p.body) && Array.isArray(p.changes) && p.changes.every(c => isObject(c) && typeof c.name === 'string' && typeof c.reason === 'string'))) return value as unknown as ForwarderFrame;
@@ -174,7 +177,6 @@ export function decodeForwarderFrame(line: string): ForwarderFrame {
 
 /** 校验驱动回执，正文与头形状复用采集器边界。 @param line 私有驱动帧。 @return 已验证回执。 */
 export function decodeDriverFrame(line: string): DriverFrame {
-  if (Buffer.byteLength(line) > 8 * 1024 * 1024) throw new Error('驱动帧超限');
   const value: unknown = JSON.parse(line);
   const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every(s => typeof s === 'string');
   if (isObject(value)) {

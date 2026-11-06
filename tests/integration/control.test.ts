@@ -229,3 +229,22 @@ test('慢消费者在超时后解除背压，关闭服务不会卡死', async ()
   expect((await running.store.detail('slow-consumer'))?.request.state).toBe('error');
   expect(fixture.calls).toBe(1);
 });
+
+test('默认无总预算，20 个提交继续串行执行且不产生队列准入错误', async () => {
+  expect(readConfig({}).engine.timeoutMs).toBe(0);
+  const fixture = new FixtureEngine('incomplete'), entered: string[] = [];
+  const original = fixture.run.bind(fixture);
+  let release!: () => void, first!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const started = new Promise<void>(resolve => { first = resolve; });
+  fixture.run = async (prepared, signal, emit) => { entered.push(prepared.input.request_id); first(); await gate; await original(prepared, signal, emit); };
+  const { app: running } = await app();
+  const service = new BridgeService(fixture, running.store, { mode: 'off', maxBodyBytes: 1024, timeoutMs: 0 });
+  try {
+    const responses = Array.from({ length: 20 }, (_, index) => service.submit({ request_id: 'queued-' + index, body: request }).then(async response => { await response.text(); return response.status; }));
+    await started; await Bun.sleep(20);
+    expect(entered).toEqual(['queued-0']); release();
+    expect(await Promise.all(responses)).toEqual(Array(20).fill(200));
+    expect(entered).toEqual(Array.from({ length: 20 }, (_, index) => 'queued-' + index)); expect(fixture.calls).toBe(20);
+  } finally { release(); await service.close(); }
+});

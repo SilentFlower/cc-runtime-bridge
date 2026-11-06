@@ -12,7 +12,7 @@ import { BodyCapture, POOL_MODEL, REQUEST_LIMIT, preparePoolRequest, sample, val
 /** 独立 Node 接收端的启动合同，不经命令行传递池 Key。 */
 interface Setup { type: 'init'; socketPath: string; keyFile: string; certFile: string; config: PoolConfig }
 /** 一次收到完整实体、等待宿主核验 CCH 的请求。 */
-interface Pending { id: number; request: IncomingMessage; response: ServerResponse; raw: string; headers: HeaderPair[]; abort: AbortController; timer: ReturnType<typeof setTimeout>; started: boolean }
+interface Pending { id: number; request: IncomingMessage; response: ServerResponse; raw: string; headers: HeaderPair[]; abort: AbortController; timer: ReturnType<typeof setTimeout> | undefined; started: boolean }
 
 const send = async (frame: ForwarderFrame): Promise<void> => { if (!process.stdout.write(JSON.stringify(frame) + '\n')) await once(process.stdout, 'drain'); };
 
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   let probeMatched = false;
   const server = createServer({ key, cert, ALPNProtocols: ['http/1.1'] }, (request, response) => {
     const chunks: Buffer[] = []; let bytes = 0;
-    request.on('data', (chunk: Buffer) => { bytes += chunk.length; if (bytes <= REQUEST_LIMIT) chunks.push(chunk); else request.destroy(); });
+    request.on('data', (chunk: Buffer) => { bytes += chunk.length; if (setup.config.mode === 'manual' || bytes <= REQUEST_LIMIT) chunks.push(chunk); else request.destroy(); });
     request.on('error', () => { response.destroy(); });
     request.on('end', () => {
       if (request.url === '/__raw_headers_probe') {
@@ -47,13 +47,13 @@ async function main(): Promise<void> {
       const headers: HeaderPair[] = [];
       for (let i = 0; i < request.rawHeaders.length; i += 2) headers.push([request.rawHeaders[i]!, request.rawHeaders[i + 1]!]);
       const id = ++sequence, abort = new AbortController();
-      const item: Pending = { id, request, response, raw, headers, abort, started: false, timer: setTimeout(() => { abort.abort('verification_timeout'); if (!item.started && !response.destroyed) { response.writeHead(504); response.end('{"error":"CCH核验未收口"}'); } }, 5000) };
+      const item: Pending = { id, request, response, raw, headers, abort, started: false, timer: setup.config.mode === 'manual' ? undefined : setTimeout(() => { abort.abort('verification_timeout'); if (!item.started && !response.destroyed) { response.writeHead(504); response.end('{"error":"CCH核验未收口"}'); } }, 5000) };
       pending.set(id, item);
       response.on('close', () => { if (!response.writableFinished) abort.abort('caller_cancel'); });
       void send({ type: 'captured', id, method: request.method!, path: request.url!, httpVersion: request.httpVersion, headers, body: raw }).catch(() => response.destroy());
     });
   });
-  server.requestTimeout = 30000;
+  server.requestTimeout = setup.config.mode === 'manual' ? 0 : 30000;
   await new Promise<void>(resolve => server.listen(setup.socketPath, resolve)); await chmod(setup.socketPath, 0o600);
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('原始头探针超时')), 5000);
@@ -67,11 +67,11 @@ async function main(): Promise<void> {
     // 响应标志头也可能被通用规则识别为秘密，不能污染下一请求的正文预览。
     const redactor = new Redactor(); redactor.register({ api_key: setup.config.apiKey });
     item.started = true; clearTimeout(item.timer);
-    item.timer = setTimeout(() => item.abort.abort('pool_timeout'), setup.config.timeoutMs);
+    item.timer = setup.config.timeoutMs > 0 ? setTimeout(() => item.abort.abort('pool_timeout'), setup.config.timeoutMs) : undefined;
     const capture = new BodyCapture(); let complete = false, statusCode = 502, upstreamStatus: number | null = null, outcome = 'error', error: string | undefined, failureCode: string | undefined, prepared: PoolPrepared | undefined, responseHeaders: HeaderPair[] = [], attempted = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-      if (!allowed) throw new BridgeError(reason === 'budget_exhausted' ? 'pool_budget_exhausted' : 'request_rejected', reason === 'budget_exhausted' ? '本次池联调额度已用尽' : reason === 'invalid_request' ? '请求不符合池联调限制，max_tokens 必须在 1–32768 之间' : '原生最终请求未通过独立核验', reason === 'budget_exhausted' ? 429 : 400);
+      if (!allowed) throw new BridgeError(reason === 'budget_exhausted' ? 'pool_budget_exhausted' : 'request_rejected', reason === 'budget_exhausted' ? '本次池联调额度已用尽' : reason === 'invalid_request' ? '请求无法转换为池 Messages 请求' : '原生最终请求未通过独立核验', reason === 'budget_exhausted' ? 429 : 400);
       if (setup.config.maxRequests !== null && attempts >= setup.config.maxRequests) throw new BridgeError('pool_budget_exhausted', '本次池请求次数达到上限', 429);
       const outgoing = preparePoolRequest(item.raw, item.headers, item.request.url!, setup.config);
       outgoing.headers.push(['connection', 'close']); outgoing.changes.push({ name: 'connection', reason: '测试池每次独立连接，避免复用陈旧连接' });

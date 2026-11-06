@@ -153,7 +153,7 @@ export class LocalPoolEngine implements Engine {
       await this.driver.send({ type: 'run', job: { type: 'request_start', schema_version: 1, request_id: prepared.input.request_id, prepared } });
       signal.addEventListener('abort', cancel, { once: true }); if (signal.aborted) cancel();
       while (true) {
-        const frame = await this.driver.next(50000);
+        const frame = await this.driver.next(0);
         if (frame.type === 'fatal' || frame.type === 'ready') throw new BridgeError('local_driver_protocol', '本地驱动通道失败，未自动重放', 502);
         this.workerPid = frame.workerPid;
         if (frame.type === 'event') {

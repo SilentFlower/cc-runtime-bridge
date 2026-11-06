@@ -19,6 +19,7 @@ export interface EngineConfig {
   caFile?: string;
   preloadPath: string;
   cwd: string;
+  /** 显式请求总预算，0 表示交由前置取消或关闭信号控制。 */
   timeoutMs: number;
   cachePolicy?: CachePolicy;
   telemetryPolicy?: TelemetryPolicy;
@@ -160,7 +161,6 @@ export class NativeEngine implements Engine {
         const next = await reader.read();
         if (next.done) break;
         pending += decoder.decode(next.value, { stream: true });
-        if (Buffer.byteLength(pending) > 24 * 1024 * 1024) throw new BridgeError('runtime_protocol', '运行时事件超过接收上限', 502);
         let index: number;
         while ((index = pending.indexOf('\n')) >= 0) {
           const line = pending.slice(0, index);
@@ -271,7 +271,7 @@ export class NativeEngine implements Engine {
       forceKill ??= setTimeout(() => worker && this.fail(worker, combined.reason), 1500);
     };
     combined.addEventListener('abort', cancel, { once: true });
-    const timer = setTimeout(() => budget.abort(new BridgeError('request_timeout', '请求超过运行预算', 504)), this.config.timeoutMs);
+    const timer = this.config.timeoutMs > 0 ? setTimeout(() => budget.abort(new BridgeError('request_timeout', '请求超过运行预算', 504)), this.config.timeoutMs) : undefined;
     let reusable = false;
     try {
       if (combined.aborted) throw combined.reason;

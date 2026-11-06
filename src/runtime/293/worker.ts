@@ -89,7 +89,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
   };
   input.on('line', (line: string) => {
     try {
-      if (closing || Buffer.byteLength(line) > 24 * 1024 * 1024) throw new Error('指令状态或长度错误');
+      if (closing) throw new Error('工作进程正在关闭');
       const command = decodeWorkerCommand(JSON.parse(line), workerId);
       if (command.type === 'worker_shutdown') { stop(); return; }
       if (command.type === 'request_cancel') {

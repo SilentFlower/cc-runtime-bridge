@@ -25,6 +25,14 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
       const body = await request.json() as JsonObject;
       calls.push({ path: url.pathname + url.search, body, authenticated: request.headers.get('x-api-key') === apiKey && !request.headers.has('authorization'), extension: request.headers.get('x-future-pool-test') });
       const chosen = fixture;
+      const delay = (ms: number): Promise<void> => new Promise(resolve => {
+        if (request.signal.aborted) { resolve(); return; }
+        const done = (): void => { clearTimeout(timer); request.signal.removeEventListener('abort', done); resolve(); };
+        const timer = setTimeout(done, ms);
+        request.signal.addEventListener('abort', done, { once: true });
+      });
+      // 一次真实等待同时跨越旧的 30 秒池时限和 45 秒桥接时限，不能用虚假计时证明。
+      if (chosen === 'long-sse') await delay(52000);
       if (body.model !== POOL_MODEL) return Response.json({ type: 'error', error: { message: '模型未映射' } }, { status: 400 });
       if (chosen === 'redirect') return new Response('池重定向原文', { status: 302, headers: { location: '/redirect-target' } });
       if (['401','429','500'].includes(chosen)) return Response.json({ type: 'error', error: { message: '合成池错误回显：' + apiKey } }, { status: Number(chosen), headers: { 'x-echo-secret': apiKey } });
@@ -47,6 +55,8 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
           const abort = (): void => { if (!stopped) { stopped = true; canceled++; if (timer) clearInterval(timer); try { controller.close(); } catch {} } };
           request.signal.addEventListener('abort', abort, { once: true });
           controller.enqueue(event({ type: 'message_start', message: { ...message, content: [], stop_reason: null } }));
+          if (chosen === 'long-sse') await delay(14000);
+          if (stopped) return;
           if (chosen === 'cancel') { timer = setInterval(() => { if (!stopped) controller.enqueue(Buffer.from(': keepalive\n\n')); }, 25); return; }
           if (tool) {
             controller.enqueue(event({ type: 'content_block_start', index: 0, content_block: { ...tool, input: {} } }));

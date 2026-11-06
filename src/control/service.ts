@@ -101,7 +101,6 @@ export class BridgeService {
       if (this.closing) throw new BridgeError('service_closing', '服务正在关闭，不再接收作业', 503);
       prepared = prepareInput(parseInput(raw, headers, this.options.nativeIngressPolicy));
       if (this.recentIds.has(prepared.input.request_id) || this.store.exists(prepared.input.request_id)) throw new BridgeError('duplicate_request', 'request_id 已使用，不能覆盖已有日志', 409);
-      if (this.controllers.size >= 16) throw new BridgeError('queue_full', '单账号等待队列已满', 429);
     } catch (error) {
       const trace = new RequestTrace(null, raw, headers, this.store, { ...this.options, ingressText, engine: this.engine.name, binarySha256: this.engine.binarySha256 });
       trace.finish('error', errorText(error));
@@ -115,7 +114,7 @@ export class BridgeService {
     const cancel = (): void => controller.abort(external.reason);
     external.addEventListener('abort', cancel, { once: true });
     if (external.aborted) cancel();
-    const deadline = setTimeout(() => controller.abort(new BridgeError('request_timeout', '请求超过运行预算', 504)), this.options.timeoutMs);
+    const deadline = this.options.timeoutMs > 0 ? setTimeout(() => controller.abort(new BridgeError('request_timeout', '请求超过运行预算', 504)), this.options.timeoutMs) : undefined;
     const channel = responseChannel(reason => controller.abort(reason));
     let resolveHeaders!: (value: { status: number; headers: Headers }) => void;
     let rejectHeaders!: (error: unknown) => void;

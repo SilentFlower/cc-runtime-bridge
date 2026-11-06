@@ -30,13 +30,14 @@ afterAll(async () => { await running?.close(); await fixture?.close(); if (root)
 
 /** 等待同请求日志终态，不以固定睡眠推断 worker_idle。
  * @param id 请求 ID。
+ * @param instance 读取日志的本地实例，缺省使用原有限测试实例。
  * @return 已结束详情。
  */
-async function detail(id: string): Promise<RequestDetail> {
+async function detail(id: string, instance = running): Promise<RequestDetail> {
   const until = performance.now() + 8000;
   while (performance.now() < until) {
-    await running.app.store.flush();
-    const value = await running.app.store.detail(id);
+    await instance.app.store.flush();
+    const value = await instance.app.store.detail(id);
     if (value?.request.finishedAt) return value;
     await Bun.sleep(10);
   }
@@ -137,9 +138,9 @@ describe('本地常驻 Base URL 的原生闭环', () => {
     expect((await Bun.file(join(root, 'port-conflict', 'ledger.json')).json()).reserved).toBe(0);
   }, 15000);
 
-  test('损坏证据、版本、控制字段与超出输出预算的请求不调用池', async () => {
+  test('损坏证据、版本、控制字段与非法输出参数的请求不调用池', async () => {
     const before = fixture.calls.length;
-    for (const change of [{ system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.303.abc; cc_entrypoint=cli;' }] }, { env: {} }, { max_tokens: 32769 }]) {
+    for (const change of [{ system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.303.abc; cc_entrypoint=cli;' }] }, { env: {} }, { max_tokens: '64' }]) {
       const response = await fetch(base + '/v1/messages', { method: 'POST', body: JSON.stringify({ ...nativeBody(), ...change }) });
       expect(response.status).toBeGreaterThanOrEqual(400); await response.text();
     }
@@ -243,15 +244,17 @@ describe('本地常驻 Base URL 的原生闭环', () => {
     const health = await (await fetch(base + '/api/health')).json(); expect(health.localPool.remaining).toBe(0);
   }, 30000);
 
-  test('不限次数的手工实例连续转发超过 20 次，健康与账本继续计数', async () => {
+  test('不限次数的手工实例原样转发 128000 与 adaptive，超过 20 次仍继续计数', async () => {
     fixture.select('json'); const before = fixture.calls.length;
     const unlimited = await startLocalPool({ binary, pool: { baseUrl: fixture.baseUrl, apiKey: secret, mode: 'manual', live: false, maxRequests: null, timeoutMs: 500 }, runId: 'unlimited-manual', directory: join(root, 'unlimited-manual'), port: 0 });
     const url = 'http://127.0.0.1:' + unlimited.app.server.port;
     try {
       expect(unlimited.status()).toMatchObject({ budget: null, remaining: null, reserved: 0 });
+      const body = { ...nativeBody(), model: 'claude-opus-5-5', max_tokens: 128000, thinking: { type: 'adaptive' } };
       for (let index = 0; index < 25; index++) {
-        const response = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify(nativeBody()) });
+        const response = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify(body) });
         expect(response.status).toBe(200); await response.text();
+        expect(fixture.calls.at(-1)!.body).toMatchObject({ model: 'deepseek-flash', max_tokens: 128000, thinking: { type: 'adaptive' } });
       }
       expect(fixture.calls.length).toBe(before + 25);
       const health = await (await fetch(url + '/api/health')).json();
@@ -260,4 +263,49 @@ describe('本地常驻 Base URL 的原生闭环', () => {
       expect(ledger.reservations).toHaveLength(25); expect(ledger.reservations.every((row: { attempted: boolean }) => row.attempted)).toBe(true);
     } finally { await unlimited.close(); }
   }, 20000);
+
+  test('薄桥接保留原生分类和参数，26 MiB 正文及 66 秒长请求均可完成', async () => {
+    const thin = await startLocalPool({ binary, pool: { baseUrl: fixture.baseUrl, apiKey: secret, mode: 'manual', live: false, maxRequests: null, timeoutMs: 0 }, runId: 'thin-manual', directory: join(root, 'thin-manual'), port: 0 });
+    const url = 'http://127.0.0.1:' + thin.app.server.port;
+    try {
+      fixture.select('json');
+      const classifier = { ...nativeBody(), model: 'claude-sonnet-5', thinking: { type: 'disabled' }, stop_sequences: ['合成分类结束'] };
+      for (const change of [{}, { max_tokens: 128000, temperature: 2, thinking: { type: 'enabled', budget_tokens: 512 }, tools: [], tool_choice: { type: 'any' } }]) {
+        const body = { ...classifier, ...change }, before = fixture.calls.length;
+        const response = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify(body) });
+        expect(response.status).toBe(200); await response.text();
+        expect(fixture.calls.length).toBe(before + 1);
+        const received = fixture.calls.at(-1)!.body;
+        for (const key of ['messages', 'max_tokens', 'temperature', 'thinking', 'tool_choice', 'tools', 'stop_sequences']) expect(received[key]).toEqual((body as MessageBody)[key]);
+        expect((received.system as unknown[]).slice(1)).toEqual((body.system as unknown[]).slice(1));
+        verifyCch(JSON.stringify({ ...received, model: body.model }));
+      }
+
+      const large = { ...classifier, messages: [{ role: 'user', content: 'x'.repeat(26 * 1024 * 1024) }] };
+      const largeResponse = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify(large) });
+      const largeText = await largeResponse.text();
+      if (largeResponse.status !== 200) {
+        const failed = await detail(largeResponse.headers.get('x-ccrb-request-id')!, thin);
+        const evidence = { status: largeResponse.status, response: largeText, captures: failed.captures.map(item => ({ stage: item.stage, status: item.status, bytes: item.observedBytes, note: item.note })), ledger: await Bun.file(join(thin.directory, 'ledger.json')).json() };
+        await writeFile('artifacts/thin-runtime-failure.json', JSON.stringify(evidence, null, 2) + '\n');
+        throw new Error('大正文转发失败：' + JSON.stringify(evidence));
+      }
+      expect(fixture.calls.at(-1)!.body.messages).toEqual(large.messages);
+      const largeDetail = await detail(largeResponse.headers.get('x-ccrb-request-id')!, thin);
+      const wire = largeDetail.captures.find(item => item.stage === 'wire_final')!;
+      const raw = JSON.stringify({ ...fixture.calls.at(-1)!.body, model: large.model });
+      expect(wire.status).toBe('truncated'); expect(wire.observedBytes).toBe(Buffer.byteLength(raw));
+      expect(wire.sha256).toBe(createHash('sha256').update(raw).digest('hex')); verifyCch(raw);
+
+      fixture.select('long-sse'); const before = fixture.calls.length, started = performance.now();
+      const long = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify({ ...nativeBody(), stream: true }) });
+      const headersMs = performance.now() - started;
+      expect(long.status).toBe(200); expect(await long.text()).toContain('event: message_stop');
+      const elapsedMs = performance.now() - started;
+      expect(headersMs).toBeGreaterThan(50000); expect(elapsedMs).toBeGreaterThan(65000);
+      expect(fixture.calls.length).toBe(before + 1);
+      expect((await detail(long.headers.get('x-ccrb-request-id')!, thin)).request.state).toBe('success');
+      await writeFile('artifacts/thin-runtime-offline-proof.json', JSON.stringify({ passed: true, realUpstreamRequests: 0, classifier: 'claude-sonnet-5', originalParameters: true, bodyBytes: wire.observedBytes, sha256: wire.sha256, headersMs, elapsedMs, retries: 0 }, null, 2) + '\n');
+    } finally { await thin.close(); }
+  }, 90000);
 });

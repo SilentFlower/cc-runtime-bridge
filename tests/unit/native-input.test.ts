@@ -3,7 +3,6 @@ import type { MessageBody } from '../../src/shared/contracts';
 import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
 import { readNativeInput, prepareNativeBody } from '../../src/shared/native-input';
-import { validateToolChoice } from '../../src/shared/parameters';
 
 const session = '22222222-2222-4222-8222-222222222222';
 const prompt = '11111111-1111-4111-8111-111111111111';
@@ -83,9 +82,10 @@ describe('固定 293 原生入站合同', () => {
     expect((result.system as { text: string }[])[0]!.text).toBe(blocks[0]!.text.replace('12345', '00000'));
   });
 
-  test('两条接入路径都在构造前拒绝畸形 thinking', () => {
+  test('两条接入路径只检查 thinking 结构，不推断模型能力', () => {
     for (const base of [fixture(), { model: 'm', messages: [{ role: 'user', content: 'q' }] }]) {
-      for (const thinking of [{ type: 'unknown' }, { type: 'enabled' }, { type: 'enabled', budget_tokens: 1023 }]) expect(() => parseInput({ ...base, thinking })).toThrow();
+      for (const thinking of [{ type: 'unknown' }, { type: 'enabled' }, { type: 'enabled', budget_tokens: 1023 }]) expect(parseInput({ ...base, thinking }).body.thinking).toEqual(thinking);
+      for (const thinking of ['enabled', 1, []]) expect(() => parseInput({ ...base, thinking })).toThrow('必须是对象');
     }
   });
 
@@ -120,19 +120,19 @@ describe('固定 293 原生入站合同', () => {
   });
 });
 
-describe('工具选择的发送前校验', () => {
+describe('模型参数由前置与上游判断', () => {
   const body: MessageBody = { model: 'm', messages: [{ role: 'user', content: 'q' }], tools: [{ name: 'chosen', input_schema: { type: 'object' } }] };
-  test('支持的选择不修改定义，未知工具和畸形类型明确失败', () => {
-    const request = { ...body, tool_choice: { type: 'tool', name: 'chosen' } }, before = structuredClone(request);
-    validateToolChoice(request); expect(request).toEqual(before);
-    for (const choice of [{ type: 'tool', name: 'missing' }, { type: 'function', name: 'chosen' }]) expect(() => validateToolChoice({ ...body, tool_choice: choice })).toThrow();
-    expect(() => validateToolChoice({ ...body, tools: [], tool_choice: { type: 'auto' } })).toThrow('非空');
-    expect(() => validateToolChoice({ ...body, tools: [body.tools![0]!, body.tools![0]!] })).toThrow('不可重复');
+  test('原生工具定义和组合原值保留，不在入口套用固定模型政策', () => {
+    for (const change of [{ tools: [], tool_choice: { type: 'auto' } }, { tools: [body.tools![0]!, body.tools![0]!] }, { tool_choice: { type: 'tool', name: 'missing' }, thinking: { type: 'adaptive' } }, { tool_choice: { type: 'future', name: 'chosen' } }]) {
+      const request = { ...fixture(), ...change }, before = structuredClone(request);
+      expect(parseInput(request).body).toEqual(before); expect(request).toEqual(before);
+    }
   });
-  test('模型能力及 thinking 不支持强制选择时及时拒绝', () => {
-    const request = { ...body, tool_choice: { type: 'tool', name: 'chosen' } };
-    expect(() => validateToolChoice(request, true)).toThrow('不支持强制');
-    for (const type of ['adaptive', 'enabled']) expect(() => validateToolChoice({ ...request, thinking: { type } })).toThrow('不支持强制');
-    expect(() => validateToolChoice({ ...request, thinking: { type: 'disabled' } }, false)).not.toThrow();
+  test('数值范围不在入口重复限制，非 JSON 数值及错误类型仍拒绝', () => {
+    for (const base of [fixture(), body]) for (const max_tokens of [0, -1, 1.5, 128000]) {
+      const request = { ...base, max_tokens, temperature: 2 };
+      expect(parseInput(request).body).toEqual(request);
+    }
+    for (const max_tokens of ['64', Infinity, NaN]) expect(() => parseInput({ ...body, max_tokens })).toThrow('有限数值');
   });
 });

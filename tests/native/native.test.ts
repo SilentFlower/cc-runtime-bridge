@@ -825,13 +825,30 @@ native('官方 293 的无外网回环链路', () => {
     expect(requests.at(-1)!.raw).toContain('toolu_native_history'); assertCch(requests.at(-1)!.raw);
   });
 
-  test('原生版本和上下文冲突、私有字段及不支持工具选择均在发送前明确拒绝', async () => {
+  test('原生版本和上下文冲突、私有控制字段在发送前明确拒绝', async () => {
     const wrong = nativeBody(); (wrong.system as { text: string }[])[0]!.text = (wrong.system as { text: string }[])[0]!.text.replace('2.1.293', '2.1.303');
-    for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ env: { PATH: '/untrusted' } }), {}], [nativeBody({ model: 'claude-sonnet-5-5', tools: [nativeTool], tool_choice: { type: 'tool', name: nativeTool.name } }), {}], [nativeBody({ thinking: { type: 'unknown' } }), {}], [nativeBody({ thinking: { type: 'enabled', budget_tokens: 1023 } }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {
+    for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ env: { PATH: '/untrusted' } }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {
       const count = requests.length, started = performance.now(); const result = await send(body, context);
       expect([400, 422]).toContain(result.response.status); expect(requests.length).toBe(count); expect(performance.now() - started).toBeLessThan(10000);
     }
   });
+
+  test('原生模型参数原值到达回环上游，不用种子能力推断业务合法性', async () => {
+    mode = 'normal';
+    for (const change of [{ model: 'claude-sonnet-5', tools: [nativeTool], tool_choice: { type: 'tool', name: nativeTool.name } }, { thinking: { type: 'unknown' } }, { thinking: { type: 'enabled', budget_tokens: 1023 }, temperature: 2, max_tokens: 128000 }]) {
+      const body = nativeBody(change), count = requests.length, result = await send(body);
+      expect(result.response.status).toBe(200); expect(requests.length).toBe(count + 1);
+      expect(requests.at(-1)!.body).toMatchObject(change); assertCch(requests.at(-1)!.raw);
+    }
+  });
+
+  test('原生 26 MiB 正文穿过工作进程协议后完整到达 TLS 回环', async () => {
+    mode = 'normal';
+    const messages = [{ role: 'user', content: 'x'.repeat(26 * 1024 * 1024) }], count = requests.length;
+    const result = await send(nativeBody({ model: 'claude-sonnet-5', messages }));
+    expect(result.response.status).toBe(200); expect(requests.length).toBe(count + 1);
+    expect(requests.at(-1)!.body.messages).toEqual(messages); assertCch(requests.at(-1)!.raw);
+  }, 45000);
 
   test('原生 billing 的合法间隔保留且最终 CCH 有效', async () => {
     const body = nativeBody(), billing = (body.system as { text: string }[])[0]!;

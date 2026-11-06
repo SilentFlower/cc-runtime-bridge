@@ -48,7 +48,7 @@ export async function startLocalPool(options: LocalPoolOptions): Promise<LocalPo
   const engine = await LocalPoolEngine.open(options.binary, options.pool, ledger);
   let app: RunningServer | undefined;
   try {
-    const config = readConfig({ CCRB_PORT: String(options.port ?? 8787), CCRB_DATA_DIR: join(directory, 'data'), CCRB_LOG_MODE: options.logMode ?? 'debug', CCRB_TIMEOUT_MS: '45000', CCRB_TELEMETRY: 'off' });
+    const config = readConfig({ CCRB_PORT: String(options.port ?? 8787), CCRB_DATA_DIR: join(directory, 'data'), CCRB_LOG_MODE: options.logMode ?? 'debug', CCRB_TIMEOUT_MS: '0', CCRB_TELEMETRY: 'off' });
     app = await startServer(config, engine, { nativeIngressPolicy: 'local_base_url', secrets: { pool_api_key: options.pool.apiKey, synthetic_token: SYNTHETIC_KEY }, finalCapture: id => engine.takeFinalCapture(id), localPoolStatus: () => ledger.status() });
     const info = { pid: process.pid, baseUrl: 'http://127.0.0.1:' + app.server.port, ...ledger.status(), startedAt: new Date().toISOString() };
     await writeFile(join(directory, 'ready.json'), JSON.stringify(info, null, 2) + '\n', { mode: 0o600 });
@@ -81,9 +81,9 @@ function readArguments(args: string[]): { runId: string; poolEnv: string; binary
 if (import.meta.main) {
   try {
     const args = readArguments(process.argv.slice(2));
-    const pool: PoolConfig = { ...await loadPoolConfig(args.poolEnv), mode: 'manual', maxRequests: null };
+    const pool: PoolConfig = { ...await loadPoolConfig(args.poolEnv), mode: 'manual', maxRequests: null, timeoutMs: 0 };
     const running = await startLocalPool({ binary: args.binary, pool, runId: args.runId, directory: join('artifacts/local-pool-runs', args.runId), port: args.port });
-    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；请求次数：不限；max_tokens 上限：32768；池超时：30 秒\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n启动真实推理次数：0\n');
+    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；请求次数：不限；模型参数：原样转发；无本地请求总超时\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n启动真实推理次数：0\n');
     let closing = false;
     const close = async (): Promise<void> => { if (closing) return; closing = true; await running.close(); process.exit(0); };
     process.on('SIGTERM', () => { void close(); }); process.on('SIGINT', () => { void close(); });

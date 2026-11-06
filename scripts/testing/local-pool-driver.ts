@@ -25,14 +25,14 @@ async function main(): Promise<void> {
   await mkdir(join(setup.root, 'home'), { recursive: true, mode: 0o700 });
   await mkdir(join(setup.root, 'config'), { recursive: true, mode: 0o700 });
   await writeFile(join(setup.root, 'config/.claude.json'), JSON.stringify({ userID: 'd'.repeat(64) }), { mode: 0o600 });
-  const config = readConfig({ CCRB_CLAUDE_BINARY: setup.binary, CCRB_CLAUDE_HOME: join(setup.root, 'home'), CCRB_CLAUDE_CONFIG_DIR: join(setup.root, 'config'), CCRB_WORKDIR: setup.root, CCRB_NATIVE_API_KEY: SYNTHETIC_KEY, CCRB_CA_FILE: setup.certFile, CCRB_PROXY_URL: network.url, CCRB_TIMEOUT_MS: '45000', CCRB_TELEMETRY: 'off' });
+  const config = readConfig({ CCRB_CLAUDE_BINARY: setup.binary, CCRB_CLAUDE_HOME: join(setup.root, 'home'), CCRB_CLAUDE_CONFIG_DIR: join(setup.root, 'config'), CCRB_WORKDIR: setup.root, CCRB_NATIVE_API_KEY: SYNTHETIC_KEY, CCRB_CA_FILE: setup.certFile, CCRB_PROXY_URL: network.url, CCRB_TIMEOUT_MS: '0', CCRB_TELEMETRY: 'off' });
   const engine = await createEngine(config.engine);
+  let verifiedWorkerPid: number | null = null, verifiedWorkerEnvNames: string[] = [];
   let active: { id: string; abort: AbortController; done: Promise<void> } | null = null;
   try {
     await send({ type: 'ready', namespace: network.namespace, interfaces: network.interfaces, envNames: Object.keys(process.env).sort(), rejectedTargetProbe: true, name: engine.name, binarySha256: engine.binarySha256! });
     while (true) {
       const next = await commands.next(); if (next.done) break;
-      if (Buffer.byteLength(next.value) > 8 * 1024 * 1024) throw new Error('本地驱动指令超限');
       const command: unknown = JSON.parse(next.value);
       if (!isObject(command)) throw new Error('本地驱动指令错误');
       if (command.type === 'shutdown') break;
@@ -48,17 +48,25 @@ async function main(): Promise<void> {
         let error: LocalDriverError | undefined, workerEnvNames: string[] = [], syntheticCredential = false;
         try {
           await engine.run(job.prepared, abort.signal, async event => {
-            if (event.type === 'cc_prepared') {
-              const entries = (await readFile('/proc/' + engine.workerPid + '/environ')).toString().split('\0').filter(Boolean);
-              workerEnvNames = entries.map(entry => entry.split('=', 1)[0]!).sort();
-              syntheticCredential = entries.includes('ANTHROPIC_API_KEY=' + SYNTHETIC_KEY) && !workerEnvNames.some(name => /POOL|REQUESTER|ANTHROPIC_BASE_URL|OAUTH/.test(name));
-              if (!syntheticCredential) throw new BridgeError('local_isolation', '原生工作进程凭据边界校验失败', 503);
+            if (event.type === 'ready') {
+              // ready 回调结束后引擎才投递正文；只在此处逐物理进程核对完整启动环境。
+              // 大正文处理后的 /proc 环境采样可能缺失，不能把它当作实际凭据发生变化。
+              const workerPid = engine.workerPid;
+              if (workerPid === null) throw new BridgeError('local_isolation', '原生就绪事件缺少实际进程', 503);
+              if (workerPid !== verifiedWorkerPid) {
+                const entries = (await readFile('/proc/' + workerPid + '/environ')).toString().split('\0').filter(Boolean);
+                const names = entries.map(entry => entry.split('=', 1)[0]!).sort();
+                if (!entries.includes('ANTHROPIC_API_KEY=' + SYNTHETIC_KEY) || names.some(name => /POOL|REQUESTER|ANTHROPIC_BASE_URL|OAUTH/.test(name))) throw new BridgeError('local_isolation', '原生工作进程启动环境未通过凭据隔离核验', 503);
+                verifiedWorkerPid = workerPid; verifiedWorkerEnvNames = names;
+              }
+              workerEnvNames = verifiedWorkerEnvNames; syntheticCredential = true;
             }
             await send({ type: 'event', event, workerPid: engine.workerPid });
           });
         } catch (cause) {
-          error = cause instanceof BridgeError ? { code: cause.code, message: '隔离原生作业失败：' + cause.code, status: cause.status } : { code: 'local_driver', message: '隔离原生作业未完成，未自动重放', status: 502 };
+          error = cause instanceof BridgeError ? { code: cause.code, message: cause.code === 'local_isolation' ? cause.message : '隔离原生作业失败：' + cause.code, status: cause.status } : { code: 'local_driver', message: '隔离原生作业未完成，未自动重放', status: 502 };
         } finally {
+          if (engine.workerPid === null) { verifiedWorkerPid = null; verifiedWorkerEnvNames = []; }
           // idle 晚于引擎真正收口，宿主收到它后才能释放串行槽位。
           active = null;
           await send({ type: 'idle', requestId: current.id, workerPid: engine.workerPid, telemetryState: engine.telemetryState ?? 'unavailable', workerEnvNames, syntheticCredential, ...(error ? { error } : {}) });

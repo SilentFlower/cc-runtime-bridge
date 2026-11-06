@@ -19,7 +19,6 @@ export type LocalDriverFrame =
  * @return 已验证的驱动消息。
  */
 export function decodeLocalDriverFrame(line: string): LocalDriverFrame {
-  if (Buffer.byteLength(line) > 8 * 1024 * 1024) throw new Error('本地驱动帧超限');
   const value: unknown = JSON.parse(line);
   const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every(item => typeof item === 'string');
   const pid = (x: unknown): boolean => x === null || Number.isSafeInteger(x) && Number(x) > 0;

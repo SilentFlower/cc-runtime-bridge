@@ -24,7 +24,7 @@ POST /v1/messages 接收 JSON Messages 正文。POST /api/requests 还支持下�
       }
     }
 
-request_id 可省略，使用 1–128 位字母、数字、连字符、下划线。重复标识返回 409，不覆盖旧日志。schema_version 只支持 1。HTTP 入口上限 2 MiB，只接收未压缩 JSON。
+request_id 可省略，使用 1–128 位字母、数字、连字符、下划线。重复标识返回 409，不覆盖旧日志。schema_version 只支持 1。HTTP 入口接收未压缩 JSON，不另设 2 MiB 或排队 16 项的业务门槛；正文大小、准入和调用预算交给前置服务。日志预览上限独立于完整转发。
 
 信封 headers 是有序二元字符串数组，提供后替代外层 HTTP 头作为业务转发输入；日志仍会保存实际入站 HTTP 头。没有信封 headers 时使用 HTTP 头。鉴权、传输字段、Connection 动态字段及原生上下文按 [头部策略](header-policy.md) 处理。
 
@@ -44,7 +44,9 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 兼容分支保留原始入站表示及业务正文，发送入口取同次 SDK 实际生成的 CLI 上下文，缺失 CCH 先准备原生占位，再由原生传输完成。该模式使用已校验原版及当前预加载入口，现有内嵌旧桥接代码的轻量产物暂不接纳。
 
-TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deepseek-flash，重建鉴权及必要传输字段；凭据不进入原生进程。手工 CLI 默认不限次数，max_tokens 限 1–32768，池超时 30 秒；超出输出限制返回本地 400。有限测试实例仍在额度耗尽时返回本地 429，不伪造成池响应。每个入站最多一次转发，客户端重发作为新请求计数。
+TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deepseek-flash，重建鉴权及必要传输字段；凭据不进入原生进程。手工 CLI 默认不限次数、不附加请求总超时，模型参数原样交池判断。入口只校验组装必需的结构，不再校验输出范围、温度范围、thinking 枚举/最小预算或工具组合。有限测试实例仍在额度耗尽时返回本地 429，不伪造成池响应；自动验收保留显式测试预算。每个入站最多一次转发，客户端重发作为新请求计数。
+
+原生分支的 SDK 种子只取得发送上下文，其消息及提醒会被真实原生正文替换，不套用普通 API 的业务消息保留断言。两条路径继续核对实际发送结构、请求归属和单次发送。
 
 `/api/health.localPool` 返回 runId、model、live、budget、reserved、remaining；不限次数时 budget/remaining 为 null，reserved 持续记录发送前预留数，异常时为可能实际调用次数的上界。只有配置了已自检 TLS 采集端的实例才报告 nativeFinalCapture=true。启动、自检及只读访问均不推理；操作和临时客户端配置见 [README](../README.md#用自己的-claude-code-联调)。
 
@@ -56,9 +58,9 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 | messages | 必填；user / assistant，文本或内容块数组 |
 | system | 省略使用 CLI 默认正文；显式文本或仅含 type/text 的文本块完整替换正文，对应 --system-prompt；空文本与空数组同样是替换 |
 | tools | 省略或 [] 均无工具；非空数组为完整列表，不加入 CC 内置、延迟或搜索工具；schema 经原生 extraToolSchemas 输入 |
-| tool_choice | auto、none、any、tool；tool 必须引用已声明工具，非 none 选择需要非空列表 |
-| max_tokens、temperature | 映射原生输出预算和温度参数，发送前校验 |
-| thinking | disabled、enabled、adaptive；enabled 需要不小于 1024 的 budget_tokens |
+| tool_choice | 交给实际原生构造，不在入口根据工具列表或 thinking 组合提前拒绝 |
+| max_tokens、temperature | 映射原生输出预算和温度参数，只检查有限数值结构，不自设模型能力范围 |
+| thinking | 交给实际原生构造，不在入口添加枚举或最小预算政策 |
 | output_config | effort、format；模型或原生能力不能表达时返回 422 |
 | stream | true 返回原始 SSE；false 或省略返回原始 JSON |
 
@@ -70,7 +72,7 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 
 省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。调用方应按实际需要明确选择受支持参数。
 
-两条路径都在发送前校验工具名称、重复声明及强制选择组合。thinking 为 enabled/adaptive，或固定 293 原生模型能力要求 adaptive 时，any/tool 强制选择返回 400。模型能力直接查询固定运行时，不按模型名称猜测。不兼容组合、原生构造错误和模型失败事件会确定失败，不通过等待超时、隐式切换模型或重试处理。
+模型参数的业务规则由前置服务与上游判断。普通 API 仍检查实际组装所需结构与显式字段保留；原生构造无法保留时明确失败，不能静默丢字段。原生正文则直接保留参数，不让上下文种子的默认模型判断覆盖原始请求。原生构造错误和模型失败事件直接收口，不隐式切换模型或重试。
 
 ## 上下文
 
@@ -136,7 +138,7 @@ Bun 读取本机 .env；该文件已被 Git 忽略。参考仓库 .env.example�
 | CCRB_LOG_BYTES | 总载荷 536870912，允许 1024–2147483648 |
 | CCRB_RETAIN_DAYS | 摘要 7 天，允许 1–90 |
 | CCRB_DEBUG_RETAIN_DAYS | 正文 3 天，不超过摘要保留期 |
-| CCRB_TIMEOUT_MS | 包含排队的请求预算 90000，允许 1000–600000 |
+| CCRB_TIMEOUT_MS | 默认 0，不附加总时限；显式正整数启用包含排队的预算，最大 2147483647（计时器范围） |
 | CCRB_CACHE_POLICY | preserve；可选 sub2api，修改后重启 |
 | CCRB_TELEMETRY | off；可选 on，修改后重启，服从官方策略 |
 

@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import type { ApiMessage, BridgeInput, ContextInput, HeaderPair, MessageBody, NativeIngressPolicy } from './contracts';
 import { BridgeError, isObject } from './errors';
 import { readNativeInput, mergeNativeContext } from './native-input';
-import { validateToolChoice } from './parameters';
 
 const BODY_KEYS = new Set(['model', 'messages', 'system', 'tools', 'tool_choice', 'max_tokens', 'thinking', 'temperature', 'output_config', 'stream']);
 const CONTEXT_KEYS = new Set(['requestClass', 'sessionId', 'promptId', 'agentId', 'parentAgentId', 'agentType', 'agentKind', 'workflowRunId']);
@@ -42,14 +41,9 @@ export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = [], nat
   for (const key of ['thinking', 'tool_choice', 'output_config']) {
     if (body[key] !== undefined && !isObject(body[key])) throw new BridgeError('invalid_parameter', key + ' 必须是对象');
   }
-  if (isObject(body.thinking)) {
-    if (!['disabled', 'enabled', 'adaptive'].includes(String(body.thinking.type))) throw new BridgeError('unsupported_parameter', '不支持的 thinking.type', 422);
-    if (body.thinking.type === 'enabled' && (!Number.isSafeInteger(body.thinking.budget_tokens) || Number(body.thinking.budget_tokens) < 1024)) throw new BridgeError('unsupported_parameter', 'enabled thinking 需要不少于 1024 的 budget_tokens', 422);
-  }
-  if (body.max_tokens !== undefined && (!Number.isSafeInteger(body.max_tokens) || Number(body.max_tokens) <= 0)) throw new BridgeError('invalid_max_tokens', 'max_tokens 必须是正整数');
-  if (body.temperature !== undefined && (typeof body.temperature !== 'number' || !Number.isFinite(body.temperature) || body.temperature < 0 || body.temperature > 1)) throw new BridgeError('invalid_temperature', 'temperature 必须位于 0 到 1');
+  if (body.max_tokens !== undefined && (typeof body.max_tokens !== 'number' || !Number.isFinite(body.max_tokens))) throw new BridgeError('invalid_max_tokens', 'max_tokens 必须是有限数值');
+  if (body.temperature !== undefined && (typeof body.temperature !== 'number' || !Number.isFinite(body.temperature))) throw new BridgeError('invalid_temperature', 'temperature 必须是有限数值');
   if (body.stream !== undefined && typeof body.stream !== 'boolean') throw new BridgeError('invalid_stream', 'stream 必须为布尔值');
-  validateToolChoice(body as unknown as MessageBody);
   const context = envelope.context ?? {};
   if (!isObject(context)) throw new BridgeError('invalid_context', 'context 必须是对象');
   validateKeys(context, CONTEXT_KEYS, '上下文');

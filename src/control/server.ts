@@ -74,7 +74,7 @@ export function readConfig(env = process.env, demo = false): ServerConfig {
       mode, binaryPath: env.CCRB_CLAUDE_BINARY, home: env.CCRB_CLAUDE_HOME, configDir: env.CCRB_CLAUDE_CONFIG_DIR,
       apiKey: env.CCRB_NATIVE_API_KEY, oauthToken: env.CCRB_NATIVE_OAUTH_TOKEN, proxyUrl: env.CCRB_PROXY_URL, caFile: env.CCRB_CA_FILE,
       preloadPath: resolve('dist/preload.mjs'), cwd: resolve(env.CCRB_WORKDIR ?? env.CCRB_CLAUDE_HOME ?? '.'),
-      timeoutMs: numberSetting(env.CCRB_TIMEOUT_MS, 90000, 1000, 600000),
+      timeoutMs: numberSetting(env.CCRB_TIMEOUT_MS, 0, 0, 0x7fffffff),
       cachePolicy: readCachePolicy(env.CCRB_CACHE_POLICY),
       telemetryPolicy: readTelemetryPolicy(env.CCRB_TELEMETRY),
     },
@@ -120,7 +120,7 @@ export async function startServer(config: ServerConfig, injectedEngine?: Engine,
   let server: Bun.Server<undefined>;
   try {
     server = Bun.serve({
-      hostname: config.host, port: config.port, maxRequestBodySize: 2 * 1024 * 1024, idleTimeout: 120,
+      hostname: config.host, port: config.port, maxRequestBodySize: Number.MAX_SAFE_INTEGER, idleTimeout: 0,
       async fetch(request) {
         try {
           const url = new URL(request.url);
