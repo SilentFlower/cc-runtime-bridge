@@ -1,0 +1,84 @@
+{
+  "id": "local-claude-pool-gateway",
+  "name": "local-claude-pool-gateway",
+  "title": "本地 Claude Code 常驻池联调入口",
+  "description": "让本机 Claude Code 通过回环 Base URL 请求固定 293 运行时，经本地 TLS 采集转发至 deepseek-flash，并查看脱敏入站与真实出站。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-06",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-06T07:42:25Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-06T05:52:39Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "7fd8a88fd3bfcc50ba10573494fe2f78abe303db",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "7fd8a88fd3bfcc50ba10573494fe2f78abe303db",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "958cf495f926256b3cd722e11df21f322763357f2d10124a79dc683af9e68970"
+          }
+        ],
+        "fingerprint": "b5f1aa6cafb759d842338de50a2eab3b3ff4c7aec44184e361590e69db0419d3"
+      }
+    }
+  },
+  "progress": {
+    "updatedAt": "2026-11-06T07:42:25.176Z",
+    "completedSteps": [
+      "实现固定 293 本地 Base URL 原生入站兼容与常驻池入口",
+      "接通隔离原生驱动、TLS 最终实收采集、deepseek-flash 映射及独立预算",
+      "通过离线客户端、工具续轮、交互终端、取消、凭据及页面验收，完成原版和轻量版回归",
+      "启动本机服务并验证 Windows 回环访问，固化运行时及日志规范",
+      "功能代码已提交并推送"
+    ],
+    "partialStep": null,
+    "nextStep": "用户使用本机 Claude Code 手工联调",
+    "notes": "本机服务 http://127.0.0.1:8787 保持运行；所有自动验证使用离线模拟池，真实池请求由用户手工发起。"
+  }
+}

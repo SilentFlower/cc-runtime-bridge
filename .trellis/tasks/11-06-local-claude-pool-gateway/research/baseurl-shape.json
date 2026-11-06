@@ -1,0 +1,30 @@
+{
+  "realUpstreamRequests": 0,
+  "exitCode": 0,
+  "outputMatchesOK": true,
+  "observations": [
+    {
+      "path": "/v1/messages",
+      "billing": "x-anthropic-billing-header: cc_version=2.1.293.33e; cc_entrypoint=sdk-cli;",
+      "cchCount": 0,
+      "inputFormat": null,
+      "error": "原生 billing 的 CCH 位置存在歧义",
+      "model": "claude-sonnet-4-6",
+      "maxTokens": 32000,
+      "tools": 24,
+      "keys": [
+        "model",
+        "messages",
+        "system",
+        "tools",
+        "metadata",
+        "max_tokens",
+        "thinking",
+        "context_management",
+        "safeguards",
+        "output_config",
+        "stream"
+      ]
+    }
+  ]
+}
