@@ -1,0 +1,86 @@
+{
+  "id": "pool-tls-forwarder",
+  "name": "pool-tls-forwarder",
+  "title": "本地 TLS 采集转发到池内 Messages",
+  "description": "在本地 TLS 采集器记录原生最终出站后，通过池 Base URL、池凭据和 deepseek-flash 转发 Messages；保持 CC 原生链路及双段证据。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-06",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-06T05:05:06Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "本地 TLS 池转发、凭据保护、请求级脱敏、报告及独立轮次验收已完成；Check-All通过，Spec已更新。原版和精简各15个离线场景及修复轮3次真实验收通过，首轮历史样本保持，报告 http://127.0.0.1:8791。",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-06T02:46:42Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": true,
+      "baseline": {
+        "head": "e3b4f66da523e52ded25db80cabcff63882b8aae",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "e3b4f66da523e52ded25db80cabcff63882b8aae",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "335a0824b6e782c39ec7b031e636b661ed02c51a59ff48e2c49938721f0ada81"
+          }
+        ],
+        "fingerprint": "9bd509c0d30c091c1177167082a00fafa96e1b948e0e0ce090bdc4024bbcbc0b"
+      }
+    }
+  },
+  "progress": {
+    "completedSteps": [
+      "本地 TLS 原生最终采集与池 Messages 转发",
+      "凭据保护、请求级脱敏及独立轮次账本",
+      "原版和精简各十五个离线场景验证",
+      "三次有界真实 JSON、SSE 与取消验收",
+      "Check-All 修复重检",
+      "日志 Spec 更新",
+      "业务提交与推送"
+    ],
+    "partialStep": null,
+    "nextStep": "无",
+    "notes": "首轮失败及历史回执保留；修复轮三次通过，凭据与历史样本摘要保持。只读报告 http://127.0.0.1:8791。",
+    "updatedAt": "2026-11-06T05:05:06Z"
+  }
+}
