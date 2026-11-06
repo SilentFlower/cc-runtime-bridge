@@ -22,10 +22,18 @@ native('官方 293 的无外网回环链路', () => {
   let base: string;
   let mode: 'normal' | 'tool' | 'local_tool' | 'http_error' | 'network_error' | 'sse_error' | 'incomplete' | 'slow' = 'normal';
   const requests: { raw: string; body: Record<string, unknown>; headers: HeaderPair[] }[] = [];
+  const telemetryRequests: { raw: string; body: { events: { event_type: string; event_data: Record<string, unknown> }[] }; headers: HeaderPair[] }[] = [];
+  const telemetryCases: Record<string, unknown>[] = [];
+  const proxyTargets: string[] = [];
+  const proxyHttpRequests: { method: string | undefined; url: string | undefined }[] = [];
+  const auxiliaryRequests: { method: string; path: string }[] = [];
+  let telemetryMode: 'normal' | 'error' | 'slow' = 'normal';
   const sockets = new Set<Duplex>();
   const upstreamSecret = 'ccrb-upstream-secret-canary';
   let expectedResponse = '';
   let nativeEngine: Engine;
+  let config: ReturnType<typeof readConfig>;
+  const policyCases: Record<string, unknown>[] = [];
   let setupMs = 0;
   const timings: { previousPid: number | null; pid: number | null; completeMs: number }[] = [];
   const cases: { index: number; body: Record<string, unknown>; context: Record<string, unknown>; id: string }[] = [];
@@ -43,7 +51,17 @@ native('官方 293 的无外网回环链路', () => {
       tls: { key: Bun.file(join(root, 'key.pem')), cert: Bun.file(join(root, 'cert.pem')) },
       async fetch(request) {
         const url = new URL(request.url);
-        if (url.pathname !== '/v1/messages') return Response.json({});
+        if (url.pathname === '/api/event_logging/v2/batch') {
+          const raw = await request.text();
+          telemetryRequests.push({ raw, body: JSON.parse(raw), headers: [...request.headers.entries()] as HeaderPair[] });
+          if (telemetryMode === 'error') return Response.json({ error: 'synthetic telemetry failure' }, { status: 500 });
+          if (telemetryMode === 'slow') {
+            let timer: ReturnType<typeof setTimeout>;
+            return new Response(new ReadableStream({ start(controller) { timer = setTimeout(() => { try { controller.close(); } catch {} }, 5000); timer.unref(); }, cancel() { clearTimeout(timer); } }), { headers: { 'content-type': 'application/json' } });
+          }
+          return Response.json({});
+        }
+        if (url.pathname !== '/v1/messages') { auxiliaryRequests.push({ method: request.method, path: url.pathname }); return Response.json({}); }
         const raw = await request.text();
         const body = JSON.parse(raw);
         requests.push({ raw, body, headers: [...request.headers.entries()] as HeaderPair[] });
@@ -83,7 +101,12 @@ native('官方 293 的无外网回环链路', () => {
       },
     });
     proxy = createServer();
+    proxy.on('request', (request, response) => {
+      proxyHttpRequests.push({ method: request.method, url: request.url });
+      request.resume(); response.writeHead(501); response.end('CONNECT required');
+    });
     proxy.on('connect', (request, socket, head) => {
+      proxyTargets.push(request.url ?? '');
       if (request.url !== 'api.anthropic.com:443') { socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'); return; }
       if (mode === 'network_error') { socket.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'); return; }
       sockets.add(socket); socket.on('close', () => sockets.delete(socket));
@@ -98,7 +121,7 @@ native('官方 293 的无外网回环链路', () => {
     await new Promise<void>(resolve => proxy.listen(0, '127.0.0.1', resolve));
     const address = proxy.address();
     if (!address || typeof address === 'string') throw new Error('代理没有有效端口');
-    const config = readConfig({
+    config = readConfig({
       CCRB_PORT: '0', CCRB_DATA_DIR: join(root, 'data'),
       CCRB_CLAUDE_BINARY: process.env.CCRB_TEST_CLAUDE_BINARY ?? '/root/.nvm/versions/node/v22.23.4/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe',
       CCRB_CLAUDE_HOME: join(root, 'home'), CCRB_CLAUDE_CONFIG_DIR: join(root, 'config'),
@@ -123,7 +146,10 @@ native('官方 293 的无外网回环链路', () => {
       await mkdir(captures, { recursive: true });
       await writeFile(join(captures, 'requests.json'), JSON.stringify({ source: 'isolated_local_tls', real_upstream_requests: 0, binary_sha256: nativeEngine.binarySha256, cases,
         requests: requests.map(request => ({ ...request, headers: request.headers.map(([name, value]) => [name, /authorization|api[-_]?key|cookie|token/i.test(name) ? '[REDACTED]' : value]) })),
-        details,
+        details, policy_cases: policyCases, telemetry_cases: telemetryCases,
+        telemetry_requests: telemetryRequests.map(request => ({ ...request, headers: request.headers.map(([name, value]) => [name, /authorization|api[-_]?key|cookie|token/i.test(name) ? '[REDACTED]' : value]) })),
+        proxy_http_requests: proxyHttpRequests,
+        auxiliary_requests: auxiliaryRequests,
       }, null, 2));
     }
     if (app) await app.close();
@@ -144,6 +170,9 @@ native('官方 293 的无外网回环链路', () => {
     const raw = await response.text();
     cases.push({ index, body, context, id: response.headers.get('x-ccrb-request-id')! });
     timings.push({ previousPid, pid: nativeEngine.workerPid, completeMs: performance.now() - started });
+    // 矩阵逐项核验持久日志，轮间先排空有界异步写盘队列；响应耗时已在上方单独记录。
+    await app.store.flush();
+    expect(app.store.error).toBeNull();
     return { response, raw, id: response.headers.get('x-ccrb-request-id')! };
   }
 
@@ -543,6 +572,193 @@ native('官方 293 的无外网回环链路', () => {
     expect(nativeEngine.workerPid).not.toBe(pid);
     expect(requests.length - count).toBe(2);
   });
+
+  test('sub2api 实际原生发送保留所有权、缓存预算与原生 CCH', async () => {
+    mode = 'normal';
+    const dedicated = join(root, 'cache-policy');
+    await mkdir(join(dedicated, 'home'), { recursive: true });
+    await mkdir(join(dedicated, 'config'));
+    await writeFile(join(dedicated, 'config', '.claude.json'), JSON.stringify({ userID: 'd'.repeat(64) }));
+    const settings = { ...config, dataDir: join(dedicated, 'data'), engine: { ...config.engine, cachePolicy: 'sub2api' as const, home: join(dedicated, 'home'), configDir: join(dedicated, 'config'), cwd: join(dedicated, 'home') } };
+    const local = await startServer(settings);
+    const messages = [{ role: 'user', content: 'u1' }, { role: 'assistant', content: 'a1' }, { role: 'user', content: 'u2' }, { role: 'assistant', content: 'a2' }, { role: 'user', content: 'u3' }];
+    const scenarios: [string, Record<string, unknown>, string][] = [
+      ['api', { model: 'claude-sonnet-4-6', system: '缓存测试', messages, max_tokens: 128, stream: false }, '已应用 sub2api'],
+      ['native', nativeBody({ messages }), '已应用 sub2api'],
+      ['caller-marked', nativeBody(), '调用方已有消息缓存断点'],
+      ['automatic', nativeBody({ messages, cache_control: { type: 'ephemeral' } }), '保留根级缓存机制'],
+      ['budget', nativeBody({ messages, tools: Array.from({ length: 4 }, (_, index) => ({ name: 't' + index, input_schema: { type: 'object' }, cache_control: { type: 'ephemeral', ttl: '1h' } })), system: (nativeBody().system as unknown[]).slice(0, 1) }), '预算已用完'],
+    ];
+    try {
+      const health = await fetch('http://127.0.0.1:' + local.server.port + '/api/health').then(response => response.json());
+      expect(health.runtimePolicy.cachePolicy).toBe('sub2api');
+      for (const [name, body, note] of scenarios) {
+        const count = requests.length;
+        const before = structuredClone(body);
+        const response = await fetch('http://127.0.0.1:' + local.server.port + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json', 'CCRB_CACHE_POLICY': 'preserve' }, body: JSON.stringify({ request_id: 'policy-' + name, body }) });
+        const raw = await response.text();
+        expect(response.status).toBe(200);
+        expect(raw).toContain('msg_native_fixture');
+        expect(requests.length - count).toBe(1);
+        const wire = requests.at(-1)!;
+        assertCch(wire.raw);
+        await local.store.flush();
+        const detail = await local.store.detail('policy-' + name);
+        const prepared = detail?.captures.find(capture => capture.stage === 'cc_prepared');
+        expect(prepared?.note).toContain(note);
+        expect(detail?.captures.find(capture => capture.stage === 'wire_final')?.status).toBe('unavailable');
+        if (name === 'native') {
+          expect((wire.body.messages as { content: unknown }[])[2]!.content).toEqual([{ type: 'text', text: 'u2', cache_control: { type: 'ephemeral', ttl: '5m' } }]);
+          expect((wire.body.messages as { content: unknown }[])[4]!.content).toEqual([{ type: 'text', text: 'u3', cache_control: { type: 'ephemeral', ttl: '5m' } }]);
+        }
+        if (name === 'caller-marked' || name === 'automatic' || name === 'budget') expect(wire.body.messages).toEqual(body.messages);
+        expect(body).toEqual(before);
+        policyCases.push({ name, body, raw: wire.raw, detail });
+      }
+    } finally { await local.close(); }
+  }, 30000);
+
+  test('第一方遥测只采集真实业务，关闭零上传且不影响缓存与模型单次发送', async () => {
+    mode = 'normal';
+    const combinations = [
+      { cache: 'preserve', telemetry: 'off', failure: 'normal' },
+      { cache: 'sub2api', telemetry: 'off', failure: 'normal' },
+      { cache: 'preserve', telemetry: 'on', failure: 'normal' },
+      { cache: 'sub2api', telemetry: 'on', failure: 'normal' },
+      { cache: 'preserve', telemetry: 'on', failure: 'error' },
+      { cache: 'preserve', telemetry: 'on', failure: 'slow' },
+    ] as const;
+    for (const combination of combinations) {
+      telemetryMode = combination.failure;
+      const key = [combination.cache, combination.telemetry, combination.failure].join('-');
+      const dedicated = join(root, 'telemetry-' + key);
+      await mkdir(join(dedicated, 'home'), { recursive: true });
+      await mkdir(join(dedicated, 'config'));
+      await writeFile(join(dedicated, 'config', '.claude.json'), JSON.stringify({ userID: 'e'.repeat(64) }));
+      const settings = { ...config, dataDir: join(dedicated, 'data'), engine: { ...config.engine, cachePolicy: combination.cache, telemetryPolicy: combination.telemetry, home: join(dedicated, 'home'), configDir: join(dedicated, 'config'), cwd: join(dedicated, 'home') } };
+      const local = await startServer(settings);
+      const modelsBefore = requests.length, telemetryBefore = telemetryRequests.length, targetsBefore = proxyTargets.length, proxyHttpBefore = proxyHttpRequests.length, auxiliaryBefore = auxiliaryRequests.length;
+      const sessions = new Set<string>();
+      const times: number[] = [];
+      let closed = false;
+      try {
+        const healthUrl = 'http://127.0.0.1:' + local.server.port + '/api/health';
+        expect((await fetch(healthUrl).then(response => response.json())).runtimePolicy.telemetryState).toBe(combination.telemetry === 'on' ? 'pending' : 'off');
+        for (let round = 0; round < 2; round++) {
+          const started = performance.now();
+          const id = 'telemetry-' + key + '-' + round;
+          const body = { model: 'claude-sonnet-4-6', system: '第一方遥测离线验证', messages: [{ role: 'user', content: 'u1' }, { role: 'assistant', content: 'a1' }, { role: 'user', content: 'u2' }, { role: 'assistant', content: 'a2' }, { role: 'user', content: 'u3' }], max_tokens: 128, stream: false };
+          const context = round ? { requestClass: 'subagent', agentId: 'telemetry-child', parentAgentId: 'telemetry-parent', agentType: 'Explore' } : {};
+          const response = await fetch('http://127.0.0.1:' + local.server.port + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json', 'CCRB_TELEMETRY': combination.telemetry === 'on' ? 'off' : 'on' }, body: JSON.stringify({ request_id: id, body, context }) });
+          const text = await response.text();
+          expect(response.status).toBe(200);
+          expect(text).toContain('msg_native_fixture');
+          times.push(performance.now() - started);
+          assertCch(requests.at(-1)!.raw);
+          await local.store.flush();
+          const detail = await local.store.detail(id);
+          expect(detail?.request.state).toBe('success');
+          sessions.add(detail!.context!.sessionId);
+        }
+        const state = (await fetch(healthUrl).then(response => response.json())).runtimePolicy;
+        expect(state.telemetry).toBe(combination.telemetry);
+        expect(state.telemetryState).toBe(combination.telemetry === 'on' ? 'initialized' : 'off');
+        const closeStarted = performance.now();
+        await local.close(); closed = true;
+        const closeMs = performance.now() - closeStarted;
+        expect(closeMs).toBeLessThan(2200);
+        const uploads = telemetryRequests.slice(telemetryBefore);
+        const events = uploads.flatMap(request => request.body.events);
+        if (combination.telemetry === 'off') expect(uploads.length).toBe(0);
+        else {
+          expect(events.length).toBeGreaterThan(0);
+          for (const event of events) {
+            expect(event.event_type).toBe('ClaudeCodeInternalEvent');
+            expect(sessions.has(String(event.event_data.session_id))).toBe(true);
+            expect(event.event_data.device_id).toBe('e'.repeat(64));
+            expect(event.event_data.entrypoint).toBe('cli');
+            if (typeof event.event_data.process === 'string') {
+              const metrics = JSON.parse(Buffer.from(event.event_data.process, 'base64').toString());
+              expect(metrics.rss).toBeGreaterThan(0);
+              expect(metrics.cpuUsage.user).toBeGreaterThanOrEqual(0);
+            }
+          }
+          expect(JSON.stringify(uploads.map(request => request.body))).not.toContain(upstreamSecret);
+        }
+        expect(requests.length - modelsBefore).toBe(2);
+        const targets = proxyTargets.slice(targetsBefore);
+        expect(targets.length).toBeGreaterThan(0);
+        expect(targets.every(target => target === 'api.anthropic.com:443')).toBe(true);
+        expect(proxyHttpRequests.length - proxyHttpBefore).toBe(0);
+        expect(auxiliaryRequests.slice(auxiliaryBefore)).toEqual([]);
+        if (combination.failure !== 'normal') expect(times[1]!).toBeLessThan(1000);
+        telemetryCases.push({ ...combination, state, model_requests: requests.length - modelsBefore, telemetry_requests: uploads.length, event_names: events.map(event => event.event_data.event_name), sessions: [...sessions], times_ms: times, close_ms: closeMs });
+      } finally { if (!closed) await local.close(); telemetryMode = 'normal'; }
+    }
+  }, 90000);
+
+  test('开启遥测时取消退役有界，重建后事件仍归属各自业务会话', async () => {
+    const dedicated = join(root, 'telemetry-cancel-rebuild');
+    await mkdir(join(dedicated, 'home'), { recursive: true });
+    await mkdir(join(dedicated, 'config'));
+    await writeFile(join(dedicated, 'config', '.claude.json'), JSON.stringify({ userID: 'e'.repeat(64) }));
+    const settings = { ...config, dataDir: join(dedicated, 'data'), engine: { ...config.engine, telemetryPolicy: 'on' as const, home: join(dedicated, 'home'), configDir: join(dedicated, 'config'), cwd: join(dedicated, 'home') } };
+    const engine = await createEngine(settings.engine);
+    const local = await startServer(settings, engine);
+    const localBase = 'http://127.0.0.1:' + local.server.port;
+    const modelsBefore = requests.length, telemetryBefore = telemetryRequests.length, targetsBefore = proxyTargets.length, auxiliaryBefore = auxiliaryRequests.length, proxyHttpBefore = proxyHttpRequests.length;
+    const cancel = new AbortController();
+    let closed = false;
+    try {
+      mode = 'slow';
+      const response = await fetch(localBase + '/api/requests', { method: 'POST', signal: cancel.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request_id: 'telemetry-cancel', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '遥测取消验证' }], stream: true } }) });
+      expect(response.status).toBe(200);
+      const reader = response.body!.getReader(); void reader.closed.catch(() => {});
+      await reader.read();
+      const canceledPid = engine.workerPid;
+      const cancelStarted = performance.now();
+      cancel.abort(); await reader.cancel().catch(() => {});
+      let canceled = await local.store.detail('telemetry-cancel');
+      for (let i = 0; i < 120; i++) {
+        await local.store.flush(); canceled = await local.store.detail('telemetry-cancel');
+        if (canceled?.request.state === 'canceled' && engine.workerPid === null) break;
+        await Bun.sleep(25);
+      }
+      const cancelMs = performance.now() - cancelStarted;
+      expect(cancelMs).toBeLessThan(3000);
+      expect(canceled?.request.state).toBe('canceled');
+      expect(engine.workerPid).toBeNull();
+      expect(requests.length - modelsBefore).toBe(1);
+      expect((await fetch(localBase + '/api/health').then(value => value.json())).runtimePolicy.telemetryState).toBe('pending');
+      mode = 'normal';
+      const next = await fetch(localBase + '/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request_id: 'telemetry-rebuilt', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '遥测重建后的下一轮' }], stream: false } }) });
+      expect(next.status).toBe(200); expect(await next.text()).toBe(expectedResponse);
+      expect(engine.workerPid).not.toBe(canceledPid);
+      expect(engine.telemetryState).toBe('initialized');
+      await local.store.flush();
+      const rebuilt = await local.store.detail('telemetry-rebuilt');
+      expect(rebuilt?.request.state).toBe('success');
+      const sessions = [canceled!.context!.sessionId, rebuilt!.context!.sessionId];
+      expect(sessions[0]).not.toBe(sessions[1]);
+      const closeStarted = performance.now();
+      await local.close(); closed = true;
+      const closeMs = performance.now() - closeStarted;
+      expect(closeMs).toBeLessThan(2200);
+      const uploads = telemetryRequests.slice(telemetryBefore), events = uploads.flatMap(request => request.body.events);
+      expect(events.some(event => event.event_data.session_id === sessions[1])).toBe(true);
+      for (const event of events) {
+        expect(sessions).toContain(String(event.event_data.session_id));
+        expect(event.event_data.device_id).toBe('e'.repeat(64));
+        expect(event.event_data.entrypoint).toBe('cli');
+      }
+      expect(requests.length - modelsBefore).toBe(2);
+      for (const request of requests.slice(modelsBefore)) assertCch(request.raw);
+      expect(proxyTargets.slice(targetsBefore).every(target => target === 'api.anthropic.com:443')).toBe(true);
+      expect(proxyHttpRequests.length - proxyHttpBefore).toBe(0);
+      expect(auxiliaryRequests.slice(auxiliaryBefore)).toEqual([]);
+      telemetryCases.push({ lifecycle: 'cancel-rebuild', telemetry: 'on', model_requests: requests.length - modelsBefore, telemetry_requests: uploads.length, sessions, event_names: events.map(event => event.event_data.event_name), cancel_ms: cancelMs, close_ms: closeMs });
+    } finally { cancel.abort(); mode = 'normal'; if (!closed) await local.close(); }
+  }, 30000);
 
   function nativeBody(extra: Record<string, unknown> = {}): Record<string, unknown> {
     return { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: [{ type: 'text', text: '原生正文保真验证', cache_control: { type: 'ephemeral', ttl: '5m' } }] }], system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli; cch=12345; cc_prompt_id=11111111-1111-4111-8111-111111111111; cc_turn_origin=human; cc_prompt_index=3; cc_turn_index=4;' }, { type: 'text', text: '原生调用方业务 system', cache_control: { type: 'ephemeral', ttl: '5m' } }], metadata: { user_id: JSON.stringify({ device_id: 'c'.repeat(64), account_uuid: '44444444-4444-4444-8444-444444444444', session_id: '22222222-2222-4222-8222-222222222222' }), trace_extension: 'kept' }, max_tokens: 128, stream: false, ...extra };

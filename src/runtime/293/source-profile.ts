@@ -21,6 +21,8 @@ export const PROFILE_293 = {
     cliReplacements: '/$bunfs/root/chunk-4f75j7cy.js',
     cliSkills: '/$bunfs/root/chunk-v1s8khae.js',
     cliSource: '/$bunfs/root/chunk-57d0836j.js',
+    analytics: '/$bunfs/root/chunk-nayw0pf7.js',
+    network: '/$bunfs/root/chunk-19kr5wet.js',
   },
 } as const;
 
@@ -28,7 +30,7 @@ export const PROFILE_293 = {
 export const NATIVE_EXPORTS_293 = {
   core: ['Re', 'Kc', 'K_t', 'VA', 'Kz', '_R', '_p', 'LT', 'Uz', 'Fyn', 'pie', 'Cer', 'Ck'],
   api: ['yN', 'Ree'],
-  context: ['Nst', 'kps', 'n4', 'Ae', 'Iyr', 'Lle', 'VH'],
+  context: ['Nst', 'kps', 'n4', 'Ae', 'Iyr', 'Lle', 'VH', 'SLe', 'a4', 'MDs', 'bLe', 'Jk', 'gyr', 'Yus', 'Nco', 'w9t', 'gDn', 'tt'],
   state: ['F', 'nEr', 'yLs', 't_', 'vwo', 'REr', 'bf'],
   permissions: ['su'],
   cliTools: ['Bq', 'OD'],
@@ -44,4 +46,6 @@ export const NATIVE_EXPORTS_293 = {
   cliReplacements: ['p7o'],
   cliSkills: ['Hoe', '$8e'],
   cliSource: ['u1e'],
+  analytics: ['G_o'],
+  network: ['Jb'],
 } as const satisfies Record<keyof typeof PROFILE_293.modules, readonly string[]>;

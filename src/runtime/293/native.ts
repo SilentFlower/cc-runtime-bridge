@@ -178,6 +178,46 @@ export interface NativeBindings {
     Lle(key: string): string;
     /** 读取有效的本地使用列表。 @param value 专用配置。 @return 已确认和已拒绝列表。 */
     VH(value: JsonObject): { approved: string[]; rejected: string[] };
+    /** 初始化官方第一方 logger。 @return 初始化完成，无需额外存储适配。 */
+    SLe(): void;
+    /** 检查官方第一方事件资格。 @return 原生策略是否允许。 */
+    a4(): boolean;
+    /** 收口第一方发送任务。 @return 原生收口完成。 */
+    MDs(): Promise<void>;
+    /** 关闭官方第一方 logger。 @return 原生关闭完成。 */
+    bLe(): Promise<void>;
+    /** 使用官方采集器记录并生成原生 metadata。 @param name 原生事件名。 @param metadata 原生事件参数。 @return 采集完成，不代表已上传。 */
+    Jk(name: string, metadata?: JsonObject): Promise<void>;
+    /** 应用官方事件采样。 @param name 原生事件名。 @return 零表示丢弃，null 表示无额外采样。 */
+    gyr(name: string): number | null;
+    /** 按官方目录规则脱敏 metadata。 @param metadata 原生事件参数。 @return 原生脱敏后的事件参数。 */
+    Yus(metadata: JsonObject): JsonObject;
+    /** 检查原生模型脱敏目录是否可用。 @return 是否已就绪或允许使用当前回退。 */
+    Nco(): boolean;
+    /** 等待官方模型脱敏目录。 @return 官方目录初始化收口。 */
+    w9t(): Promise<unknown>;
+    /** 登记并转换模型的遥测名称。 @param model 原生模型名。 @return 原生安全名称。 */
+    gDn(model: string): string;
+    /** 读取当前原生模型选择。 @return 当前模型名。 */
+    tt(): string;
+  };
+  analytics: {
+    /** 绑定当前 host 的事件接收器，仅首次绑定生效。
+     * @param sink 接收原生代码已经产生的事件，不自行生成事件。
+     * @return 接收器绑定完成。
+     */
+    G_o(sink: {
+      /** 后台记录事件。 @param name 事件名。 @param metadata 原生参数。 @return 无返回值。 */
+      logEvent(name: string, metadata?: JsonObject): void;
+      /** 记录可等待事件。 @param name 事件名。 @param metadata 原生参数。 @return 原生采集完成。 */
+      logEventAsync(name: string, metadata?: JsonObject): Promise<void>;
+    }): void;
+  };
+  network: {
+    /** 为官方 HTTP 客户端配置代理、CA 和连接代理。
+     * @return 本机网络配置完成，不产生模型请求。
+     */
+    Jb(): void;
   };
   permissions: {
     /** 创建官方空权限上下文。

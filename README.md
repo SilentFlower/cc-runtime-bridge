@@ -42,6 +42,8 @@ bun run start
 
 工作进程在首个请求时启动，正常请求复用进程。取消或异常后会重建，不自动重放当前请求。完整参数及支持范围见[接口说明](docs/api.md)。
 
+缓存策略默认 `CCRB_CACHE_POLICY=preserve`，可显式选择 `sub2api`；第一方遥测默认 `CCRB_TELEMETRY=off`，可按需开启。配置修改后重启，健康接口显示配置和实际初始化状态，具体规则见[接口说明](docs/api.md#配置)。
+
 ## 接口
 
 - `POST /v1/messages`：接收固定 293 原生 CC 正文或受支持的 Messages API 正文。

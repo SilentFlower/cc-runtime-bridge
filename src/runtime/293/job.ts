@@ -6,6 +6,8 @@ import type { NativeBindings, NativeMessage, NativeRecord } from './native';
 import { isNativeModelCall, prepareCli } from './cli';
 import { prepareNativeBody } from '../../shared/native-input';
 import { validateToolChoice } from '../../shared/parameters';
+import { applyCachePolicy } from '../../shared/cache-policy';
+import type { CachePolicy } from '../../shared/runtime-policy';
 
 function unsupported(message: string): never {
   throw new BridgeError('unsupported_parameter', message, 422);
@@ -244,9 +246,10 @@ export async function generateNativeRequest(prepared: PreparedInput, bindings: N
  * @param signal 本轮取消信号。
  * @param redactor 本轮秘密处理器。
  * @param emit 本轮有背压的事件输出。
+ * @param cachePolicy 本机启动时固定的缓存策略。
  * @return 作业和流已收口。
  */
-export async function runNativeJob(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, redactor: Redactor, emit: (payload: RuntimePayload) => Promise<void>): Promise<void> {
+export async function runNativeJob(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, redactor: Redactor, emit: (payload: RuntimePayload) => Promise<void>, cachePolicy: CachePolicy = 'preserve'): Promise<void> {
   redactor.register(prepared.input);
   redactor.register({ api_key: process.env.ANTHROPIC_API_KEY, token: process.env.CLAUDE_CODE_OAUTH_TOKEN });
   const { api } = bindings;
@@ -287,13 +290,15 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
       }
       // 保留原 SDK 的发送上下文，仅映射明确的响应模式及扩展头，不再创建第二个客户端。
       const stream = prepared.input.body.stream === true;
-      if (!native && generated.body.stream !== stream) init.body = JSON.stringify({ ...generated.body, stream });
+      const sendingBody = !native && generated.body.stream !== stream ? { ...generated.body, stream } : generated.body;
+      const cache = applyCachePolicy(prepared.input.body, sendingBody, cachePolicy);
+      if (cache.body !== generated.body) init.body = JSON.stringify(cache.body);
       if (typeof init.body !== 'string') throw new Error('原生 SDK 发送正文不是字符串');
       init.headers = headers;
       const outgoing = [...headers.entries()] as HeaderPair[];
       redactor.register(outgoing);
       // 正文和头仅走私有管道；控制层先注册秘密，再统一脱敏持久化，避免重复扫描完整正文。
-      const snapshot: RuntimePayload = { type: 'cc_prepared', attempt: 1, body: init.body, headers: outgoing, body_bytes: Buffer.byteLength(init.body), body_sha256: createHash('sha256').update(init.body).digest('hex') };
+      const snapshot: RuntimePayload = { type: 'cc_prepared', attempt: 1, body: init.body, headers: outgoing, body_bytes: Buffer.byteLength(init.body), body_sha256: createHash('sha256').update(init.body).digest('hex'), cache_policy: cache.decision };
       const fail = (error: unknown): never => { cancelNative(); throw error; };
       // 快照在 Ree 前固定；等待两方收口后才交付响应事件，失败时取消并释放未交付的响应。
       const [written, sent] = await Promise.allSettled([emit(snapshot).catch(fail), (async () => api.Ree(target, init))().catch(fail)]);

@@ -32,9 +32,9 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 两种入口均按正文证据区分原生 CC 与普通 API。原生请求需要根 system 数组首段包含唯一独立 billing 文本块，`cc_version=2.1.293.<三位十六进制后缀>`、`cc_entrypoint=cli`、有效 CCH，以及合法的 `metadata.user_id` JSON 字符串。设备 ID 为 64 位十六进制，账号 UUID 可为空，会话 ID 必须为 UUID；可选 prompt ID、轮次及子代理标识同时校验。损坏或不支持的原生证据返回 422，不回落到普通 API 重组。
 
-原生分支保留业务 system、messages、tools、tool_choice、thinking、output_config、缓存标记及位置，以及 thread、diagnostics、fallbacks、safeguards 和扩展 JSON。消息可包含原生 system 角色及扩展字段。省略字段保持省略；工具为空或省略均不补工具，也不添加 CLI 提醒或默认正文。
+默认缓存策略下，原生分支保留业务 system、messages、tools、tool_choice、thinking、output_config、缓存标记及位置，以及 thread、diagnostics、fallbacks、safeguards 和扩展 JSON。消息可包含原生 system 角色及扩展字段。省略字段保持省略；工具为空或省略均不补工具，也不添加 CLI 提醒或默认正文。显式启用 sub2api 时按下述规则处理消息断点。
 
-必要改写仅包括：metadata.user_id 的 device_id/account_uuid 使用当前专用运行时身份，session_id 与其他 metadata 保留；billing CCH 先置为原生占位，再由同一原生传输生成最终值。原版本后缀、prompt、轮次及父子标识保留，显式上下文或头部冲突返回 400。入站 beta 在原生分支保留，凭据与传输头仍遵循既有头部策略。
+默认 preserve 下的必要改写仅包括：metadata.user_id 的 device_id/account_uuid 使用当前专用运行时身份，session_id 与其他 metadata 保留；billing CCH 先置为原生占位，再由同一原生传输生成最终值。原版本后缀、prompt、轮次及父子标识保留，显式上下文或头部冲突返回 400。入站 beta 在原生分支保留，凭据与传输头仍遵循既有头部策略。
 
 扩展 JSON 只作为上游数据。根字段 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于本机控制字段，返回 422。调用方不能通过正文改变账号、代理、工作目录或执行程序。原生识别不代表上游已接受扩展字段或模型参数组合。
 
@@ -89,6 +89,26 @@ HTTP 状态、合法端到端响应头及响应逻辑字节原样返回。conten
 
 ## 配置
 
+### 可选缓存策略
+
+`CCRB_CACHE_POLICY=preserve` 为默认值，保持当前布局。显式设为 `sub2api` 并重启服务后，对没有调用方消息断点的请求选取尾部可缓存块；消息至少四条时，再选倒数第二条 user 消息的末尾可缓存块。已有 system/tools 标记保留，总预算最多四个，预算不足时尾部优先。普通 API 的 SDK 自动消息标记仅在调用方未声明消息标记时由此策略替换。
+
+调用方已有消息断点、根级 cache_control、未知缓存结构、预算耗尽或没有候选时保留原文，日志说明原因。新标记默认 ephemeral/1h；已有前置标记为 5m 或省略 TTL 时，新标记用 5m，已有 TTL/scope 不改。thinking、图片及 tool_use 不作为选点，工具结果可选。此策略不保证上游实际命中，实际缓存读写量仍以上游 usage 为准。
+
+策略仅来自启动配置，不接受请求头或正文覆盖。旧精简产物若不支持显式 sub2api，返回受控配置错误，需重新构建和接纳产物。`/api/health` 的 runtimePolicy.cachePolicy 是已配置策略，日志的中间阶段说明是当次处理结果。
+
+### 第一方遥测
+
+`CCRB_TELEMETRY=off` 为默认值，关闭采集及上传。显式设为 `on` 并重启后，接入固定 293 的官方第一方事件采集、鉴权及批处理；本地初始化不采集，只有活跃业务作用域的原生事件进入采集器。自动更新、错误上报、远程功能配置拉取及第三方监控保持关闭。
+
+遥测与模型请求共用显式配置的代理和 CA，但使用各自的官方 HTTP 实现；第一方 HTTP 客户端需要原生网络初始化，不能仅删除关闭环境变量。事件入口保持 cli，不补造启动、成功或用量事件。桥接在首发后收口 SDK，事件集合可能少于完整 CLI，反映原生构造流程，不能替代最终 HTTP 出站采样。
+
+`/api/health.runtimePolicy` 返回 telemetry（配置）和 telemetryState（实际初始化状态）：off、pending、initialized、suppressed、unavailable。initialized 表示 logger 已初始化，不表示上传成功；suppressed 表示官方策略禁止采集，unavailable 表示 demo/旧产物没有该能力。显式 on 而旧产物不支持时，在业务发送前返回配置错误。
+
+采集在后台执行，最多跟踪 128 个正在进行的原生采集任务，超限或采集失败不会阻塞模型；原生 exporter 自己持有批处理队列。退出清理预算 1000 ms，配合进程关闭宽限收口，不重放模型请求。关闭不会自动删除专用目录中的历史遥测文件；测试只使用合成身份和本机回环。
+
+### 变量一览
+
 Bun 读取本机 .env；该文件已被 Git 忽略。参考仓库 .env.example。
 
 | 变量 | 默认或用途 |
@@ -107,6 +127,8 @@ Bun 读取本机 .env；该文件已被 Git 忽略。参考仓库 .env.example�
 | CCRB_RETAIN_DAYS | 摘要 7 天，允许 1–90 |
 | CCRB_DEBUG_RETAIN_DAYS | 正文 3 天，不超过摘要保留期 |
 | CCRB_TIMEOUT_MS | 包含排队的请求预算 90000，允许 1000–600000 |
+| CCRB_CACHE_POLICY | preserve；可选 sub2api，修改后重启 |
+| CCRB_TELEMETRY | off；可选 on，修改后重启，服从官方策略 |
 
 真实 OAuth、账号刷新及生产请求仍需独立验收。本项目不会读取现有 cc2api 配置来自动接管账号。
 

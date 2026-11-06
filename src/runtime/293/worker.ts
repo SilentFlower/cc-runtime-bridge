@@ -12,6 +12,8 @@ import type { NativeBindings, NativeSession } from './native';
 import { NATIVE_EXPORTS_293, PROFILE_293 } from './source-profile';
 import { generateNativeRequest, runNativeJob } from './job';
 import { initializeCli } from './cli';
+import { readCachePolicy, readTelemetryPolicy } from '../../shared/runtime-policy';
+import { createNativeTelemetry } from './telemetry';
 
 const WORKER_ID = /^[a-f0-9-]{36}$/;
 
@@ -39,6 +41,8 @@ export async function reportStartupFailure(error: unknown): Promise<void> {
 export async function startWorker(bindings: NativeBindings): Promise<void> {
   const workerId = process.env.CCRB_WORKER_ID;
   if (!workerId || !WORKER_ID.test(workerId)) throw new Error('缺少工作进程归属');
+  const cachePolicy = readCachePolicy(process.env.CCRB_CACHE_POLICY);
+  const telemetryPolicy = readTelemetryPolicy(process.env.CCRB_TELEMETRY);
   for (const [role, names] of Object.entries(NATIVE_EXPORTS_293)) {
     const module = bindings[role as keyof NativeBindings] as unknown as Record<string, unknown>;
     for (const name of names) {
@@ -48,18 +52,20 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
       if (typeof value !== 'function') throw new Error('固定版本的内部接口不匹配');
     }
   }
+  const storage = new AsyncLocalStorage<{ session: NativeSession; telemetry: boolean }>();
+  const telemetry = createNativeTelemetry(bindings, telemetryPolicy, () => storage.getStore()?.telemetry === true);
   await initializeCli(bindings);
   const base = bindings.state.F();
-  const storage = new AsyncLocalStorage<{ session: NativeSession }>();
   bindings.state.yLs(() => storage.getStore());
   // 固定源的 SDK/构造依赖是惰性初始化；就绪前只做本地构造，并在原生发送前中止。
   // 初始化根与业务根隔离，不产生上游请求、请求事件或持久业务日志；其成本计入总启动时间。
   const bootstrap = prepareInput(parseInput({ request_id: 'local-bootstrap', body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '本地初始化' }], max_tokens: 64, stream: false }, context: { sessionId: randomUUID(), promptId: randomUUID() } }));
   const session = bindings.state.nEr({ host: base.host, id: bootstrap.context.sessionId, project: base.project });
-  await storage.run({ session }, async () => {
+  await storage.run({ session, telemetry: false }, async () => {
     bindings.state.t_(bootstrap.context.sessionId, 'resume');
     await generateNativeRequest(bootstrap, bindings, new AbortController().signal);
   });
+  const telemetryState = telemetry.start();
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
   let current: { id: string; abort: AbortController; finished: Promise<void> } | null = null;
   let closing = false;
@@ -104,10 +110,11 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
       };
       // 相同 sessionId 也新建根；迟到异步回调仍绑定旧根，不会改写下一轮账本及请求日志。
       const session = bindings.state.nEr({ host: base.host, id: command.prepared.context.sessionId, project: base.project });
-      const finished = Promise.resolve().then(() => storage.run({ session }, async () => {
+      const scope = { session, telemetry: true };
+      const finished = Promise.resolve().then(() => storage.run(scope, async () => {
         try {
           bindings.state.t_(command.prepared.context.sessionId, 'resume');
-          await runNativeJob(command.prepared, bindings, abort.signal, redactor, emit);
+          await runNativeJob(command.prepared, bindings, abort.signal, redactor, emit, cachePolicy);
         } catch (error) {
           retire = true;
           if (terminal) throw error;
@@ -115,6 +122,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
           else await emit({ type: 'error', error: redactor.text(errorText(error)), ...(error instanceof BridgeError ? { code: error.code, status: error.status } : {}) });
         } finally {
           active = false;
+          scope.telemetry = false;
         }
         if (!terminal) throw new Error('本轮缺少终态');
         await write({ type: 'worker_idle', schema_version: 2, worker_id: workerId, request_id: command.request_id });
@@ -125,7 +133,8 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
     } catch { fatal(); }
   });
   input.on('close', () => { if (!closing) stop(); });
-  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid });
+  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid, cache_policy: cachePolicy, telemetry: telemetryState });
   await closed;
+  await telemetry.close();
   storage.disable();
 }

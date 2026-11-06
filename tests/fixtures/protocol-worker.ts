@@ -15,7 +15,10 @@ export async function fixtureWorker(scenario: string): Promise<void> {
     await new Promise<void>((resolve, reject) => process.stdout.write(JSON.stringify({ schema_version: 2, worker_id: scenario === 'startup_error' ? id : 'other-worker', type: 'worker_error', code: 'native_configuration', status: 503, error: '专用 CLI 配置已拒绝当前显式密钥' }) + '\n', error => error ? reject(error) : resolve()));
     process.exit(111);
   }
-  frame('worker_ready', { version: '2.1.293', pid: process.pid });
+  frame('worker_ready', { version: '2.1.293', pid: process.pid,
+    ...(scenario === 'cache_match' ? { cache_policy: 'sub2api' } : scenario === 'cache_mismatch' ? { cache_policy: 'preserve' } : {}),
+    ...(scenario === 'telemetry_match' ? { telemetry: { policy: 'on', state: 'initialized' } } : scenario === 'telemetry_suppressed' ? { telemetry: { policy: 'on', state: 'suppressed' } } : scenario === 'telemetry_mismatch' ? { telemetry: { policy: 'off', state: 'off' } } : {}),
+  });
   if (scenario === 'duplicate_ready') frame('worker_ready', { version: '2.1.293', pid: process.pid });
   if (scenario === 'startup_error_after_ready') frame('worker_error', { code: 'native_configuration', status: 503, error: '不应在握手后接纳' });
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });

@@ -6,6 +6,7 @@ import type { EngineConfig, Engine } from './engine';
 import { createEngine } from './engine';
 import { LogStore } from './log-store';
 import { BridgeService } from './service';
+import { readCachePolicy, readTelemetryPolicy } from '../shared/runtime-policy';
 
 /** 本地控制服务的显式配置。 */
 export interface ServerConfig {
@@ -62,6 +63,8 @@ export function readConfig(env = process.env, demo = false): ServerConfig {
       apiKey: env.CCRB_NATIVE_API_KEY, oauthToken: env.CCRB_NATIVE_OAUTH_TOKEN, proxyUrl: env.CCRB_PROXY_URL, caFile: env.CCRB_CA_FILE,
       preloadPath: resolve('dist/preload.mjs'), cwd: resolve(env.CCRB_WORKDIR ?? env.CCRB_CLAUDE_HOME ?? '.'),
       timeoutMs: numberSetting(env.CCRB_TIMEOUT_MS, 90000, 1000, 600000),
+      cachePolicy: readCachePolicy(env.CCRB_CACHE_POLICY),
+      telemetryPolicy: readTelemetryPolicy(env.CCRB_TELEMETRY),
     },
   };
 }
@@ -111,7 +114,7 @@ export async function startServer(config: ServerConfig, injectedEngine?: Engine)
           if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) return secured(Response.json({ error: '仅允许本地 Host' }, { status: 403 }));
           const origin = request.headers.get('origin');
           if (origin && origin !== url.origin) return secured(Response.json({ error: '不接受跨来源请求' }, { status: 403 }));
-          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: false }));
+          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: false, runtimePolicy: { cachePolicy: config.engine.cachePolicy ?? 'preserve', telemetry: config.engine.telemetryPolicy ?? 'off', telemetryState: engine.telemetryState ?? 'unavailable' } }));
           if (request.method === 'GET' && url.pathname === '/api/logs') return secured(Response.json(store.list(filters(url))));
           if (request.method === 'GET' && url.pathname.startsWith('/api/logs/')) {
             const id = decodeURIComponent(url.pathname.slice('/api/logs/'.length));

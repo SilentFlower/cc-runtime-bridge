@@ -111,7 +111,7 @@
 
 - 原生根 system 必须为数组，首段是唯一独立 text billing 且不带 cache_control。cc_version 匹配 2.1.293.<三位十六进制>，cc_entrypoint=cli，CCH 为五位十六进制；重复字段、歧义 CCH、非法 cc_is_subagent、prompt UUID 或轮次均拒绝。这里只核对入站形状，不凭 billing 授权账号或执行。
 - metadata.user_id 必须是 JSON 字符串，device_id 为 64 位十六进制，account_uuid 为空或 UUID，session_id 为 UUID。session、可选 billing prompt 和主/子身份合并显式信封及原生头，冲突拒绝；子代理及 workflow 仍须提供既有合同所需关联，不能猜父子身份。
-- 原生保留业务 system、messages、tools、thinking、输出配置、缓存位置及 thread/diagnostics/fallbacks/safeguards 等扩展 JSON；省略字段保持省略，原生 system 角色和消息扩展允许。不加入默认 CLI system、提醒、工具、strict 或种子默认参数。
+- 默认 preserve 策略下，原生保留业务 system、messages、tools、thinking、输出配置、缓存位置及 thread/diagnostics/fallbacks/safeguards 等扩展 JSON；省略字段保持省略，原生 system 角色和消息扩展允许。不加入默认 CLI system、提醒、工具、strict 或种子默认参数。显式启用的消息缓存策略按下文独立合同处理。
 - 根 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于禁止的本机控制字段；工具 schema 内的同名业务字段不因此删除。其他扩展只作为上游数据，不改变账号、目标地址、代理或工作目录。
 - 同一 SDK 的安全种子仅取得当前账号发送上下文；唯一 fetchOverride 中替换为原生正文。metadata.user_id 只用原生 SDK 生成的 device_id/account_uuid 覆盖归属，保留原 session 及其余字段；billing 只定位独立 CCH 字段写 00000，保留其余文本与合法间隔，最终值仍由 Ree 的原生传输生成。入站 beta 沿用其列表，普通 API 继续按生成列表校验；凭据与传输头遵循共同策略。
 - 两类输入都校验 thinking 的 disabled/enabled/adaptive；enabled 的 budget_tokens 为不少于 1024 的安全整数。工具名称有效且唯一；auto/any/tool 需要工具列表，tool.name 必须已声明。enabled/adaptive 或固定模型强制 adaptive 时，any/tool 返回 400。
@@ -131,7 +131,7 @@
 
 ### 5. Scenarios and Examples
 
-- 正常：原生主请求自带业务 system、缓存、线程和工具历史，仅改设备/账号归属及最终 CCH，保留版本后缀、轮次、签名和会话。
+- 正常：默认 preserve 下，原生主请求自带业务 system、缓存、线程和工具历史，仅改设备/账号归属及最终 CCH，保留版本后缀、轮次、签名和会话。
 - 边界：原生省略 stream/max_tokens/tools 时不从种子补入；缺可选 billing prompt 时可生成头部 prompt，metadata 会话仍保留。子代理压缩保留子身份及 compaction 类别。
 - 错误用法：把已有原生正文再次交给 OM 添加默认提醒，或仅替换版本字符串接纳 303。正确做法是固定 293 原生分支保真，版本不匹配明确拒绝。
 - 错误用法：工具续轮守卫失败后忽略全部 system-reminder。正确做法是逐项关联同次已知提醒，同时保留完整业务前缀并拒绝未知注入。
@@ -196,8 +196,8 @@
 
 ### 5. Scenarios and Examples
 
-- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。当前 CLI 产物为 27375672 B（26.11 MiB），它是本版结果，不是对新版本的体积保证；完整身份与证据见 docs/runtime.md。
-- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。普通 API 和原生入站分别验收。当前内存执行体约 107.56 MiB，与磁盘 26.11 MiB 分列。
+- 正常：固定官方输入，在两个独立临时目录以同一工具/源码/配方构建，比较分发及执行体 SHA256；审计数组可按条目集合比较，不能忽略二进制差异。当前 CLI 缓存/遥测产物为 27383864 B（26.12 MiB），它是本版结果，不是对新版本的体积保证；完整身份与证据见 docs/runtime.md。
+- 边界：先隐藏原版、项目 src/scripts、提取目录与旧临时文件，再在独立 HOME/网络命名空间用合成凭据完成真实回环请求和 shutdown；部署只留下清单中的必需文件。普通 API 和原生入站分别验收。当前内存执行体约 107.60 MiB，与磁盘 26.12 MiB 分列。
 - 错误用法：拿到新版本后只改 PROFILE_293.sha256，沿用旧模块名和 ICU 偏移。正确做法是先重新测定容器、原生符号及资源合同，适配构建，再对最终哈希运行全部准入；当前 293 入口继续只接受原有固定来源。
 - 错误用法：用压缩包或 --version 耗时证明体积/速度达标，或把用户接受延迟改写为 benchmark 通过。正确做法是比较完整可执行部署集合，保留协议边界的总启动、就绪后首轮及暖复用实测和原诊断结论；各阶段中位数不能相加代替总耗时，不为追赶旧目标引入未验证的研究裁剪。
 
@@ -219,3 +219,103 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/unit/{profile,engine,worker-protocol}.test.ts 及 tests/integration/control.test.ts：未知身份/文件替换拒绝，同 PID 多轮的状态隔离，取消/错帧/迟到帧后重建且不重放，关闭不留孤儿进程。
 - scripts/benchmark-runtime.ts：交错且反转顺序，两方各五个新进程、每进程六轮；同输入、回环上游和响应负载，每轮一次实际发送。直接保留 startup_to_first_complete_ms、ready_to_first_complete_ms、后五轮 elapsed_ms 及三项中位数；旧 ≤1.10 判断只作历史诊断，不改原失败样本。RSS、额外文件、页缓存及协议/控制面边界单列，计时期间不并行压缩。
 - 重复构建：固定所有输入和工具，在独立构建目录至少两次生成，断言分发及执行体哈希一致、部署文件总量达标，重新核对 manifest 与实际 /proc 执行体；来源或配方变化后不能沿用旧产物的通过结论。全部验证继续只使用合成凭据、专用 HOME 和无外网回环。
+
+## Scenario: 可选 sub2api 消息缓存策略
+
+### 1. Scope / Trigger
+
+- 本机缓存配置贯穿控制层、私有握手、原生单次发送和日志；共享类型及校验位于 src/shared/runtime-policy.ts，纯处理器位于 src/shared/cache-policy.ts。
+
+### 2. Signatures
+
+- readCachePolicy(value: unknown): CachePolicy，CachePolicy 为 preserve/sub2api。
+- applyCachePolicy(original: JsonObject, outgoing: JsonObject, mode: CachePolicy): CachePolicyResult，返回 body 和 CachePolicyDecision。
+- runNativeJob(..., cachePolicy: CachePolicy = 'preserve') 仅在真实发送回调应用策略；generateNativeRequest 的本地 bootstrap 不应用策略。
+- worker_ready.cache_policy?: CachePolicy；cc_prepared.cache_policy?: CachePolicyDecision。HTTP/事件 schema 1 和 worker schema 2 保持原版号，可选字段由统一协议解码器校验。
+
+### 3. Contracts
+
+- CCRB_CACHE_POLICY 默认 preserve，显式值仅接受 preserve/sub2api。readConfig、直接 NativeEngine/createEngine 和 worker 边界均校验，配置固定到引擎/物理进程，修改后重建，不从请求头或正文取得策略。
+- preserve 不规范化消息或新增标记。sub2api 遇到调用方已有顶层或嵌套协议消息标记、任一根 cache_control、未知缓存结构或没有候选时整体保留。工具 input/schema 等业务对象中的同名字段不解释为控制指令。
+- 可优化时只移除本轮 SDK 自动消息标记，保留 system/tools 的原标记；先完整评估候选及预算，再克隆应用，跳过分支不改变原文。
+- 候选先为末条消息的最后一个可缓存块，消息至少四条时再选倒数第二个 user；总显式预算四减去 tools/system 的既有数量，尾部优先。仅 assistant text、user text/tool_result 可选，thinking、redacted_thinking、图片和 tool_use 不选。仅实际选中的字符串 content 转成 text 数组。
+- 新标记为 ephemeral，不添加 scope；默认 1h，若前置 tools/system 标记存在 5m 或省略 TTL，则新标记用 5m。未知类型/TTL/结构及既有反向 TTL 顺序触发保留，不修补调用方原值。
+- 所有改动在 cc_prepared 快照及 Ree 之前完成；原生 transport 继续生成最终 CCH。只读诊断包含 mode/action/reason/selected/breakpoints/ttl，不保存业务文本或宣称上游命中。
+- 旧握手缺少 cache_policy 时仅兼容 preserve；显式 sub2api 缺能力或回显不符返回配置错误，业务作业不发送。握手后故障与发送竞争时保留首个故障，不能把原配置/协议错误覆盖成通用 runtime_exit。
+- /api/health.runtimePolicy.cachePolicy 只表示已配置策略。精简新能力须对确定哈希完成独立重复构建及原生回归后登记，外部 manifest 不授信。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 非法配置值 | native_configuration/503，启动/配置阶段失败 |
+| 旧 worker 或策略回显不符 | native_configuration/503，隔离进程且业务发送为零 |
+| 畸形私有握手或诊断 | runtime_protocol/502，隔离进程 |
+| 调用方消息已有标记或根缓存 | 保留，分别记录 caller_message_breakpoints/root_cache_control_present |
+| 预算耗尽、无候选或不支持结构 | 保留，记录确定跳过原因，不猜测修复 |
+
+### 5. Scenarios and Examples
+
+- 正常：显式 sub2api，五条交替消息且无调用方消息标记，选择第三条 user 和第五条 user 的末尾可缓存块。
+- 边界：三个 tools/system 标记仅剩一格，尾部优先；四格已满时不转换候选字符串。已有 system/5m 时新标记用 5m。
+- 错误用法：把调用方 5m/scope 标记清除后强制全部 1h。正确做法是保留调用方锚点，整体跳过并说明；实际缓存命中以上游 usage 为准。
+- 错误用法：给旧产物传新环境变量便宣称策略已应用。正确做法是核验 worker 能力及回显，显式能力不足明确失败。
+
+### 6. Tests Required
+
+- tests/unit/cache-policy.test.ts：默认值与非法配置、不可变输入、短长历史、助手尾部、string/tool_result、thinking/图片、预算、TTL、原有标记及未知格式。
+- tests/unit/{engine,worker-protocol}.test.ts：旧握手与不匹配配置在作业发送前失败，畸形诊断拒绝，握手后故障保持原始状态。
+- tests/native/native.test.ts：API/原生两路径的策略应用及 caller/root/budget 跳过，最终接收正文与 CCH、日志说明及单次模型请求；原版和精简都执行。
+- tests/browser/logs.spec.ts：历史详情、原生来源和中间值标签继续正确；生产 wire_final 不因离线接收样本变成已采集。
+
+## Scenario: 默认关闭的官方第一方遥测
+
+### 1. Scope / Trigger
+
+- 本机开关贯穿控制配置、worker 能力握手、原生事件采集及进程退出。类型和校验由 src/shared/runtime-policy.ts 持有，原生生命周期由 src/runtime/293/telemetry.ts 持有。
+- 当前导出仅适用于已核验的官方 293；增加或升级遥测接口必须先读取实际定义，同步 source-profile/native 类型及构建输入，并重新验证原版与精简产物。
+
+### 2. Signatures
+
+- readTelemetryPolicy(value: unknown): TelemetryPolicy；TelemetryPolicy 为 off/on。
+- createNativeTelemetry(bindings: TelemetryBindings, policy: TelemetryPolicy, isBusiness: () => boolean): NativeTelemetry；start(): TelemetryHandshake；close(): Promise<void>。
+- TelemetryHandshake 为 `{policy:'off',state:'off'}` 或 `{policy:'on',state:'initialized'|'suppressed'}`；worker_ready.telemetry 可选，由 isTelemetryHandshake 和 decodeWorkerFrame 校验。
+- Engine.telemetryState?: TelemetryState；GET /api/health.runtimePolicy 为 `{cachePolicy,telemetry,telemetryState}`。TelemetryState 为 off/pending/initialized/suppressed/unavailable。
+
+### 3. Contracts
+
+- CCRB_TELEMETRY 默认 off，显式只接受 off/on；readConfig、直接 NativeEngine/createEngine 及 worker 入口均校验。配置固定到引擎/物理进程，修改后关闭并重建，不能从请求头或正文启用。
+- off 从模块初始化、bootstrap、业务复用到退出均保持遥测关闭，不调用官方 logger 初始化、业务采集或退出上传；不主动删除专用目录中的历史遥测文件。
+- G_o 事件接收器在 initializeCli 前注册，初始化及 bootstrap 保持关闭，并使用业务 ALS 许可筛选。每轮结束撤销许可，迟到回调不能借下一作业的状态采集；on 只在 bootstrap 收口后启用。
+- on 移除 DISABLE_TELEMETRY、CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC、DO_NOT_TRACK 的本轮关闭键，再调用官方 a4 检查资格。原生策略抑制时恢复关闭键，报告 suppressed；允许时先 Jb 配置第一方 HTTP 客户端的代理/CA，再 SLe 初始化 logger，成功才报告 initialized。不能只写字符串 0 或假设模型 FetchSession 已替第一方客户端配置网络。
+- 自动更新、错误上报及 GrowthBook 远程功能配置分别保持禁用；不初始化含第三方通道的完整 CLI analytics sink。本轮只使用官方第一方鉴权、metadata、指标和 exporter，不补造事件或模拟进程指标。
+- 官方 gyr 负责采样，模型目录 Nco/w9t 就绪后登记 gDn(tt()) 并由 Yus 脱敏，再交给 Jk。同步重入守卫防止元数据依赖递归记事件。可等待事件的接收回调也立即返回，实际采集在后台；目录等待和错误不得进入模型响应背压链。
+- 最多跟踪 128 个进行中的原生采集承诺；这是退出收口集合，不是桥接自有事件队列。超限或采集失败丢弃遥测，批处理及重试仍归原生 exporter。
+- close 停止接收新事件，等待已开始的采集并并行启动 MDs/bLe，整个清理预算 1000 ms，配合控制层 1500 ms 强制退出宽限。取消/强制退役可丢弃遥测，不能为补传重放模型、改变响应字节或下一轮归属。
+- off 是本机关闭状态；pending 表示 on 尚无初始化完成的 worker；initialized 只证明 logger 初始化，不证明上传成功；suppressed 来自官方资格检查；unavailable 表示 demo/旧握手没有该能力。读取 health 不启动 worker，也不报告伪造的上传成功率。
+- 旧握手没有 telemetry 时仅兼容 off；显式 on 缺能力或回显不同按配置错误隔离，业务发送为零。新精简身份须经双次构建、实际执行体、独立部署、完整原生回归及两项配置四组合证明后登记，外部 manifest 不授信。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 非法配置值 | native_configuration/503，在启动或直接引擎入口失败 |
+| 显式 on 而旧 worker 缺能力或回显不符 | native_configuration/503，隔离且业务请求不发送 |
+| 畸形握手，如 off/initialized 或 on/pending | runtime_protocol/502，不能以配置猜测实际状态 |
+| 官方 a4 返回 false | suppressed，模型服务按原策略运行，不初始化或上传 |
+| 原生网络/logger 初始化同步异常 | 受控 native_configuration/503，不回显原生秘密 |
+| 元数据采集失败、超限或退出上传失败/超时 | 丢弃或有界退出，模型单次发送及原始响应保持 |
+
+### 5. Scenarios and Examples
+
+- 正常：本机 on，bootstrap 不采集；业务主请求和子代理产生原生事件，经同一显式代理/CA 上传，事件入口 cli、身份和会话来自各自原生业务作用域。
+- 边界：on 但原生策略不允许时显示 suppressed；demo 为 unavailable。接收器返回 500 或持续等待时，health 可保持 initialized，但不能说明已上传成功，模型不重试。
+- 错误用法：删除关闭变量便声称遥测已开启，或补造 tengu_init/api_success 作为证明。正确做法是接入固定版本官方初始化和真实事件链，以无外网回环实收验证。
+- 错误用法：在模型响应路径 await flush，或为了退出遥测等待超过进程宽限。正确做法是后台采集、总计 1000 ms 的有界关闭，允许退出时丢弃遥测。
+
+### 6. Tests Required
+
+- tests/unit/telemetry.test.ts：默认值与非法值、off 零调用、原生抑制、初始化异常、采样/脱敏、目录等待、同步重入、128 承诺上限及永久等待的一秒退出。
+- tests/unit/{engine,worker-protocol}.test.ts：状态来自实际握手、旧能力拒绝时零作业发送、畸形配置/状态组合拒绝，默认旧握手继续兼容。
+- tests/native/native.test.ts：原版和最终精简均执行 preserve/sub2api × off/on，真实 TLS 模型正文/CCH、响应、业务会话及 cli 入口一致；off 零上传、on 实收原生事件，无 bootstrap/其他 API/明文 HTTP forward。
+- 同一原生套件覆盖遥测 500、慢响应、有界关闭、开启后取消/退役/重建及下一业务归属；每作业只有一次模型发送，真实上游为零。使用独立合成 HOME/config，不触发真实账号或付费推理。

@@ -5,6 +5,7 @@ import type { PreparedInput, RuntimeEvent, RuntimePayload, WorkerCommand } from 
 import { decodeWorkerFrame, runtimeEvent } from '../shared/protocol';
 import { BridgeError, errorText } from '../shared/errors';
 import { PROFILE_293, runtimeFileStamp, verifyRuntime, verifyExecutionImage, type RuntimeIdentity, type VerifiedRuntime } from '../runtime/profile';
+import { readCachePolicy, readTelemetryPolicy, type CachePolicy, type TelemetryPolicy, type TelemetryState, type TelemetryHandshake } from '../shared/runtime-policy';
 
 /** 运行时启动配置，均来自控制配置，不从调用方请求头读取。 */
 export interface EngineConfig {
@@ -19,6 +20,8 @@ export interface EngineConfig {
   preloadPath: string;
   cwd: string;
   timeoutMs: number;
+  cachePolicy?: CachePolicy;
+  telemetryPolicy?: TelemetryPolicy;
 }
 
 /** 统一运行时接口，演示与真实原生来源始终分别标记。 */
@@ -26,6 +29,7 @@ export interface Engine {
   readonly name: string;
   readonly binarySha256: string | null;
   readonly workerPid: number | null;
+  readonly telemetryState?: TelemetryState;
   /** 执行单轮请求并等待事件消费者。
    * @param prepared 已验证请求。
    * @param signal 取消信号。
@@ -60,6 +64,8 @@ interface WorkerProcess {
   loop: Promise<void>;
   initialized: boolean;
   failed: boolean;
+  failure?: unknown;
+  telemetry?: TelemetryHandshake;
   current: {
     id: string;
     done: Completion;
@@ -86,7 +92,15 @@ export class NativeEngine implements Engine {
   /** 绑定不可按请求变更的账号及运行环境。
    * @param config 显式控制配置。
    */
-  constructor(config: EngineConfig) { this.config = Object.freeze({ ...config }); }
+  constructor(config: EngineConfig) { this.config = Object.freeze({ ...config, cachePolicy: readCachePolicy(config.cachePolicy), telemetryPolicy: readTelemetryPolicy(config.telemetryPolicy) }); }
+
+  /** 读取 worker 的实际遥测初始化状态，不表示上传成功。
+   * @return 当前物理进程状态；读取不会创建进程。
+   */
+  get telemetryState(): TelemetryState {
+    if (!this.worker?.initialized) return this.config.telemetryPolicy === 'off' ? 'off' : 'pending';
+    return this.worker.telemetry?.state ?? 'unavailable';
+  }
 
   /** 读取实际执行体身份，不以来源哈希冒充内存展开载荷。
    * @return 已核验的执行体 SHA256。
@@ -114,6 +128,7 @@ export class NativeEngine implements Engine {
   private fail(worker: WorkerProcess, error: unknown): void {
     if (worker.failed) return;
     worker.failed = true;
+    worker.failure = error;
     if (this.worker === worker) this.worker = null;
     worker.ready.reject(error);
     worker.stopped.reject(error);
@@ -127,7 +142,8 @@ export class NativeEngine implements Engine {
   }
 
   private send(worker: WorkerProcess, command: WorkerCommand): void {
-    if (worker.failed) throw new BridgeError('runtime_exit', '工作进程已失效', 502);
+    // 握手后的故障可能早于首个作业发送，保留原始配置/协议错误，避免微任务时序改变错误类型。
+    if (worker.failed) throw worker.failure ?? new BridgeError('runtime_exit', '工作进程已失效', 502);
     worker.child.stdin.write(JSON.stringify(command) + '\n');
   }
 
@@ -157,6 +173,9 @@ export class NativeEngine implements Engine {
           }
           if (frame.type === 'worker_ready') {
             if (worker.initialized || frame.version !== PROFILE_293.version || frame.pid !== worker.child.pid) throw new BridgeError('runtime_protocol', '工作进程握手不匹配或重复', 502);
+            if ((frame.cache_policy ?? 'preserve') !== this.config.cachePolicy) throw new BridgeError('native_configuration', '运行时不支持或未应用所选缓存策略，需要更新精简产物', 503);
+            if ((frame.telemetry?.policy ?? 'off') !== this.config.telemetryPolicy) throw new BridgeError('native_configuration', '运行时不支持或未应用所选遥测开关，需要更新精简产物', 503);
+            worker.telemetry = frame.telemetry;
             await Promise.race([verifyExecutionImage(worker.child.pid, worker.verified.identity), worker.stopped.promise]);
             worker.initialized = true;
             worker.ready.resolve();
@@ -210,7 +229,7 @@ export class NativeEngine implements Engine {
       const id = randomUUID();
       const env: Record<string, string> = {
         HOME: config.home!, CLAUDE_CONFIG_DIR: config.configDir!, PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8',
-        CCRB_WORKER_ID: id, CLAUDE_CODE_ENTRYPOINT: 'cli', DISABLE_AUTO_COMPACT: '1',
+        CCRB_WORKER_ID: id, CCRB_CACHE_POLICY: config.cachePolicy!, CCRB_TELEMETRY: config.telemetryPolicy!, CLAUDE_CODE_ENTRYPOINT: 'cli', DISABLE_AUTO_COMPACT: '1',
         CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
         DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
       };
@@ -348,6 +367,8 @@ export class DemoEngine implements Engine {
  * @return 可执行引擎。
  */
 export async function createEngine(config: EngineConfig): Promise<Engine> {
+  readCachePolicy(config.cachePolicy);
+  readTelemetryPolicy(config.telemetryPolicy);
   if (config.mode === 'demo') return new DemoEngine();
   const engine = new NativeEngine(config);
   try { await engine.verify(); } catch (error) { throw new BridgeError('native_configuration', errorText(error), 503); }

@@ -1,3 +1,5 @@
+import type { CachePolicy, CachePolicyDecision, TelemetryHandshake } from './runtime-policy';
+
 /** JSON 对象，解析和验证由共享入口统一负责。 */
 export type JsonObject = Record<string, unknown>;
 
@@ -148,7 +150,7 @@ export interface LogFilters {
 /** 控制进程与固定运行时之间的消息。 */
 export type RuntimePayload =
   | { type: 'ready'; version: string }
-  | { type: 'cc_prepared'; attempt: number; headers: HeaderPair[]; body: string; body_bytes: number; body_sha256: string }
+  | { type: 'cc_prepared'; attempt: number; headers: HeaderPair[]; body: string; body_bytes: number; body_sha256: string; cache_policy?: CachePolicyDecision }
   | { type: 'response_headers'; attempt: number; status: number; headers: HeaderPair[] }
   | { type: 'response_chunk'; attempt: number; data_b64: string }
   | { type: 'completed'; attempt: number; state: RequestState; error?: string }
@@ -173,7 +175,7 @@ export type WorkerCommand =
 
 /** 常驻进程输出；请求载荷解包后继续使用外部 schema 1。 */
 export type WorkerFrame =
-  | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number }
+  | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number; cache_policy?: CachePolicy; telemetry?: TelemetryHandshake }
   | { type: 'worker_error'; schema_version: 2; worker_id: string; code: 'native_configuration'; status: 503; error: string }
   | { type: 'request_event'; schema_version: 2; worker_id: string; request_id: string; payload: RuntimePayload }
   | { type: 'worker_idle'; schema_version: 2; worker_id: string; request_id: string };

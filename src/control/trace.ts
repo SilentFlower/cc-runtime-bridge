@@ -4,6 +4,7 @@ import type { LogSnapshot } from './log-schema';
 import { LogStore } from './log-store';
 import { Redactor } from './redaction';
 import { ResponseObserver } from './response-observer';
+import { describeCachePolicy } from '../shared/runtime-policy';
 
 /** 单次采集的模式、预览上限和显式秘密来源。 */
 interface TraceOptions {
@@ -98,8 +99,9 @@ export class RequestTrace {
       captured.sha256 = event.body_sha256;
       if (!this.options.engine.startsWith('demo') && this.prepared?.context.inputFormat === 'claude_code') {
         captured.source = 'claude_code_293_native_ingress_prepared';
-        captured.note = '原生入站业务正文保留，仅改写账号身份及原生 CCH 占位；此处仍为最终传输前的中间值';
+        captured.note = event.cache_policy?.action === 'applied' ? '原生入站业务正文保留，改写账号身份、原生 CCH 占位及明确启用的消息缓存断点；此处仍为最终传输前的中间值' : '原生入站业务正文保留，仅改写账号身份及原生 CCH 占位；此处仍为最终传输前的中间值';
       }
+      if (event.cache_policy) captured.note = [captured.note, describeCachePolicy(event.cache_policy)].filter(Boolean).join('；');
       this.save();
     } else if (event.type === 'response_headers') {
       this.row.httpStatus = event.status;

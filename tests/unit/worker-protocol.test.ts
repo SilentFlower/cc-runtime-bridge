@@ -3,9 +3,26 @@ import { decodeWorkerCommand, decodeWorkerFrame, runtimeEvent } from '../../src/
 import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
 import type { WorkerCommand, WorkerFrame } from '../../src/shared/contracts';
+import { applyCachePolicy } from '../../src/shared/cache-policy';
 
 const workerId = '11111111-1111-4111-8111-111111111111';
 const prepared = prepareInput(parseInput({ request_id: 'protocol-job', body: { model: 'fixture', messages: [{ role: 'user', content: '测试' }] } }));
+
+test('缓存握手与诊断只能使用已知枚举及完整位置结构', () => {
+  const ready: WorkerFrame = { schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 1, cache_policy: 'sub2api' };
+  expect(decodeWorkerFrame(JSON.stringify(ready), workerId)).toEqual(ready);
+  expect(() => decodeWorkerFrame(JSON.stringify({ ...ready, cache_policy: 'unknown' }), workerId)).toThrow();
+  const cache = applyCachePolicy({}, { messages: [{ role: 'user', content: 'x' }] }, 'sub2api').decision;
+  const frame: Extract<WorkerFrame, { type: 'request_event' }> = { schema_version: 2, worker_id: workerId, type: 'request_event', request_id: 'protocol-job', payload: { type: 'cc_prepared', attempt: 1, body: '{}', headers: [], body_bytes: 2, body_sha256: 'a'.repeat(64), cache_policy: cache } };
+  expect(decodeWorkerFrame(JSON.stringify(frame), workerId)).toEqual(frame);
+  for (const invalid of [{ ...cache, ttl: ['1h'] }, { ...cache, selected: [{ message: 0 }] }, { ...cache, action: 'skipped' }]) expect(() => decodeWorkerFrame(JSON.stringify({ ...frame, payload: { ...frame.payload, cache_policy: invalid } }), workerId)).toThrow('格式');
+});
+
+test('遥测握手只接纳实际初始化结果，配置与状态必须对应', () => {
+  const base = { schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 1 };
+  for (const telemetry of [{ policy: 'off', state: 'off' }, { policy: 'on', state: 'initialized' }, { policy: 'on', state: 'suppressed' }]) expect(decodeWorkerFrame(JSON.stringify({ ...base, telemetry }), workerId).type).toBe('worker_ready');
+  for (const telemetry of [{ policy: 'off', state: 'initialized' }, { policy: 'on', state: 'pending' }, { policy: 'on', state: 'uploaded' }, { policy: true, state: 'initialized' }]) expect(() => decodeWorkerFrame(JSON.stringify({ ...base, telemetry }), workerId)).toThrow();
+});
 
 test('常驻协议同时校验进程与作业归属，不接纳旧协议握手', () => {
   const command: WorkerCommand = { schema_version: 2, type: 'request_start', worker_id: workerId, request_id: prepared.input.request_id, prepared };
