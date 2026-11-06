@@ -81,9 +81,9 @@ function readArguments(args: string[]): { runId: string; poolEnv: string; binary
 if (import.meta.main) {
   try {
     const args = readArguments(process.argv.slice(2));
-    const pool: PoolConfig = { ...await loadPoolConfig(args.poolEnv), mode: 'manual', maxRequests: 20 };
+    const pool: PoolConfig = { ...await loadPoolConfig(args.poolEnv), mode: 'manual', maxRequests: null };
     const running = await startLocalPool({ binary: args.binary, pool, runId: args.runId, directory: join('artifacts/local-pool-runs', args.runId), port: args.port });
-    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；本轮额度：20；max_tokens 上限：32768；池超时：30 秒\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n启动真实推理次数：0\n');
+    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；请求次数：不限；max_tokens 上限：32768；池超时：30 秒\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n启动真实推理次数：0\n');
     let closing = false;
     const close = async (): Promise<void> => { if (closing) return; closing = true; await running.close(); process.exit(0); };
     process.on('SIGTERM', () => { void close(); }); process.on('SIGINT', () => { void close(); });

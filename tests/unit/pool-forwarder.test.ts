@@ -20,6 +20,9 @@ describe('池测试的配置、映射与有界采集', () => {
     const manual: PoolConfig = { ...config, baseUrl: 'https://pool.example/v1', live: true, mode: 'manual', maxRequests: 20 };
     expect(() => validatePoolConfig(manual)).not.toThrow();
     expect(() => validatePoolConfig({ ...manual, maxRequests: 21 })).toThrow('预算');
+    expect(() => validatePoolConfig({ ...manual, maxRequests: null })).not.toThrow();
+    expect(() => validatePoolConfig({ ...manual, mode: 'acceptance', maxRequests: null })).toThrow('预算');
+    expect(() => validatePoolConfig({ ...config, maxRequests: null })).toThrow('预算');
     expect(() => validatePoolConfig({ ...manual, live: false })).toThrow('目标');
     const body = { model: 'claude-sonnet-4-6', max_tokens: 32000, messages: [] };
     expect(JSON.parse(preparePoolRequest(JSON.stringify(body), [], '/v1/messages', manual).body)).toEqual({ ...body, model: POOL_MODEL });
@@ -40,6 +43,18 @@ describe('池测试的配置、映射与有界采集', () => {
       expect(saved.reservations).toHaveLength(20); expect(saved.reservations[0]).toMatchObject({ attempted: true, upstreamStatus: null, localStatus: 502 });
       await expect(LocalPoolLedger.create(path, 'manual-unit', false, 20)).rejects.toThrow();
       expect(await Bun.file(path).json()).toEqual(saved);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  test('不限次数的手工账本持续计数，超过 20 次也保留结果', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccrb-manual-unlimited-'));
+    try {
+      const path = join(root, 'ledger.json'), ledger = await LocalPoolLedger.create(path, 'manual-unlimited', false, null);
+      for (let index = 0; index < 25; index++) await ledger.reserve('request-' + index);
+      await ledger.finish('request-24', { attempted: true, upstreamStatus: 200, statusCode: 200, outcome: 'success' });
+      expect(ledger.status()).toMatchObject({ budget: null, remaining: null, reserved: 25 });
+      const saved = await Bun.file(path).json();
+      expect(saved.budget).toBeNull(); expect(saved.reservations).toHaveLength(25); expect(saved.reservations[24].upstreamStatus).toBe(200);
     } finally { await rm(root, { recursive: true, force: true }); }
   });
 

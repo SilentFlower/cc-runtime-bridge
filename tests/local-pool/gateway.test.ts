@@ -229,7 +229,7 @@ describe('本地常驻 Base URL 的原生闭环', () => {
 
   test('同运行目录不能重置，20 次额度耗尽后不发生第 21 次池请求', async () => {
     fixture.select('json');
-    while (running.status().remaining > 0) {
+    while (running.status().reserved < 20) {
       const response = await fetch(base + '/v1/messages', { method: 'POST', body: JSON.stringify(nativeBody()) });
       expect(response.status).toBe(200); await response.text();
     }
@@ -242,4 +242,22 @@ describe('本地常驻 Base URL 的原生闭环', () => {
     expect(await Bun.file(join(running.directory, 'ledger.json')).json()).toEqual(saved);
     const health = await (await fetch(base + '/api/health')).json(); expect(health.localPool.remaining).toBe(0);
   }, 30000);
+
+  test('不限次数的手工实例连续转发超过 20 次，健康与账本继续计数', async () => {
+    fixture.select('json'); const before = fixture.calls.length;
+    const unlimited = await startLocalPool({ binary, pool: { baseUrl: fixture.baseUrl, apiKey: secret, mode: 'manual', live: false, maxRequests: null, timeoutMs: 500 }, runId: 'unlimited-manual', directory: join(root, 'unlimited-manual'), port: 0 });
+    const url = 'http://127.0.0.1:' + unlimited.app.server.port;
+    try {
+      expect(unlimited.status()).toMatchObject({ budget: null, remaining: null, reserved: 0 });
+      for (let index = 0; index < 25; index++) {
+        const response = await fetch(url + '/v1/messages', { method: 'POST', body: JSON.stringify(nativeBody()) });
+        expect(response.status).toBe(200); await response.text();
+      }
+      expect(fixture.calls.length).toBe(before + 25);
+      const health = await (await fetch(url + '/api/health')).json();
+      expect(health.localPool).toMatchObject({ budget: null, remaining: null, reserved: 25 });
+      const ledger = await Bun.file(join(unlimited.directory, 'ledger.json')).json();
+      expect(ledger.reservations).toHaveLength(25); expect(ledger.reservations.every((row: { attempted: boolean }) => row.attempted)).toBe(true);
+    } finally { await unlimited.close(); }
+  }, 20000);
 });

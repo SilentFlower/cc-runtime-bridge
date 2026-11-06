@@ -142,9 +142,9 @@
 ### 3. Contracts
 
 - PoolConfig.mode 显式区分 acceptance/manual；缺省沿用原验收。live 必须如实表示真实池或离线回环，不得用 false 放开外部调用。原有 URL、Key、模型映射及代理规则复用上文测试 TLS 合同。
-- CLI 手工模式固定 20 次预留、max_tokens 上限 32768、池超时 30 秒、桥接预算 45 秒；超限拒绝，不裁剪。每个入站最多一次池发送，不重试、不跟随重定向、不回退；客户端重发为新调用。旧真实验收三次/128 tokens 和首错停止保持。
+- CLI 手工模式默认不限请求次数，PoolConfig.maxRequests=null；null 仅允许 manual，显式有限手工实例仍支持 1–20 次。max_tokens 上限 32768、池超时 30 秒、桥接预算 45 秒；输出超限拒绝，不裁剪。每个入站最多一次池发送，不重试、不跟随重定向、不回退；客户端重发为新调用。旧真实验收三次/128 tokens 和首错停止保持，不能用 null 绕过验收上限。
 - artifacts/local-pool-runs/<run>/ledger.json 排他创建，发送前持久预留，同目录不覆盖重置；预留数是异常情况下实际尝试上界。只保存 requestId、时间、attempted、upstreamStatus、localStatus、outcome，不保存 Key 或正文。
-- /api/health.localPool 返回 runId、model、live、budget、reserved、remaining。ready.json 保存 PID/Base URL 与运行元数据；启动、自检、健康检查和页面刷新均不发模型请求。
+- /api/health.localPool 返回 runId、model、live、budget、reserved、remaining；不限次数时 budget/remaining 为 null，reserved 持续计数，不能把 null 当成零额度。ready.json 保存 PID/Base URL 与运行元数据；启动、自检、健康检查和页面刷新均不发模型请求。
 - 驱动环境只有 HOME/LANG/PATH，独立仅 lo 网络、专用 HOME/config、合成 Key、遥测 off；只接受固定 CONNECT 接入私有 socket。池真实 Key 仅由宿主/Node 持有，不进入原生进程、进程命令行或私有资源文件。
 - 驱动 run/cancel/shutdown 指令及 LocalDriverFrame 由集中解码器负责，沿用 RuntimeEvent 校验；同请求终态和真实 idle 收口，产生 TLS 采集时还须等待其 finished，之后才释放串行槽位。PrivateProcess.next(0) 允许常驻空闲，不能套用有限验收的空闲超时。
 - wire_final source=local_pool_node_tls_receiver，representation=http_entity_body_after_native_transport，来自 Node 实收 rawHeaders/实体/版本，采集在第二段根模型及鉴权映射前。先核对活动请求、唯一采集、会话及独立正确非零 CCH 才允许池转发；拒绝重复或错归属帧。
@@ -158,7 +158,8 @@
 | 相同目录已有账本 | local_pool_run_exists，保留原内容，CLI 启动失败 |
 | 回环端口冲突 | local_pool_port，清理本次启动资源，零池推理 |
 | TLS 实收正文的 max_tokens 超限或缺失 | 本地拒绝 400，不裁剪、不预留池次数 |
-| 第 21 次及之后 | 本地 429/POOL_BUDGET_EXHAUSTED，不发送池，upstreamStatus=null |
+| 不限次数的手工实例超过 20 次 | 继续转发并计数，不产生本地额度错误 |
+| 显式有限实例耗尽其配置次数 | 本地 429/POOL_BUDGET_EXHAUSTED，不发送池，upstreamStatus=null |
 | 池连接失败或超时，尚无响应头 | 本地 502，池状态为 null，单次尝试记入预算 |
 | 取消或响应异常 | 取消传到池，原生进程退役，后续新作业可重建，当前不重放 |
 | 最终样本缺失、失败、日志截断 | 分别显示 unavailable/failed/truncated，不拿中间值补写 |
@@ -166,12 +167,12 @@
 ### 5. Scenarios and Examples
 
 - 正常：用新轮次及受保护配置启动，再在临时终端设置 ANTHROPIC_BASE_URL=http://127.0.0.1:8787、合成 ANTHROPIC_AUTH_TOKEN，运行 claude --model claude-sonnet-4-6。池侧根 model 实际为 deepseek-flash，原生进程不取得池 Key。
-- 边界：第 20 次仍按正常路径发送，第 21 次本地拒绝；同轮目录重启不会自动恢复额度，旧报告与账本保持。
+- 边界：默认手工实例超过 20 次继续发送，显式配置 20 次的有限实例在第 21 次本地拒绝；同轮目录不能覆盖历史报告和账本。
 - 错误用法：直接用有限验收脚本常驻、把 live=false 指向真实池、给 Base URL 再加 /v1，或把预览 CCH 当作原始校验输入。正确做法：显式手工入口、如实配置 live、使用服务根地址，并用 TLS 原始观测哈希核对。
 
 ### 6. Tests Required
 
-- tests/unit/pool-forwarder.test.ts：显式模式、32768 边界、20 次预留、旧三次/128 限制、账本排他与真实状态。
+- tests/unit/pool-forwarder.test.ts：手工 null 及连续 25 次账本记录、验收拒绝 null、32768 边界、显式有限 20 次预留、旧三次/128 限制、账本排他与真实状态。
 - tests/integration/control.test.ts：启动侧秘密、最终样本缺失/异常、off/summary/debug、原始 SHA256 与截断，采集失败不改变响应。
-- tests/integration/local-pool.test.ts 包裹 tests/local-pool：无外网模拟池，真实客户端/工具续轮/交互终端、子代理、端口冲突、取消、错误/超时/重定向、20 次上限与凭据落盘扫描；桌面及 390 像素页面、脚本安全、三次刷新零推理。
+- tests/integration/local-pool.test.ts 包裹 tests/local-pool：无外网模拟池，真实客户端/工具续轮/交互终端、子代理、端口冲突、取消、错误/超时/重定向、显式有限 20 次拒绝及不限次数连续 25 次成功、凭据落盘扫描；桌面及 390 像素页面、脚本安全、三次刷新零推理。
 - 原版和轻量版旧离线 15 场景继续通过；真实手工实例只检查健康/页面及隔离，不自动发送真实池推理。

@@ -9,8 +9,8 @@ import { BridgeService } from './service';
 import { readCachePolicy, readTelemetryPolicy } from '../shared/runtime-policy';
 import type { FinalCaptureSample } from './trace';
 
-/** 本地手工池实例的只读预算，不包含地址凭据。 */
-export interface LocalPoolStatus { runId: string; model: string; live: boolean; budget: number; reserved: number; remaining: number }
+/** 本地手工池实例的计数，不含地址凭据；budget/remaining 为 null 表示不限次数。 */
+export interface LocalPoolStatus { runId: string; model: string; live: boolean; budget: number | null; reserved: number; remaining: number | null }
 
 /** 仅启动调用方可提供的联调能力，HTTP 请求不能修改。 */
 export interface ServerStartupOptions {

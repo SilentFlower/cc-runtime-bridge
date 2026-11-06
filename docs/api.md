@@ -44,9 +44,9 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 兼容分支保留原始入站表示及业务正文，发送入口取同次 SDK 实际生成的 CLI 上下文，缺失 CCH 先准备原生占位，再由原生传输完成。该模式使用已校验原版及当前预加载入口，现有内嵌旧桥接代码的轻量产物暂不接纳。
 
-TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deepseek-flash，重建鉴权及必要传输字段；凭据不进入原生进程。每轮最多 20 次预留，max_tokens 限 1–32768，池超时 30 秒；超出输出限制返回本地 400，额度耗尽返回本地 429，不伪造成池响应。每个入站最多一次转发，客户端重发也占额度。
+TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deepseek-flash，重建鉴权及必要传输字段；凭据不进入原生进程。手工 CLI 默认不限次数，max_tokens 限 1–32768，池超时 30 秒；超出输出限制返回本地 400。有限测试实例仍在额度耗尽时返回本地 429，不伪造成池响应。每个入站最多一次转发，客户端重发作为新请求计数。
 
-`/api/health.localPool` 返回 runId、model、live、budget、reserved、remaining；reserved 是发送前持久预留数，异常时为可能实际调用次数的上界。只有配置了已自检 TLS 采集端的实例才报告 nativeFinalCapture=true。启动、自检及只读访问均不推理；操作和临时客户端配置见 [README](../README.md#用自己的-claude-code-联调)。
+`/api/health.localPool` 返回 runId、model、live、budget、reserved、remaining；不限次数时 budget/remaining 为 null，reserved 持续记录发送前预留数，异常时为可能实际调用次数的上界。只有配置了已自检 TLS 采集端的实例才报告 nativeFinalCapture=true。启动、自检及只读访问均不推理；操作和临时客户端配置见 [README](../README.md#用自己的-claude-code-联调)。
 
 ## 普通 API 正文能力
 

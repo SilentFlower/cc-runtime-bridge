@@ -9,8 +9,8 @@ export const CAPTURE_LIMIT = 1024 * 1024;
 export const REQUEST_LIMIT = 2 * 1024 * 1024;
 export const SYNTHETIC_KEY = 'ccrb-pool-synthetic-cc-key';
 
-/** 测试端唯一持有的池配置。 */
-export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number; timeoutMs: number; mode?: 'acceptance' | 'manual' }
+/** 池联调配置；maxRequests=null 只允许手工模式不限次数。 */
+export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number | null; timeoutMs: number; mode?: 'acceptance' | 'manual' }
 /** 原始观测的哈希与脱敏预览分开保存。 */
 export interface BodySample { bytes: number; sha256: string; storedBytes: number; text: string; status: 'complete' | 'truncated' | 'incomplete' }
 /** 第二段参数只描述提交给客户端的值，不冒充池端原始头。 */
@@ -79,7 +79,8 @@ export function validatePoolConfig(config: PoolConfig): void {
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || /(^|\.)anthropic\.com$|(^|\.)claude\.ai$/i.test(url.hostname.replace(/\.$/, '')) || (config.live ? url.protocol !== 'https:' : !loopback)) throw new Error('池目标不符合显式测试边界');
   // 仅接纳常见 ASCII 令牌，避免 JSON 的引号、反斜杠或 Unicode 转义绕过原文字面脱敏。
   if (!/^[A-Za-z0-9._~-]{4,4096}$/.test(config.apiKey)) throw new Error('池凭据格式不受支持，仅接受 4–4096 位 ASCII 字母数字及 ._~-');
-  if (!Number.isSafeInteger(config.maxRequests) || config.maxRequests < 1 || config.maxRequests > (config.mode === 'manual' ? 20 : config.live ? 3 : 100) || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 50 || config.timeoutMs > 30000) throw new Error('池请求预算不合法');
+  const validRequests = config.maxRequests === null ? config.mode === 'manual' : Number.isSafeInteger(config.maxRequests) && config.maxRequests >= 1 && config.maxRequests <= (config.mode === 'manual' ? 20 : config.live ? 3 : 100);
+  if (!validRequests || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 50 || config.timeoutMs > 30000) throw new Error('池请求预算不合法');
 }
 
 /** 显式轮次绑定独立账本，默认保持首轮，不能借路径穿越覆盖旧记录。 @param runId 经操作者选择的轮次。 @return artifacts 下的账本文件名。 */

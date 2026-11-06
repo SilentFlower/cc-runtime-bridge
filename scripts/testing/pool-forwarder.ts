@@ -72,7 +72,7 @@ async function main(): Promise<void> {
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
       if (!allowed) throw new BridgeError(reason === 'budget_exhausted' ? 'pool_budget_exhausted' : 'request_rejected', reason === 'budget_exhausted' ? '本次池联调额度已用尽' : reason === 'invalid_request' ? '请求不符合池联调限制，max_tokens 必须在 1–32768 之间' : '原生最终请求未通过独立核验', reason === 'budget_exhausted' ? 429 : 400);
-      if (attempts >= setup.config.maxRequests) throw new BridgeError('pool_budget_exhausted', '本次池请求次数达到上限', 429);
+      if (setup.config.maxRequests !== null && attempts >= setup.config.maxRequests) throw new BridgeError('pool_budget_exhausted', '本次池请求次数达到上限', 429);
       const outgoing = preparePoolRequest(item.raw, item.headers, item.request.url!, setup.config);
       outgoing.headers.push(['connection', 'close']); outgoing.changes.push({ name: 'connection', reason: '测试池每次独立连接，避免复用陈旧连接' });
       prepared = { url: outgoing.url, model: POOL_MODEL, headers: redactor.headers(outgoing.headers), body: sample(outgoing.body, redactor), changes: outgoing.changes };
