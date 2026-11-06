@@ -1,0 +1,86 @@
+{
+  "id": "cache-telemetry-controls",
+  "name": "cache-telemetry-controls",
+  "title": "可选缓存断点策略与遥测控制",
+  "description": "保持原生 CC 默认保真，引入可选 sub2api 选点与默认关闭的遥测开关，并以离线最终出站验收。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-06",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-06T02:22:06Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "11-06-sub2api-cache-policy",
+    "11-06-native-telemetry-switch"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-06T00:31:35Z",
+      "contextKey": "codex_01a1a96c-4777-7f61-9571-7406e79c551c",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "64e74d11dead9034687f1268643ad235bc066219",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "64e74d11dead9034687f1268643ad235bc066219",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              }
+            ],
+            "worktreeDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "2cc351928a54cd8f205b59eee416ba130f9e5b802b1ecd62ab4a95c9a259ab5c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "badeb212263ebce8beef25d318034cedc7cbbd7e970307d9ee0c38e413297b2a"
+          }
+        ],
+        "fingerprint": "527e3ff5a63eb21cc48a827f924e977265d51ad8f05e9904e2de34e1ffef8e2d"
+      }
+    }
+  },
+  "progress": {
+    "completedSteps": [
+      "缓存策略与第一方遥测两个子任务已独立交付并Close",
+      "完成原版与精简的四种配置组合、失败、取消重建和日志兼容验收",
+      "完成双次可复现构建、独立部署、Intl及168份最终CCH核验",
+      "完成全面检查、Spec、业务变更及子任务记录提交推送"
+    ],
+    "partialStep": null,
+    "nextStep": "无，本轮交付完成",
+    "notes": "默认preserve/off；最终单文件27383864B。常规验证全部通过，真实上游请求为零；旧相对速度诊断保留false，用户已取消该门槛。既有pycache、预览及参考仓库保持原样。",
+    "updatedAt": "2026-11-06T02:22:06Z"
+  }
+}
