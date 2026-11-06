@@ -1,0 +1,42 @@
+{
+  "id": "native-telemetry-switch",
+  "name": "native-telemetry-switch",
+  "title": "默认关闭的原生遥测开关",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-06",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-06T02:19:21Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-06-cache-telemetry-controls",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成默认关闭的第一方遥测配置、原生事件接入及实际状态握手",
+      "通过原版与精简各52项原生回归、四组合及取消重建验收",
+      "完成全面检查、可执行Spec及业务提交推送"
+    ],
+    "partialStep": null,
+    "nextStep": "无，子任务已交付，集成证据交回父任务",
+    "notes": "默认off；遵循官方采样和脱敏，后台采集并有界退出。所有原生验证使用合成身份及离线回环，真实上游请求为零。",
+    "updatedAt": "2026-11-06T02:19:21Z"
+  }
+}
