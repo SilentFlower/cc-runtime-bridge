@@ -64,3 +64,62 @@
 - tests/native/native.test.ts：控制层事先不知道原生密钥时，上游错误回显的秘密仍不能进入可查询日志。
 - 同一原生套件对原版与轻量产物验证 binarySha256 真实；多轮复用、取消与流中退出后的日志归属和采集状态独立，初始化不制造虚假作业。
 - 新原生样本导入前后核对既有详情投影哈希不变；独立 Node TLS rawHeaders 与实体正文可作有序原始头证据，Bun 接收的规范化头不能冒充 rawHeaders。生产最终采集能力不因离线补采而改变。
+
+## Scenario: 测试专用 TLS 最终采集与池 Messages 验证
+
+### 1. Scope / Trigger
+
+- scripts/test-pool.ts 在测试链路中采集 CC 原生最终出站，再向明确的 Messages 池转发；报告字段 ccFinal 不扩展生产 CaptureStage，生产 nativeFinalCapture 仍为 false。
+- 复用已接纳的官方/精简二进制、Engine、RequestTrace 和 Redactor，不修改原生运行时、CC 目标、生产 EngineConfig 或数据库；池响应不能作为 Anthropic 鉴权或缓存命中证明。
+
+### 2. Signatures
+
+- bun run test:pool --binary <已登记文件> --output <新目录> [--serve <回环端口>]：缺省离线假池；控制端和假池处于独立无外网空间。
+- bun run test:pool --live --pool-env <受保护文件> [--live-run <ID>] --binary <已登记文件> --output <新目录>：显式有界真实验收。
+- bun run test:pool --report-only <报告目录> --serve <端口>：宿主只读查看；bun run test:pool:page <报告目录>：无外网浏览器验证，不运行模型场景。
+- scripts/testing/pool-common.ts 统一定义 PoolConfig、BodySample、ForwarderFrame、DriverFrame 及解码器；pool-report.ts 定义 schemaVersion=1 的 PoolReport/PoolCaseReport。
+- loadPoolConfig(path): Promise<PoolConfig>；validatePoolConfig(config): void；poolLedgerName(runId='first-run'): string；poolProxyEnvironment(env, live): Record<string,string>。
+
+### 3. Contracts
+
+- 配置文件为不超过 64 KiB 的普通文件，group/other 无权限，只解析赋值、不执行 shell。只读 CCRB_TEST_POOL_BASE_URL/API_KEY，兼容 PROJECT_REQUESTER_BASE_URL/API_KEY；来源冲突拒绝，模型/fallback 字段不读取，模型固定 deepseek-flash。
+- Key 仅支持 4–4096 位 ASCII 字母数字及 ._~-。含引号、反斜杠、Unicode 等不支持格式在宿主与 Node 初始化时拒绝，避免 JSON 转义绕过字面脱敏；错误说明不回显 Key。此限制属于测试工具，不改变生产凭据合同。
+- 真实目标必须 HTTPS；离线只允许回环 HTTP(S)。拒绝 URL 凭据/query/fragment 及 Anthropic/Claude 域名（含末尾点）；/v1 只拼接一次，保留原生 /v1/messages 查询串，不转换 OpenAI 协议。
+- CC 驱动另处于仅 lo 的网络空间，独立 HOME/config、合成 Key、遥测 off，环境只有 HOME/LANG/PATH。CONNECT 仅接受 api.anthropic.com:443，固定接入权限 0600 的 Unix socket，不解析或直连该公网目标；启动自检实际拒绝普通 HTTP 和错误 CONNECT。
+- 宿主独立 Node TLS 接收端保留实收 rawHeaders、实体正文和 HTTP 版本，启动校验有序重复头。请求上限 2 MiB、只收完整 UTF-8 的 Messages 正文，先由宿主独立核验非零原生 CCH 后才允许第二段；核验不能补写或生成出站 CCH。
+- 第二段只改目标、根 model、鉴权及传输字段，保留其余业务、合法扩展头与父子归因。删除原 CC/代理凭据、Cookie、连接级字段及 Connection 声明字段，重建 Host、长度和 x-api-key，逐项说明原因。
+- 真实池 Node 可通过 --use-env-proxy 复用经校验的 HTTP_PROXY/HTTPS_PROXY/NO_PROXY；大小写来源冲突、URL 凭据及非 HTTP(S) 代理拒绝。离线不继承宿主代理，CC 驱动也不继承；Node 缺少该选项时启动失败，不回退绕过代理。
+- 每轮最多三次、串行、max_tokens=128，池预算 30 秒、CC 45 秒，首错停止，不重试、重定向、换模型或删字段。默认账本 artifacts/pool-tls-forwarder-live-first-run.json 排他创建，发送前预留场景；新预算须显式选择 --live-run，ID 限 1–64 位 ASCII 字母数字/下划线/连字符且首位为字母数字，使用独立同前缀账本。已有账本不覆盖，不自动开启下一轮；缺失回执时预留数是次数上界。
+- 报告分别记录 ingress、ccPrepared、ccFinal、poolPrepared、poolResponse、bridgeResponse。ccPrepared 是中间值；ccFinal 来自 Node TLS 实收；poolPrepared 是客户端组装参数，不能称为池端原始网络头。各段保留来源、表示、原始 SHA256、观测/保存长度及完整性，预览最多 1 MiB，完整响应继续流动并参与哈希。
+- forwarding 分开记录 attempted、outcome、upstreamStatus、localStatus、failureCode/error。只有观测到池响应头才设置 upstreamStatus；否则它及 poolResponse 为 null，本地 400/502 只出现在本地转发状态与调用方响应。异常只保存白名单码及受控说明，响应表示始终为逻辑字节。
+- 驱动日志 off，必要数据走私有管道交宿主二次脱敏后持久化，结束并关闭驱动后扫描专用目录。Node 和驱动的脱敏上下文按请求隔离，避免上一响应的敏感名称标志值污染下一请求预览。预览含脱敏标记时以原始哈希比对，不反向填充值、不为补证据重放。
+- 响应 JSON/SSE 逻辑字节直接返回，删除不匹配解压后正文的长度、编码及连接字段；取消向池请求传播，原生进程退役。场景终态复用 RequestTrace，HTTP 200/EOF 不能替代完整 Messages 终态。
+- 报告写入独立新目录；只读服务器仅在回环开放 index.html/report.json，动态文本统一转义，无推理入口，查看或刷新不初始化 CC、不新增模型调用。旧回执和原版/精简身份保持。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 必须行为 |
+| --- | --- |
+| 配置/Key 格式不支持、rawHeaders 自检失败 | 受控启动失败，零池模型发送，不回显秘密 |
+| 非 Messages 路径、损坏 UTF-8、超限、CCH 不符 | 拒绝/关闭连接或标记采集失败，不转发池，不用中间值填补最终采集 |
+| 连接失败、池超时且尚无响应头 | upstreamStatus=null、poolResponse=null；本地 502 单列，无重试 |
+| 池 401/429/500 或 3xx | 保留已观测状态/逻辑字节，3xx 不跟随，真实验收首错停止 |
+| SSE error、缺少 message_stop | stream_error/incomplete；不得因 HTTP 200 判成功 |
+| 主动取消或慢流超时 | 取消中止池转发并报告 canceled；超时报告 timeout/未完成采样，清理有界 |
+| 秘密回显、跨片段、超过预览限额 | 脱敏预览，保留实际观测字节哈希；截断不阻塞完整响应 |
+| 已有轮次账本、仅查看报告 | 不覆盖或重新推理；查看不暴露配置/证书/任意文件 |
+
+### 5. Scenarios and Examples
+
+- 正常：Claude 模型原生请求经 TLS 完成 CCH 后，仅第二段改为 deepseek-flash；真实 JSON/SSE 响应的逻辑字节 SHA256 与调用方一致，池模型名和输出不改写。
+- 边界：调用方在 SSE 首片后取消，转发器 canceled、工作进程退役；这只证明本地转发已中止，不证明池内计费或后台执行已结束。
+- 错误用法：把未收到池响应时生成的本地 502 写成 real_pool_response。正确做法：poolResponse=null，并显示 forwarding.localStatus 与受控诊断。
+- 错误用法：复用整个运行批次的脱敏上下文，上一响应 allow-credentials=true 导致后续 stream=true 被遮住。正确做法：按请求建立上下文；历史预览保留原样，以原始 SHA256 验证请求差异。
+- 错误用法：失败后删除账本自动再试或改用 Gemini。正确做法：保留原轮次及失败；明确新预算后才显式选择独立轮次，仍执行相同三场景与首错停止。
+
+### 6. Tests Required
+
+- tests/unit/pool-forwarder.test.ts：受保护配置、来源冲突、ASCII Key 格式、JSON/SSE 跨片段回显、哈希/截断、路径/模型映射、预算、轮次安全、私有帧解码、报告转义与文件白名单。
+- tests/integration/pool-forwarder.test.ts → tests/pool/transport.test.ts：独立无外网空间内真实 Node rawHeaders、非法 Key 零请求、拒绝/超限、单次发送、HTTP 错误、重定向、背压、取消、超时、无池响应的本地 502、代理路由和跨请求脱敏隔离。
+- 原版/精简分别跑 test:pool 离线矩阵，核对 CCH、头部/metadata/父子归因、仅根 model 改动、准备预览、凭据边界、取消退役及结束后的目录扫描。
+- 显式真实验收独立记录三次上限、原始 CCH/哈希及 JSON/SSE/取消结果；失败保留实际结果，普通 test/typecheck/build 不访问真实池。页面验收覆盖桌面、390 像素、文本安全、三次刷新零推理及历史文件摘要不变。
