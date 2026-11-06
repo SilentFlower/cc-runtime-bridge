@@ -1,0 +1,42 @@
+{
+  "id": "sub2api-cache-policy",
+  "name": "sub2api-cache-policy",
+  "title": "可选 sub2api 缓存断点策略",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-06",
+  "completedAt": "2026-11-06",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-06T02:20:35Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-06-cache-telemetry-controls",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成preserve/sub2api配置、保守断点选点和策略诊断",
+      "通过所有权、预算、TTL、原生最终CCH及历史日志验证",
+      "完成全面检查、Spec、精简产物接纳及业务提交推送"
+    ],
+    "partialStep": null,
+    "nextStep": "无，子任务已交付，集成证据交回父任务",
+    "notes": "默认preserve；显式sub2api保留调用方已有消息断点、根缓存及前置TTL/scope。最终四组合和全部回归由父任务验收记录汇总。",
+    "updatedAt": "2026-11-06T02:20:35Z"
+  }
+}
