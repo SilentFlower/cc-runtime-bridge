@@ -42,6 +42,7 @@
 - 每个物理进程只有一个持续读取器。唯一终态与匹配 worker_idle 缺一不可；释放响应并等待 SDK 收口后才发 idle。重复握手、错代次/错请求、双终态、终态后事件、缺 idle 或畸形帧均隔离进程；读取回调和输出闭包绑定旧代次，不得归入下一作业。取消、异常或状态不明时退役，下一轮重建，不重放当前请求；取消采用 1500 ms 强制终止宽限，空闲关闭优先 shutdown，1500 ms 后仍未退出则强制终止。
 - cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。最终 TLS 接收样本必须标明真实来源，生产 wire_final 仍不可用，不以 cc_prepared 冒充最终值。
 - Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。其余合法端到端扩展默认保留，不允许笼统删除 x-claude-code-*。
+- 透传头与 SDK 默认头重名时，先聚合调用方完整的同名有序值，再覆盖该默认值；不能在默认值后再次 append。Accept 和 anthropic-dangerous-direct-browser-access 不因 SDK 已有相同默认值而重复，调用方显式不同值和合法多值仍保持；beta/version 及运行时所属字段沿各自专用规则处理。
 - 上下文为类别、agentKind、agentId、parentAgentId、agentType、sessionId、promptId、workflowRunId 的同一来源。promptId 必须为 UUID。
 - 类别支持 main、subagent、workflow、compaction、auxiliary、side_reply。子代理必须有 agentId；workflow 还需要 workflowRunId；主代理独立 agentId 须显式 agentKind=main。
 - 响应逻辑字节原样返回，删除不匹配逻辑正文的长度、编码及连接字段。工具交给调用方，不注册本地执行器。取消解除待消费片段并收口原生进程，不重放模型请求。
@@ -53,6 +54,7 @@
 | --- | --- |
 | 普通 API 不支持的正文键、system 缓存参数、beta 或原生无法保留的显式值 | 422，发送前拒绝 |
 | 上下文冲突、非法头、无效 promptId | 400 |
+| 合法透传头与 SDK 默认值重名 | 保持调用方完整头值，合法多值按序保留；不拼入 SDK 默认值 |
 | 重复 request_id | 409，不覆盖已有记录 |
 | 超过 16 个执行或等待作业 | 按原顺序继续串行执行，不产生本地 queue_full |
 | 缺省请求预算或显式 0 | 等待完成、上游失败、调用方取消或服务关闭，不套用旧默认截止 |
@@ -72,6 +74,7 @@
 - 边界：26 MiB 请求和超过 50 秒的首响应等待保持可转发，日志可截断预览但保留原始字节数及哈希。不能把有限验收的预算或日志容量当作业务准入政策。
 - 错误用法：子代理只强行声明 requestClass=main；这样会使身份与 billing 矛盾。正确做法是保留 subagent 和真实关联，冲突明确拒绝。
 - 错误用法：将整个 API JSON 转成 prompt，或收到 tool_use 后本地执行。正确做法是结构化映射，单轮返回原始工具事件。
+- 错误用法：将入站 Accept 或浏览器访问开关追加到 SDK 已有默认值，产生 application/json, application/json 或 true, true。正确做法是先保留调用方同名完整表示，再覆盖该透传字段的默认值。
 - 演示必须显式选择 demo；它只产生合成内容，不能作为原生发送证明。
 - 正常复用：连续两个主/子代理作业保持同 PID，但每轮使用独立 session 根和 prompt；只有下面的匹配空闲帧到达后，才能接收下一作业：
 
@@ -88,6 +91,7 @@
 - tests/unit/profile.test.ts：错误二进制不执行、不回退。
 - tests/unit/engine.test.ts、worker-protocol.test.ts：同 PID 与哈希次数、文件替换、错归属/载荷覆盖、双终态/缺 idle、迟到帧、取消、背压和关闭；错误作业不得重放。
 - tests/native/native.test.ts：无外网 TLS 上游独立核对 CCH、metadata/session/prompt、六类请求、thinking/工具历史、非流式、HTTP/SSE 错误及取消后下一请求；实际模型发送次数必须符合 attempt=1。
+- 同一原生套件对普通 API 和原生入站核对 Accept、浏览器访问开关的精确值、显式不同值及大小写混合的 Accept-Language 有序多值；tests/local-pool/gateway.test.ts 另核对实际 293 --print 客户端的 Node TLS 实收头值不重复。
 - 同一原生套件分别核对原版与精简版的 User-Agent 为 claude-cli/2.1.293 (external, cli)，billing 包含 cc_entrypoint=cli；不再主动设置 SDK client-app。最终 CCH 由实际 TLS 接收正文独立验证，不用标签替换或日志投影代替原生生成；兼容与 CCH 不能解释为账号免封保证。
 - 原版与登记轻量文件运行同一原生套件，核对同 session 多轮、Unicode、空闲及流中崩溃后的重建。独立部署须隐藏原版/源码/构建目录后仍能运行；重复生成核对分发及执行体 SHA256。
 - 完整必需部署文件总量 ≤27933052 B。保留总启动到首轮、就绪后首轮及暖复用实测，初始化与解包计入启动；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。2026-11-05 用户已接受当前延迟，vm2api 相对速度不再是当前准入；scripts/benchmark-runtime.ts 仍保留固定标杆、五轮六作业和旧 1.10 诊断规则，原 passed/退出状态不修改。

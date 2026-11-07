@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { connect } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { PrivateProcess } from '../../scripts/testing/pool-process';
@@ -20,7 +21,7 @@ beforeAll(async () => {
   if (interfaces.join(',') !== 'lo') throw new Error('离线空间存在外网接口');
   root = await mkdtemp(join(tmpdir(), 'ccrb-pool-transport-')); socketPath = join(root, 'tls.sock');
   const keyFile = join(root, 'key.pem'), certFile = join(root, 'cert.pem');
-  if (Bun.spawnSync(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',keyFile,'-out',certFile,'-days','1','-subj','/CN=api.anthropic.com','-addext','subjectAltName=DNS:api.anthropic.com'], { stdout: 'ignore', stderr: 'ignore' }).exitCode !== 0) throw new Error('测试证书生成失败');
+  if (Bun.spawnSync(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',keyFile,'-out',certFile,'-days','1','-subj','/CN=api.anthropic.com','-addext','subjectAltName=DNS:api.anthropic.com,IP:127.0.0.1'], { stdout: 'ignore', stderr: 'ignore' }).exitCode !== 0) throw new Error('测试证书生成失败');
   fixture = startPoolFixture(key);
   const built = await Bun.build({ entrypoints: [resolve('scripts/testing/pool-forwarder.ts')], target: 'node', format: 'esm', outdir: root, naming: 'forwarder.mjs' });
   if (!built.success) throw new Error('采集器构建失败');
@@ -84,6 +85,8 @@ describe('Node TLS 单次发送及故障收口', () => {
     expect(response.status).toBe(200); expect(end.upstreamStatus).toBe(200); expect(end.outcome).toBe('success'); expect(fixture.calls.length).toBe(before + 1);
     expect(fixture.calls.at(-1)).toEqual({ path: '/v1/messages?beta=true', body: { ...body, model: POOL_MODEL }, authenticated: true, extension: 'preserved' });
     expect(end.response.sha256).toBe(createHash('sha256').update(response.body).digest('hex'));
+    expect(end.transportDiagnostics).toMatchObject({ phase: 'response_body', bodySentObserved: true });
+    expect(end.transportDiagnostics!.connectionBytesWritten).toBeGreaterThan(0);
     expect(JSON.stringify(end)).not.toContain(key); expect(JSON.stringify(end)).not.toContain('original-cc-canary');
   });
 
@@ -160,4 +163,78 @@ describe('Node TLS 单次发送及故障收口', () => {
     expect(response.status).toBe(502); expect(end.attempted).toBe(true); expect(end.upstreamStatus).toBeNull(); expect(end.outcome).toBe('error');
     expect(['ECONNREFUSED','ECONNRESET','UND_ERR_SOCKET']).toContain(end.failureCode!); expect(end.response.bytes).toBe(0); expect(JSON.stringify(end)).not.toContain(key);
   });
+
+  test('直连与 HTTPS 代理的断连阶段、单次发送及下一请求恢复均可核对', async () => {
+    let phase: 'normal' | 'before_headers' | 'response_body' | 'connect' = 'normal', received = 0, proxyCalls = 0;
+    const sockets = new Set<Duplex>();
+    const body = JSON.stringify({ type: 'message', content: [{ type: 'text', text: '离线连接恢复' }] });
+    const upstream = createHttpsServer({ key: await readFile(join(root, 'key.pem')), cert: await readFile(join(root, 'cert.pem')) }, (request, response) => {
+      const chunks: Buffer[] = [];
+      request.on('data', chunk => chunks.push(Buffer.from(chunk)));
+      request.on('end', () => {
+        received++;
+        expect(JSON.parse(Buffer.concat(chunks).toString()).model).toBe(POOL_MODEL);
+        if (phase === 'before_headers') { request.socket.destroy(); return; }
+        response.writeHead(200, { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(body)), connection: 'close' });
+        if (phase === 'response_body') { response.write(body.slice(0, 20)); setTimeout(() => response.destroy(), 30); }
+        else response.end(body);
+      });
+    });
+    await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve));
+    const address = upstream.address(); if (!address || typeof address === 'string') throw new Error('故障夹具没有端口');
+    const target = '127.0.0.1:' + address.port;
+    const proxy = createServer();
+    proxy.on('connect', (request, socket, head) => {
+      proxyCalls++;
+      if (request.url !== target || phase === 'connect') { socket.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n'); return; }
+      const remote = connect(address.port, '127.0.0.1', () => { socket.write('HTTP/1.1 200 Connection Established\r\n\r\n'); if (head.length) remote.write(head); socket.pipe(remote); remote.pipe(socket); });
+      sockets.add(socket); sockets.add(remote);
+      socket.on('close', () => { sockets.delete(socket); remote.destroy(); }); remote.on('close', () => { sockets.delete(remote); socket.destroy(); });
+      socket.on('error', () => remote.destroy()); remote.on('error', () => socket.destroy());
+    });
+    await new Promise<void>(resolve => proxy.listen(0, '127.0.0.1', resolve));
+    const proxyAddress = proxy.address(); if (!proxyAddress || typeof proxyAddress === 'string') throw new Error('故障代理没有端口');
+    const proxyUrl = 'http://127.0.0.1:' + proxyAddress.port;
+    try {
+      for (const routed of [false, true]) {
+        const destination = join(root, routed ? 'diagnostic-proxy.sock' : 'diagnostic-direct.sock');
+        const transport = new PrivateProcess([Bun.which('node')!, ...(routed ? ['--use-env-proxy'] : []), join(root, 'forwarder.mjs')], { HOME: root, LANG: 'C.UTF-8', PATH: process.env.PATH ?? '/usr/bin:/bin', NODE_EXTRA_CA_CERTS: join(root, 'cert.pem'), ...(routed ? poolProxyEnvironment({ HTTP_PROXY: proxyUrl, HTTPS_PROXY: proxyUrl }, true) : {}) }, decodeForwarderFrame);
+        try {
+          await transport.send({ type: 'init', socketPath: destination, keyFile: join(root, 'key.pem'), certFile: join(root, 'cert.pem'), config: { baseUrl: 'https://' + target, apiKey: key, live: false, maxRequests: 10, timeoutMs: 1500 } });
+          expect((await transport.next()).type).toBe('ready');
+          const choices = ['normal', 'before_headers', 'normal', 'response_body', 'normal', ...(routed ? ['connect', 'normal'] as const : [])] as const;
+          for (const choice of choices) {
+            phase = choice;
+            const before = received, connectsBefore = proxyCalls;
+            const result = call('{"model":"claude","max_tokens":128}', '/v1/messages', false, false, destination);
+            const captured = await transport.next(); if (captured.type !== 'captured') throw new Error('断连场景缺少实收请求');
+            await transport.send({ type: 'forward', id: captured.id });
+            const end = await transport.next(); if (end.type !== 'finished') throw new Error('断连场景缺少终态');
+            const response = await result;
+            expect(received - before).toBe(choice === 'connect' ? 0 : 1);
+            expect(proxyCalls - connectsBefore).toBe(routed ? 1 : 0);
+            expect(end.attempted).toBe(true); expect(JSON.stringify(end)).not.toContain(key);
+            if (choice === 'normal') {
+              expect(response.status).toBe(200); expect(end.outcome).toBe('success'); expect(response.body.toString()).toBe(body);
+              expect(end.transportDiagnostics).toMatchObject({ phase: 'response_body', bodySentObserved: true });
+            } else if (choice === 'before_headers') {
+              expect(response.status).toBe(502); expect(end.upstreamStatus).toBeNull(); expect(end.failureCode).toBe('UND_ERR_SOCKET');
+              expect(end.transportDiagnostics).toMatchObject({ phase: 'awaiting_headers', bodySentObserved: true, connectionBytesRead: 0 });
+              expect(end.transportDiagnostics!.connectionBytesWritten).toBeGreaterThan(0);
+            } else if (choice === 'response_body') {
+              expect(response.status).toBe(200); expect(response.closed).toBe(true); expect(end.upstreamStatus).toBe(200); expect(end.outcome).toBe('error');
+              expect(end.response.status).toBe('incomplete'); expect(end.transportDiagnostics!.phase).toBe('response_body');
+            } else {
+              expect(response.status).toBe(502); expect(end.upstreamStatus).toBeNull();
+              expect(end.transportDiagnostics).toEqual({ phase: 'before_send', bodySentObserved: false, connectionBytesWritten: null, connectionBytesRead: null });
+            }
+          }
+        } finally { await transport.close(); }
+      }
+    } finally {
+      for (const socket of sockets) socket.destroy();
+      upstream.closeAllConnections();
+      await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]);
+    }
+  }, 15000);
 });

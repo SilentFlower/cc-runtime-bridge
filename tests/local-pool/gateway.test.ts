@@ -84,6 +84,11 @@ describe('本地常驻 Base URL 的原生闭环', () => {
     expect(ingress.system[0].text).toContain('cc_entrypoint=sdk-cli;'); expect(ingress.system[0].text).not.toContain('cch=');
     expect(ingress.max_tokens).toBe(32000); expect(ingress.tools.length).toBeGreaterThan(0);
     expect(wire.status).toBe('complete'); expect(wire.source).toBe('local_pool_node_tls_receiver');
+    const wireHeaders = new Headers(wire.headers);
+    expect(wireHeaders.get('accept')).toBe('application/json');
+    expect(wireHeaders.get('anthropic-dangerous-direct-browser-access')).toBe('true');
+    const ledger = await Bun.file(join(running.directory, 'ledger.json')).json();
+    expect(ledger.reservations).toContainEqual(expect.objectContaining({ requestId: row.id, transportDiagnostics: expect.objectContaining({ phase: 'response_body', bodySentObserved: true }) }));
     const outgoing = JSON.parse(wire.text!);
     expect(outgoing.system[0].text).toContain('cc_entrypoint=cli;');
     // 预览允许脱敏；用假池内存实收与原始哈希证明，不反向修改持久预览。

@@ -274,6 +274,7 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
         if (beta) headers.set('anthropic-beta', beta);
       }
       for (const name of ['content-length', 'host']) headers.delete(name);
+      const forwarded = new Headers();
       for (const [name, value] of prepared.headers) {
         const lower = name.toLowerCase();
         if (lower === 'anthropic-beta') {
@@ -286,8 +287,10 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
           if (value !== headers.get(name)) unsupported('anthropic-version 与原生版本不一致');
           continue;
         }
-        headers.append(name, value);
+        forwarded.append(name, value);
       }
+      // 先保留调用方完整的多值表示，再覆盖 SDK 默认值，避免把同名默认头重复拼入。
+      for (const [name, value] of forwarded) headers.set(name, value);
       // 保留原 SDK 的发送上下文，仅映射明确的响应模式及扩展头，不再创建第二个客户端。
       const stream = prepared.input.body.stream === true;
       const sendingBody = !native && generated.body.stream !== stream ? { ...generated.body, stream } : generated.body;

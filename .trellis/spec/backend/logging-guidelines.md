@@ -138,13 +138,16 @@
 - ServerStartupOptions 包括 nativeIngressPolicy、secrets、finalCapture(requestId)、localPoolStatus()，仅启动调用方可设置，不接受 HTTP 注入。
 - FinalCaptureSample = {body, headers: HeaderPair[], httpVersion, capturedAt, verified: boolean, note}；RequestTrace.finalCapture(read: () => FinalCaptureSample | null): void。
 - LocalPoolLedger.create(path, runId, live, budget)、reserve(requestId)、finish(requestId, result)；LocalPoolEngine.takeFinalCapture(requestId) 取出并清理同请求样本。
+- PoolTransportObserver.run<T>(operation: () => Promise<T>): Promise<T>、snapshot(): PoolTransportDiagnostics、close(): void；decodePoolTransportDiagnostics(value: unknown): PoolTransportDiagnostics 集中规范化观测字段，ForwarderFrame.finished 可携带 transportDiagnostics。
 - startIsolatedProxy(socketPath: string): Promise<IsolatedProxy> 使用隔离空间内的 Node 字节代理；私有初始化只含 socketPath，回执为 ready(port) / stats(proxyRequests,rejectedRequests)，仅接受 shutdown 或父管道 EOF 关闭。
 
 ### 3. Contracts
 
 - PoolConfig.mode 显式区分 acceptance/manual；缺省沿用原验收。live 必须如实表示真实池或离线回环，不得用 false 放开外部调用。原有 URL、Key、模型映射及代理规则复用上文测试 TLS 合同。
 - CLI 手工模式默认不限请求次数，PoolConfig.maxRequests=null；null 仅允许 manual，显式有限手工实例仍支持 1–20 次。模型参数原值交池判断，不设输出范围、温度范围、thinking 枚举/最小预算或工具组合政策；必要结构检查沿 runtime 合同。手工 PoolConfig.timeoutMs=0、桥接/驱动预算为 0，不附加请求总时限、旧 50 秒事件等待或旧 5 秒核验截止；0 不创建计时器，有限实例的显式正预算仍可用于测试。每个入站最多一次池发送，不重试、不跟随重定向、不回退；客户端重发为新调用。旧真实验收三次/128 tokens、显式超时和首错停止保持，不能用 null 或 0 绕过自动验收预算。
-- artifacts/local-pool-runs/<run>/ledger.json 排他创建，发送前持久预留，同目录不覆盖重置；预留数是异常情况下实际尝试上界。只保存 requestId、时间、attempted、upstreamStatus、localStatus、outcome，不保存 Key 或正文。
+- artifacts/local-pool-runs/<run>/ledger.json 排他创建，发送前持久预留，同目录不覆盖重置；预留数是异常情况下实际尝试上界。保存 requestId、时间、attempted、upstreamStatus、localStatus、outcome，以及可选 failureCode、transportDiagnostics，不保存 Key 或正文；旧记录缺少新增字段时保持未知，不回填。
+- PoolTransportDiagnostics.phase 为 unknown / before_send / sending / awaiting_headers / response_body；bodySentObserved 为 boolean|null，connectionBytesWritten/connectionBytesRead 为非负安全整数或 null。阶段只表示本地观测：sendHeaders 早于实际写入，bodySent 也不能证明池已执行。计数来自当前模型 POST 所关联连接的累计值，不是每个请求或池端实收字节；CONNECT、其它请求及无可靠关联的计数不得混入。
+- 诊断按模型 POST 的异步作用域和 request 对象关联；当前转发结束释放订阅、请求映射及连接引用。不可用观测降为 unknown/null，不改变模型结果或触发重放。集中解码仅保留固定诊断字段与 POOL_FAILURE_CODES 白名单；未知错误码采用通用类型，不持久化任意异常 message、URL、头或正文。
 - /api/health.localPool 返回 runId、model、live、budget、reserved、remaining；不限次数时 budget/remaining 为 null，reserved 持续计数，不能把 null 当成零额度。ready.json 保存 PID/Base URL 与运行元数据；启动、自检、健康检查和页面刷新均不发模型请求。
 - 驱动环境只有 HOME/LANG/PATH，独立仅 lo 网络、专用 HOME/config、合成 Key、遥测 off；只接受固定 CONNECT 接入私有 socket。池真实 Key 仅由宿主/Node 持有，不进入原生进程、进程命令行或私有资源文件。
 - CONNECT 密文由隔离空间内的专用 Node 进程透明转发，继续拒绝普通 HTTP 和错误目标；Bun 管道的大正文 TLS 解密失败不能靠改正文、降级 TLS 或降低测试大小绕过。代理只回传端口与计数，凭据不进入配置，关闭清理自身进程及临时 bundle。
@@ -167,6 +170,9 @@
 | 不限次数的手工实例超过 20 次 | 继续转发并计数，不产生本地额度错误 |
 | 显式有限实例耗尽其配置次数 | 本地 429/POOL_BUDGET_EXHAUSTED，不发送池，upstreamStatus=null |
 | 池连接失败或显式预算超时，尚无响应头 | 本地 502，池状态为 null，单次尝试记入预算 |
+| 模型 POST 正文发送后、收到池响应头前断连 | 可记录 awaiting_headers/bodySentObserved=true，upstreamStatus=null；不据此判定池未执行或自动重试 |
+| 代理 CONNECT 失败，模型请求尚无发送观测 | before_send 或 unknown，模型连接累计计数保持 null，不使用代理握手的计数 |
+| 诊断缺失、字段损坏或订阅回调异常 | 缺失保持兼容；非法观测归一化为 unknown/null，额外载荷丢弃，原转发结果不受影响 |
 | 取消或响应异常 | 取消传到池，原生进程退役，后续新作业可重建，当前不重放 |
 | 最终样本缺失、失败、日志截断 | 分别显示 unavailable/failed/truncated，不拿中间值补写 |
 
@@ -175,10 +181,12 @@
 - 正常：用新轮次及受保护配置启动，再在临时终端设置 ANTHROPIC_BASE_URL=http://127.0.0.1:8787、合成 ANTHROPIC_AUTH_TOKEN，运行 claude --model claude-sonnet-4-6。池侧根 model 实际为 deepseek-flash，原生进程不取得池 Key。
 - 边界：默认手工实例超过 20 次继续发送，128000 输出预算与 adaptive thinking 原样到达池；26 MiB 正文、52 秒首响应等待及 66 秒全程正常完成。显式配置 20 次的有限实例在第 21 次本地拒绝；同轮目录不能覆盖历史报告和账本。
 - 错误用法：从某个 Claude 模型的默认输出预算推断池上限，再本地拒绝或裁剪。正确做法：手工链路保留原值，由实际池返回支持情况；自动验收仍用显式小预算。直接用有限验收脚本常驻、把 live=false 指向真实池、给 Base URL 再加 /v1，或把预览 CCH 当作原始校验输入仍属于错误用法。
+- 错误用法：收到 UND_ERR_SOCKET 且未见池响应头，就认定请求没有发送并重试。离线可复现池读完整 POST 后关闭连接的同一错误；正确做法是记录观测阶段和受控错误，单次失败收口，允许下一独立请求执行。诊断改进不能冒充原始真实故障已解决。
 
 ### 6. Tests Required
 
 - tests/unit/pool-forwarder.test.ts：手工 null/0 及连续 25 次账本记录、验收拒绝 null/0、真实/离线手工 32769 与 128000 原值保持、大正文私有帧、显式有限 20 次预留、旧三次/128 限制、账本排他与真实状态。
+- 同一单元套件核对诊断损坏降级、零值/未知区别、额外敏感字段丢弃、错误码白名单、旧回执兼容及观测失败不改变原操作；tests/pool/transport.test.ts 的真实 Node 直连/HTTPS 代理矩阵核对收头前断连、流中断、CONNECT 拒绝、单次池实收和下一请求恢复，tests/local-pool/gateway.test.ts 核对实际 CLI 回执经宿主持久化到账本。
 - tests/integration/control.test.ts：启动侧秘密、最终样本缺失/异常、off/summary/debug、原始 SHA256 与截断，采集失败不改变响应。
 - tests/integration/local-pool.test.ts 包裹 tests/local-pool：无外网模拟池，真实客户端/工具续轮/交互终端、子代理、端口冲突、取消、错误/显式超时/重定向、显式有限 20 次拒绝及不限次数连续 25 次保持参数；另验证 Sonnet 5、26 MiB 完整正文和 66 秒长请求、启动环境及凭据落盘；桌面及 390 像素页面、脚本安全、三次刷新零推理。
 - 当前原版 + preload 的离线 15 个池场景回归，旧轻量产物不声明已包含新源码合同；真实手工实例只检查健康/页面及隔离，不自动发送真实池推理。

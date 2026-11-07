@@ -7,7 +7,8 @@ import type { ServerResponse, IncomingMessage } from 'node:http';
 import type { HeaderPair } from '../../src/shared/contracts';
 import { BridgeError, isObject } from '../../src/shared/errors';
 import { Redactor } from '../../src/control/redaction';
-import { BodyCapture, POOL_MODEL, REQUEST_LIMIT, preparePoolRequest, sample, validatePoolConfig, type ForwarderFrame, type PoolConfig, type PoolPrepared } from './pool-common';
+import { BodyCapture, POOL_MODEL, POOL_FAILURE_CODES, REQUEST_LIMIT, preparePoolRequest, sample, validatePoolConfig, type ForwarderFrame, type PoolConfig, type PoolPrepared } from './pool-common';
+import { PoolTransportObserver } from './pool-transport';
 
 /** 独立 Node 接收端的启动合同，不经命令行传递池 Key。 */
 interface Setup { type: 'init'; socketPath: string; keyFile: string; certFile: string; config: PoolConfig }
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
     item.timer = setup.config.timeoutMs > 0 ? setTimeout(() => item.abort.abort('pool_timeout'), setup.config.timeoutMs) : undefined;
     const capture = new BodyCapture(); let complete = false, statusCode = 502, upstreamStatus: number | null = null, outcome = 'error', error: string | undefined, failureCode: string | undefined, prepared: PoolPrepared | undefined, responseHeaders: HeaderPair[] = [], attempted = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let transport: PoolTransportObserver | undefined;
     try {
       if (!allowed) throw new BridgeError(reason === 'budget_exhausted' ? 'pool_budget_exhausted' : 'request_rejected', reason === 'budget_exhausted' ? '本次池联调额度已用尽' : reason === 'invalid_request' ? '请求无法转换为池 Messages 请求' : '原生最终请求未通过独立核验', reason === 'budget_exhausted' ? 429 : 400);
       if (setup.config.maxRequests !== null && attempts >= setup.config.maxRequests) throw new BridgeError('pool_budget_exhausted', '本次池请求次数达到上限', 429);
@@ -78,7 +80,8 @@ async function main(): Promise<void> {
       prepared = { url: outgoing.url, model: POOL_MODEL, headers: redactor.headers(outgoing.headers), body: sample(outgoing.body, redactor), changes: outgoing.changes };
       if (item.abort.signal.aborted) throw new Error('调用方已取消');
       attempts++; attempted = true;
-      const upstream = await fetch(outgoing.url, { method: 'POST', headers: outgoing.headers, body: outgoing.body, redirect: 'manual', signal: item.abort.signal });
+      transport = new PoolTransportObserver();
+      const upstream = await transport.run(() => fetch(outgoing.url, { method: 'POST', headers: outgoing.headers, body: outgoing.body, redirect: 'manual', signal: item.abort.signal }));
       statusCode = upstream.status; upstreamStatus = upstream.status;
       // fetch 已返回解压后的逻辑字节，长度和编码不能照搬到本地响应。
       const blocked = new Set(['content-length','content-encoding','connection','keep-alive','transfer-encoding','proxy-connection','te','trailer','upgrade','set-cookie','location']);
@@ -98,14 +101,14 @@ async function main(): Promise<void> {
       outcome = item.abort.signal.aborted ? item.abort.signal.reason === 'caller_cancel' ? 'canceled' : 'timeout' : 'error'; error = item.abort.signal.aborted ? '池转发已取消或超时' : cause instanceof BridgeError ? cause.message : '池转发未完成，请检查状态与配置';
       // 不保存任意异常 message；部分客户端会在异常内附带 URL、请求头或凭据。
       const fault = isObject(cause) && isObject(cause.cause) ? cause.cause : cause;
-      const codes = new Set(['ENOTFOUND','EAI_AGAIN','ECONNREFUSED','ECONNRESET','ENETUNREACH','EHOSTUNREACH','ETIMEDOUT','DEPTH_ZERO_SELF_SIGNED_CERT','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_SOCKET','UND_ERR_REQ_CONTENT_LENGTH_MISMATCH','ERR_INVALID_CHAR']);
-      failureCode = item.abort.signal.aborted ? outcome === 'canceled' ? 'CALLER_CANCELED' : 'POOL_TIMEOUT' : cause instanceof BridgeError ? cause.code.toUpperCase() : isObject(fault) && typeof fault.code === 'string' && codes.has(fault.code) ? fault.code : attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED';
+      failureCode = item.abort.signal.aborted ? outcome === 'canceled' ? 'CALLER_CANCELED' : 'POOL_TIMEOUT' : cause instanceof BridgeError ? cause.code.toUpperCase() : isObject(fault) && typeof fault.code === 'string' && POOL_FAILURE_CODES.has(fault.code) ? fault.code : attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED';
       if (!item.response.headersSent) { statusCode = cause instanceof BridgeError ? cause.status : allowed ? 502 : 400; item.response.writeHead(statusCode, { 'content-type': 'application/json', 'x-should-retry': 'false' }); item.response.end(JSON.stringify({ type: 'error', error: { type: failureCode, message: error } })); }
       else item.response.destroy();
     } finally {
       clearTimeout(item.timer); pending.delete(item.id);
       if (!complete) { item.abort.abort(); await reader?.cancel().catch(() => {}); }
-      await send({ type: 'finished', id: item.id, attempted, outcome, ...(prepared ? { prepared } : {}), statusCode, upstreamStatus, headers: redactor.headers(responseHeaders), response: capture.finish(redactor, complete), ...(error ? { error } : {}), ...(failureCode ? { failureCode } : {}) });
+      const transportDiagnostics = transport?.snapshot(); transport?.close();
+      await send({ type: 'finished', id: item.id, attempted, outcome, ...(prepared ? { prepared } : {}), statusCode, upstreamStatus, headers: redactor.headers(responseHeaders), response: capture.finish(redactor, complete), ...(error ? { error } : {}), ...(failureCode ? { failureCode } : {}), ...(transportDiagnostics ? { transportDiagnostics } : {}) });
     }
   };
   try {

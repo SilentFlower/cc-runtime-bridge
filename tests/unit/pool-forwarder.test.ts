@@ -3,12 +3,14 @@ import { mkdtemp, writeFile, chmod, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { channel } from 'node:diagnostics_channel';
 import { Redactor } from '../../src/control/redaction';
 import { BodyCapture, CAPTURE_LIMIT, POOL_MODEL, decodeDriverFrame, decodeForwarderFrame, loadPoolConfig, poolLedgerName, poolMessagesUrl, poolProxyEnvironment, preparePoolRequest, sample, validatePoolConfig, verifyCch, type PoolConfig } from '../../scripts/testing/pool-common';
 import { poolScenes } from '../../scripts/testing/pool-scenes';
 import { safePoolSample } from '../../scripts/test-pool';
 import { renderPoolReport, servePoolReport, type PoolReport } from '../../scripts/testing/pool-report';
 import { LocalPoolLedger } from '../../scripts/testing/local-pool-ledger';
+import { PoolTransportObserver } from '../../scripts/testing/pool-transport';
 
 const secret = 'pool-canary-over-chunks-58af';
 const config: PoolConfig = { baseUrl: 'http://127.0.0.1:1234/v1', apiKey: secret, live: false, maxRequests: 10, timeoutMs: 500 };
@@ -62,6 +64,42 @@ describe('池测试的配置、映射与有界采集', () => {
       const saved = await Bun.file(path).json();
       expect(saved.budget).toBeNull(); expect(saved.reservations).toHaveLength(25); expect(saved.reservations[24].upstreamStatus).toBe(200);
     } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  test('断连诊断经过私有边界后持久化，未知字段和任意错误码不落账本', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ccrb-pool-diagnostics-'));
+    try {
+      const path = join(root, 'ledger.json'), ledger = await LocalPoolLedger.create(path, 'diagnostics-unit', false, null);
+      await ledger.reserve('socket-failure');
+      const frame = decodeForwarderFrame(JSON.stringify({ type: 'finished', id: 1, attempted: true, outcome: 'error', statusCode: 502, upstreamStatus: null, headers: [], response: empty, failureCode: 'UND_ERR_SOCKET', transportDiagnostics: { phase: 'awaiting_headers', bodySentObserved: true, connectionBytesWritten: 322, connectionBytesRead: 0, api_key: secret } }));
+      if (frame.type !== 'finished') throw new Error('断连回执类型错误');
+      await ledger.finish('socket-failure', frame);
+      const saved = await Bun.file(path).json();
+      expect(saved.reservations[0]).toMatchObject({ upstreamStatus: null, localStatus: 502, failureCode: 'UND_ERR_SOCKET', transportDiagnostics: { phase: 'awaiting_headers', bodySentObserved: true, connectionBytesWritten: 322, connectionBytesRead: 0 } });
+      expect(JSON.stringify(frame)).not.toContain(secret); expect(JSON.stringify(saved)).not.toContain(secret);
+      const damaged = decodeForwarderFrame(JSON.stringify({ ...frame, failureCode: secret, transportDiagnostics: { phase: secret, bodySentObserved: 'true', connectionBytesWritten: -1, connectionBytesRead: '0', raw: secret } }));
+      if (damaged.type !== 'finished') throw new Error('损坏观测不能改变正常回执类型');
+      expect(damaged.failureCode).toBe('POOL_FETCH_ERROR');
+      expect(damaged.transportDiagnostics).toEqual({ phase: 'unknown', bodySentObserved: null, connectionBytesWritten: null, connectionBytesRead: null });
+      expect(JSON.stringify(damaged)).not.toContain(secret);
+      await ledger.reserve('legacy-result');
+      await ledger.finish('legacy-result', { attempted: true, upstreamStatus: 200, statusCode: 200, outcome: 'success' });
+      const legacy = (await Bun.file(path).json()).reservations[1];
+      expect(legacy.failureCode).toBeUndefined(); expect(legacy.transportDiagnostics).toBeUndefined();
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  test('诊断回调失效不改变原操作结果，关闭后不遗留订阅', async () => {
+    const source = channel('undici:request:create'), hadSubscribers = source.hasSubscribers;
+    const observer = new PoolTransportObserver();
+    try {
+      expect(await observer.run(async () => {
+        source.publish({ request: { get method(): string { throw new Error('合成观测失败'); } } });
+        return '原调用结果';
+      })).toBe('原调用结果');
+      expect(observer.snapshot()).toEqual({ phase: 'unknown', bodySentObserved: null, connectionBytesWritten: null, connectionBytesRead: null });
+    } finally { observer.close(); observer.close(); }
+    expect(source.hasSubscribers).toBe(hadSubscribers);
   });
 
   test('FBK-001：配置边界拒绝 JSON 转义和非 ASCII 凭据，不回显原值', async () => {

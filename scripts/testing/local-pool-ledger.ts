@@ -1,10 +1,10 @@
 import { writeFile, rename } from 'node:fs/promises';
 import type { LocalPoolStatus } from '../../src/control/server';
 import { BridgeError, isObject } from '../../src/shared/errors';
-import { POOL_MODEL } from './pool-common';
+import { POOL_MODEL, POOL_FAILURE_CODES, decodePoolTransportDiagnostics, type PoolTransportDiagnostics } from './pool-common';
 
 /** 手工运行的预留与结果；不保存正文、地址或凭据。 */
-interface Reservation { requestId: string; reservedAt: string; attempted?: boolean; upstreamStatus?: number | null; localStatus?: number; outcome?: string }
+interface Reservation { requestId: string; reservedAt: string; attempted?: boolean; upstreamStatus?: number | null; localStatus?: number; outcome?: string; failureCode?: string; transportDiagnostics?: PoolTransportDiagnostics }
 
 /** 发送前持久预留预算，异常退出后也不能覆盖同一轮账本。 */
 export class LocalPoolLedger {
@@ -30,10 +30,12 @@ export class LocalPoolLedger {
     await this.save();
   }
   /** 记录已预留请求的真实回执，不把本地错误当成池状态。 @param requestId 请求归属。 @param result Node 回执。 @return 账本已更新。 */
-  async finish(requestId: string, result: { attempted: boolean; upstreamStatus: number | null; statusCode: number; outcome: string }): Promise<void> {
+  async finish(requestId: string, result: { attempted: boolean; upstreamStatus: number | null; statusCode: number; outcome: string; failureCode?: string; transportDiagnostics?: PoolTransportDiagnostics }): Promise<void> {
     const row = this.reservations.find(item => item.requestId === requestId);
     if (!row) return;
     Object.assign(row, { attempted: result.attempted, upstreamStatus: result.upstreamStatus, localStatus: result.statusCode, outcome: result.outcome });
+    if (result.failureCode !== undefined) row.failureCode = POOL_FAILURE_CODES.has(result.failureCode) ? result.failureCode : result.attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED';
+    if (result.transportDiagnostics !== undefined) row.transportDiagnostics = decodePoolTransportDiagnostics(result.transportDiagnostics);
     await this.save();
   }
 }

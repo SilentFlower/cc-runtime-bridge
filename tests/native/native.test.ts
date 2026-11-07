@@ -765,6 +765,21 @@ native('官方 293 的无外网回环链路', () => {
   }
   const nativeTool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
   const nativeHistory = [{ role: 'user', content: '查询状态' }, { role: 'assistant', content: [{ type: 'thinking', thinking: '已有推理', signature: 'synthetic-native-signature' }, { type: 'tool_use', id: 'toolu_native_history', name: 'lookup_status', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_native_history', content: 'ready' }] }];
+  test.each(['api', 'claude_code'] as const)('透传头覆盖 SDK 默认值且合法多值按序保留：%s', async format => {
+    mode = 'normal';
+    const body = format === 'claude_code' ? nativeBody() : { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '离线头部合并验证' }], stream: false };
+    for (const [accept, browserAccess] of [['application/json', 'true'], ['application/json;q=0.9', 'false']] as const) {
+      const count = requests.length;
+      const result = await send(body, {}, [['Accept', accept], ['anthropic-dangerous-direct-browser-access', browserAccess], ['Accept-Language', 'zh-CN'], ['accept-language', 'en-US;q=0.8'], ['x-future-feature', 'header-merge-preserved']]);
+      expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+      const wire = requests.at(-1)!, headers = new Headers(wire.headers);
+      expect(headers.get('accept')).toBe(accept);
+      expect(headers.get('anthropic-dangerous-direct-browser-access')).toBe(browserAccess);
+      expect(headers.get('accept-language')).toBe('zh-CN, en-US;q=0.8');
+      expect(headers.get('x-future-feature')).toBe('header-merge-preserved');
+      assertCch(wire.raw);
+    }
+  });
   const nativeVariants: [string, Record<string, unknown>][] = [
     ['plain', {}], ['empty-tools', { tools: [] }], ['custom-tool', { tools: [nativeTool] }],
     ['history', { tools: [nativeTool], messages: nativeHistory }],

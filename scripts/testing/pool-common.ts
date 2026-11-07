@@ -10,6 +10,19 @@ export const CAPTURE_LIMIT = 1024 * 1024;
 export const REQUEST_LIMIT = 2 * 1024 * 1024;
 export const SYNTHETIC_KEY = 'ccrb-pool-synthetic-cc-key';
 
+/** 仅表示本地观测进度，不能用阶段顺序推断模型是否执行或是否可重试。 */
+export const POOL_TRANSPORT_PHASES = ['unknown', 'before_send', 'sending', 'awaiting_headers', 'response_body'] as const;
+/** 可持久化的网络及本地转发错误码；任意异常文本不进入诊断。 */
+export const POOL_FAILURE_CODES = new Set(['ENOTFOUND','EAI_AGAIN','ECONNREFUSED','ECONNRESET','ENETUNREACH','EHOSTUNREACH','ETIMEDOUT','DEPTH_ZERO_SELF_SIGNED_CERT','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_SOCKET','UND_ERR_REQ_CONTENT_LENGTH_MISMATCH','ERR_INVALID_CHAR','CALLER_CANCELED','POOL_TIMEOUT','POOL_FETCH_ERROR','REQUEST_REJECTED','POOL_BUDGET_EXHAUSTED']);
+
+/** 池第二段的安全观测；计数属于关联连接累计值，null 明确表示没有证据。 */
+export interface PoolTransportDiagnostics {
+  phase: typeof POOL_TRANSPORT_PHASES[number];
+  bodySentObserved: boolean | null;
+  connectionBytesWritten: number | null;
+  connectionBytesRead: number | null;
+}
+
 /** 池联调配置；手工 maxRequests=null 不限次数，timeoutMs=0 不附加请求总时限。 */
 export interface PoolConfig { baseUrl: string; apiKey: string; live: boolean; maxRequests: number | null; timeoutMs: number; mode?: 'acceptance' | 'manual' }
 /** 原始观测的哈希与脱敏预览分开保存。 */
@@ -20,7 +33,7 @@ export interface PoolPrepared { url: string; model: string; headers: HeaderPair[
 export type ForwarderFrame =
   | { type: 'ready'; namespace: string; rawHeadersMatched: boolean }
   | { type: 'captured'; id: number; method: string; path: string; httpVersion: string; headers: HeaderPair[]; body: string }
-  | { type: 'finished'; id: number; attempted: boolean; outcome: string; prepared?: PoolPrepared; statusCode: number; upstreamStatus: number | null; headers: HeaderPair[]; response: BodySample; error?: string; failureCode?: string }
+  | { type: 'finished'; id: number; attempted: boolean; outcome: string; prepared?: PoolPrepared; statusCode: number; upstreamStatus: number | null; headers: HeaderPair[]; response: BodySample; error?: string; failureCode?: string; transportDiagnostics?: PoolTransportDiagnostics }
   | { type: 'fatal'; message: string };
 /** 每个场景的输入与预期由宿主指定，不含池凭据。 */
 export interface PoolScene { id: string; input: JsonObject; cancel: boolean; fixture: string; cachePolicy: 'preserve' | 'sub2api'; expectedStatus: number }
@@ -156,6 +169,20 @@ export function preparePoolRequest(raw: string, headers: HeaderPair[], path: str
   return { url: poolMessagesUrl(config.baseUrl, path), headers: forwarded, body, changes };
 }
 
+/** 规范化可选诊断，损坏观测降为未知，不影响模型结果或保留额外载荷。
+ * @param value 私有帧中的可选观测对象。
+ * @return 仅含固定字段的安全诊断。
+ */
+export function decodePoolTransportDiagnostics(value: unknown): PoolTransportDiagnostics {
+  const counter = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  return {
+    phase: POOL_TRANSPORT_PHASES.find(phase => isObject(value) && value.phase === phase) ?? 'unknown',
+    bodySentObserved: isObject(value) && typeof value.bodySentObserved === 'boolean' ? value.bodySentObserved : null,
+    connectionBytesWritten: isObject(value) ? counter(value.connectionBytesWritten) : null,
+    connectionBytesRead: isObject(value) ? counter(value.connectionBytesRead) : null,
+  };
+}
+
 /** 校验私有 JSONL 基础及每种字段，统一供控制端消费。 @param line 单条私有帧。 @return 已验证的采集器帧。 */
 export function decodeForwarderFrame(line: string): ForwarderFrame {
   const value: unknown = JSON.parse(line);
@@ -168,7 +195,11 @@ export function decodeForwarderFrame(line: string): ForwarderFrame {
       if (value.type === 'captured' && ['method','path','httpVersion','body'].every(key => typeof value[key] === 'string') && pairs(value.headers)) return value as unknown as ForwarderFrame;
       if (value.type === 'finished' && typeof value.attempted === 'boolean' && typeof value.outcome === 'string' && Number.isInteger(value.statusCode) && (value.upstreamStatus === null || Number.isInteger(value.upstreamStatus)) && pairs(value.headers) && body(value.response) && (value.error === undefined || typeof value.error === 'string') && (value.failureCode === undefined || typeof value.failureCode === 'string')) {
         const p = value.prepared;
-        if (p === undefined || (isObject(p) && typeof p.url === 'string' && p.model === POOL_MODEL && pairs(p.headers) && body(p.body) && Array.isArray(p.changes) && p.changes.every(c => isObject(c) && typeof c.name === 'string' && typeof c.reason === 'string'))) return value as unknown as ForwarderFrame;
+        if (p === undefined || (isObject(p) && typeof p.url === 'string' && p.model === POOL_MODEL && pairs(p.headers) && body(p.body) && Array.isArray(p.changes) && p.changes.every(c => isObject(c) && typeof c.name === 'string' && typeof c.reason === 'string'))) return {
+          ...value,
+          ...(value.failureCode === undefined ? {} : { failureCode: POOL_FAILURE_CODES.has(value.failureCode as string) ? value.failureCode : value.attempted ? 'POOL_FETCH_ERROR' : 'REQUEST_REJECTED' }),
+          ...(value.transportDiagnostics === undefined ? {} : { transportDiagnostics: decodePoolTransportDiagnostics(value.transportDiagnostics) }),
+        } as unknown as ForwarderFrame;
       }
     }
   }
