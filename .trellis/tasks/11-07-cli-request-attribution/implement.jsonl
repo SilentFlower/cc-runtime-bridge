@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"固定293、原生归因、头策略与单次发送合同"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"日志快照、脱敏、有界持久化与旧记录兼容"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"集中解码、来源及未知状态、安全展示和手机页面"}
+{"file":".trellis/tasks/11-07-cli-request-attribution/research/findings.md","reason":"实际CLI分类和代理启动证据及修复边界"}

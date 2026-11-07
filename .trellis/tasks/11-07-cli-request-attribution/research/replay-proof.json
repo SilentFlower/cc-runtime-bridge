@@ -1,0 +1,56 @@
+{
+  "productCodeChanged": false,
+  "newModelRequests": 0,
+  "source": "上轮隔离实际CLI实收证据，只读重放",
+  "classifierRequests": [
+    {
+      "requestId": "500fb04f-c546-49ef-a407-819f972681ae",
+      "recordedClass": "main",
+      "recordedQuerySource": "repl_main_thread",
+      "promptSha256": "6b368647be9358ea39f4a3a36cb73a5f7b50129eba0b9d5c1c95e44bb9a40ec7",
+      "maxTokens": 64
+    },
+    {
+      "requestId": "1b0accb6-b906-45d3-962a-263bcef6af91",
+      "recordedClass": "main",
+      "recordedQuerySource": "repl_main_thread",
+      "promptSha256": "b272b7d3cc04c448ab3da9b70aeea27849afe5e47c694040ca4b61cef36a1749",
+      "maxTokens": 64
+    }
+  ],
+  "agentLaunchCandidates": [
+    {
+      "childAgentId": "a73176651a5ce8c3e",
+      "parentCanonicalAgentId": "c1b9c9cd-f531-4042-a35d-ddb431957ea4",
+      "agentType": "Explore",
+      "sessionId": "c1b9c9cd-f531-4042-a35d-ddb431957ea4",
+      "toolUseId": "toolu_active_agent",
+      "evidenceRequestId": "3486bd16-01f2-4888-a42a-e6ca2c0fc3e4",
+      "source": "client_tool_result",
+      "parentContextOrigin": "existing_prepared_context"
+    },
+    {
+      "childAgentId": "a73176651a5ce8c3e",
+      "parentCanonicalAgentId": "c1b9c9cd-f531-4042-a35d-ddb431957ea4",
+      "agentType": "Explore",
+      "sessionId": "c1b9c9cd-f531-4042-a35d-ddb431957ea4",
+      "toolUseId": "toolu_active_agent",
+      "evidenceRequestId": "4033195b-7a72-4374-ae82-9338ddf9260e",
+      "source": "client_tool_result",
+      "parentContextOrigin": "existing_prepared_context"
+    }
+  ],
+  "childRequestId": "2992584b-09da-45b4-a9a5-aed85db6ba05",
+  "childInputContext": {
+    "inputFormat": "claude_code",
+    "requestClass": "subagent",
+    "sessionId": "c1b9c9cd-f531-4042-a35d-ddb431957ea4",
+    "promptId": "3bcd1537-ccb0-4f73-88a9-538e6f9c3304",
+    "agentKind": "subagent",
+    "agentId": "a73176651a5ce8c3e",
+    "querySource": "agent:custom",
+    "source": "client"
+  },
+  "matchingChildEvidence": true,
+  "canonicalBinarySha256": "8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978"
+}

@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"归类与当前运行时上下文一致，正文、头及唯一发送保持"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"关联视图不覆盖历史快照；summary、重启、清理与上限"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"来源、缺失、冲突、旧记录和安全展示"}
+{"file":".trellis/tasks/11-07-cli-request-attribution/research/findings.md","reason":"核对已验证原生来源和客户端声明证据的边界"}
