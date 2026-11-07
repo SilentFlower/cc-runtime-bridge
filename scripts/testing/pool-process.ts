@@ -1,5 +1,15 @@
 import { readFile } from 'node:fs/promises';
 
+/** 私有管道固定错误码，不保留解码器异常中的原始帧。 */
+export class PrivateProcessError extends Error {
+  /** 创建不含私有内容的通道错误。
+   * @param code 已知的通道失败原因。
+   */
+  constructor(readonly code: 'CHANNEL_TIMEOUT' | 'CHANNEL_CLOSED' | 'CHANNEL_TRUNCATED' | 'CHANNEL_INVALID') {
+    super({ CHANNEL_TIMEOUT: '私有通道等待超时', CHANNEL_CLOSED: '子进程私有通道已关闭', CHANNEL_TRUNCATED: '子进程存在截断帧', CHANNEL_INVALID: '子进程私有帧格式错误' }[code]);
+  }
+}
+
 /** 私有子进程 JSONL 通道；原文和 stderr 均不能作为普通日志输出。 */
 export class PrivateProcess<T> {
   readonly child: Bun.Subprocess<'pipe', 'pipe', 'pipe'>;
@@ -16,12 +26,17 @@ export class PrivateProcess<T> {
       try {
         while (true) {
           const next = await reader.read(); if (next.done) break;
-          buffer += decoder.decode(next.value, { stream: true });
+          try { buffer += decoder.decode(next.value, { stream: true }); } catch { throw new PrivateProcessError('CHANNEL_INVALID'); }
           let end: number;
-          while ((end = buffer.indexOf('\n')) >= 0) { const line = buffer.slice(0, end); buffer = buffer.slice(end + 1); yield decode(line); }
+          while ((end = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, end); buffer = buffer.slice(end + 1);
+            let frame: T;
+            try { frame = decode(line); } catch { throw new PrivateProcessError('CHANNEL_INVALID'); }
+            yield frame;
+          }
         }
-        decoder.decode();
-        throw new Error(buffer ? '子进程存在截断帧' : '子进程私有通道已关闭');
+        try { decoder.decode(); } catch { throw new PrivateProcessError('CHANNEL_TRUNCATED'); }
+        throw new PrivateProcessError(buffer ? 'CHANNEL_TRUNCATED' : 'CHANNEL_CLOSED');
       } finally { reader.releaseLock(); }
     })();
   }
@@ -30,7 +45,7 @@ export class PrivateProcess<T> {
   /** 在单一消费者内取得下一帧。 @param timeoutMs 等待预算，0 表示允许常驻通道空闲。 @return 下一条已验证帧。 */
   async next(timeoutMs = 50000): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    try { const result = await (timeoutMs === 0 ? this.iterator.next() : Promise.race([this.iterator.next(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('私有通道等待超时')), timeoutMs); })])); if (result.done) throw new Error('子进程提前结束'); return result.value; }
+    try { const result = await (timeoutMs === 0 ? this.iterator.next() : Promise.race([this.iterator.next(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new PrivateProcessError('CHANNEL_TIMEOUT')), timeoutMs); })])); if (result.done) throw new PrivateProcessError('CHANNEL_CLOSED'); return result.value; }
     finally { clearTimeout(timer); }
   }
   /** 有界关闭，超时只清理本通道创建的进程树。 @return 子进程和诊断读取均已结束。 */

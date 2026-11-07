@@ -2,6 +2,7 @@ import type { RuntimeEvent } from '../../src/shared/contracts';
 import type { TelemetryState } from '../../src/shared/runtime-policy';
 import { isObject } from '../../src/shared/errors';
 import { validateRuntimeEvent } from '../../src/shared/protocol';
+import { decodeLocalPoolStartup, type LocalPoolStartupDiagnostics } from './local-pool-startup';
 
 /** 手工驱动的初始化信息，不含池地址与真实凭据。 */
 export interface LocalDriverSetup { root: string; socketPath: string; certFile: string; binary: string }
@@ -12,7 +13,7 @@ export type LocalDriverFrame =
   | { type: 'ready'; namespace: string; interfaces: string[]; envNames: string[]; rejectedTargetProbe: boolean; name: string; binarySha256: string }
   | { type: 'event'; event: RuntimeEvent; workerPid: number | null }
   | { type: 'idle'; requestId: string; workerPid: number | null; telemetryState: TelemetryState; workerEnvNames: string[]; syntheticCredential: boolean; error?: LocalDriverError }
-  | { type: 'fatal'; message: string };
+  | { type: 'fatal'; message: string; startup?: LocalPoolStartupDiagnostics };
 
 /** 校验私有驱动帧，不能让 HTTP 输入伪造进程事件。
  * @param line 完整 JSONL 行。
@@ -23,7 +24,7 @@ export function decodeLocalDriverFrame(line: string): LocalDriverFrame {
   const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every(item => typeof item === 'string');
   const pid = (x: unknown): boolean => x === null || Number.isSafeInteger(x) && Number(x) > 0;
   if (isObject(value)) {
-    if (value.type === 'fatal' && typeof value.message === 'string') return value as unknown as LocalDriverFrame;
+    if (value.type === 'fatal' && typeof value.message === 'string') return { type: 'fatal', message: '本地隔离驱动失败，未自动重放', ...(value.startup === undefined ? {} : { startup: decodeLocalPoolStartup(value.startup) }) };
     if (value.type === 'ready' && typeof value.namespace === 'string' && strings(value.interfaces) && strings(value.envNames) && value.rejectedTargetProbe === true && typeof value.name === 'string' && typeof value.binarySha256 === 'string' && /^[a-f0-9]{64}$/.test(value.binarySha256)) return value as unknown as LocalDriverFrame;
     if (value.type === 'event' && isObject(value.event) && typeof value.event.request_id === 'string' && pid(value.workerPid)) {
       validateRuntimeEvent(value.event, value.event.request_id);

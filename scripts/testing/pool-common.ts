@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import type { HeaderPair, JsonObject } from '../../src/shared/contracts';
 import { isObject } from '../../src/shared/errors';
 import { Redactor } from '../../src/control/redaction';
+import { decodeLocalPoolStartup, type LocalPoolStartupDiagnostics } from './local-pool-startup';
 
 export const POOL_MODEL = 'deepseek-flash';
 export const CAPTURE_LIMIT = 1024 * 1024;
@@ -34,7 +35,7 @@ export type ForwarderFrame =
   | { type: 'ready'; namespace: string; rawHeadersMatched: boolean }
   | { type: 'captured'; id: number; method: string; path: string; httpVersion: string; headers: HeaderPair[]; body: string }
   | { type: 'finished'; id: number; attempted: boolean; outcome: string; prepared?: PoolPrepared; statusCode: number; upstreamStatus: number | null; headers: HeaderPair[]; response: BodySample; error?: string; failureCode?: string; transportDiagnostics?: PoolTransportDiagnostics }
-  | { type: 'fatal'; message: string };
+  | { type: 'fatal'; message: string; startup?: LocalPoolStartupDiagnostics };
 /** 每个场景的输入与预期由宿主指定，不含池凭据。 */
 export interface PoolScene { id: string; input: JsonObject; cancel: boolean; fixture: string; cachePolicy: 'preserve' | 'sub2api'; expectedStatus: number }
 /** 驱动回执只在私有管道传输，统一由宿主脱敏后落盘。 */
@@ -190,7 +191,7 @@ export function decodeForwarderFrame(line: string): ForwarderFrame {
   const body = (x: unknown): x is BodySample => isObject(x) && Number.isSafeInteger(x.bytes) && Number(x.bytes) >= 0 && typeof x.sha256 === 'string' && /^[a-f0-9]{64}$/.test(x.sha256) && Number.isSafeInteger(x.storedBytes) && Number(x.storedBytes) >= 0 && Number(x.storedBytes) <= CAPTURE_LIMIT && typeof x.text === 'string' && Buffer.byteLength(x.text) === x.storedBytes && ['complete','truncated','incomplete'].includes(String(x.status));
   if (isObject(value)) {
     if (value.type === 'ready' && typeof value.namespace === 'string' && typeof value.rawHeadersMatched === 'boolean') return value as unknown as ForwarderFrame;
-    if (value.type === 'fatal' && typeof value.message === 'string') return value as unknown as ForwarderFrame;
+    if (value.type === 'fatal' && typeof value.message === 'string') return { type: 'fatal', message: 'TLS 采集转发器已失败', ...(value.startup === undefined ? {} : { startup: decodeLocalPoolStartup(value.startup) }) };
     if (Number.isSafeInteger(value.id) && Number(value.id) > 0) {
       if (value.type === 'captured' && ['method','path','httpVersion','body'].every(key => typeof value[key] === 'string') && pairs(value.headers)) return value as unknown as ForwarderFrame;
       if (value.type === 'finished' && typeof value.attempted === 'boolean' && typeof value.outcome === 'string' && Number.isInteger(value.statusCode) && (value.upstreamStatus === null || Number.isInteger(value.upstreamStatus)) && pairs(value.headers) && body(value.response) && (value.error === undefined || typeof value.error === 'string') && (value.failureCode === undefined || typeof value.failureCode === 'string')) {

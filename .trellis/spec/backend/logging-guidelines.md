@@ -233,3 +233,52 @@
 - tests/unit/request-attribution.test.ts：角色/ID/工具/成功格式配对，伪造文本、重复、块数/字节/条数上限、显式值、冲突和未知。
 - tests/integration/storage.test.ts：迟到、多子代理、嵌套、跨会话、重复去重、超限、损坏、summary/off、脱敏、重启及清理；原始快照不变。
 - tests/local-pool/attribution.test.ts 与 tests/browser/logs.spec.ts：实际子代理报告回传、关联与来源、证据跳转、历史兼容和手机布局。
+
+## Scenario: 本地池启动诊断与双客户端故障隔离
+
+### 1. Scope / Trigger
+
+- 本地池尚未就绪时，证书、TLS 自检、私有通道、隔离代理及运行时校验的失败需要保留安全证据。启动诊断与模型转发诊断分开，不能用复跑成功回填历史根因。
+
+### 2. Signatures
+
+- scripts/testing/local-pool-startup.ts 定义 LocalPoolStartupDiagnostics、LOCAL_POOL_STARTUP_STAGES、LOCAL_POOL_STARTUP_CODES；decodeLocalPoolStartup(value: unknown): LocalPoolStartupDiagnostics 集中重建字段。
+- LocalPoolStartupError(stage: LocalPoolStartupStage, error: unknown) 继承 BridgeError，保留 code=local_pool_startup、status=503，startup 为安全诊断；本地 CLI 沿已有受控 message 显示阶段和原因。
+- ForwarderFrame.fatal 与 LocalDriverFrame.fatal 可选 startup: LocalPoolStartupDiagnostics；decodeForwarderFrame / decodeLocalDriverFrame 负责重建，旧帧仍兼容。
+- PrivateProcessError.code 为 CHANNEL_TIMEOUT / CHANNEL_CLOSED / CHANNEL_TRUNCATED / CHANNEL_INVALID，不携带解码器原始异常。
+
+### 3. Contracts
+
+- 启动诊断只含 stage、failureCode。stage 固定为 unknown、workspace、certificate、forwarder_build、node、proxy_environment、forwarder_start、tls_listen、tls_probe、forwarder_verify、driver_start、driver_isolation、proxy_start、proxy_probe、driver_setup、runtime_verify。
+- failureCode 只接受 LOCAL_POOL_STARTUP_CODES：明确检查失败、固定通道代码及有限系统/TLS 代码。系统/TLS 白名单为 ENOENT、EACCES、EPERM、EADDRINUSE、ECONNREFUSED、ECONNRESET、EPIPE、CERT_NOT_YET_VALID、CERT_HAS_EXPIRED、DEPTH_ZERO_SELF_SIGNED_CERT、UNABLE_TO_VERIFY_LEAF_SIGNATURE、ERR_TLS_CERT_ALTNAME_INVALID；未知原因统一 UNKNOWN。
+- 解码后只返回两个固定字段，丢弃扩展字段。未知子阶段使用宿主已观测阶段；不得复制任意 cause、message、stderr、URL、头、正文或证书材料。fatal 的说明也重建为组件固定文案。
+- TLS 接收端与隔离驱动在 ready 后清除启动标记；运行期 fatal 不附 startup，不能把已发送模型失败说明成“未发起池推理”。启动及自检仍为零模型调用，不增加重试或降低 TLS、环境、固定目标及原始头校验。
+- 资源创建也纳入失败捕获；各项清理分别尝试，保存最初阶段和原因。宿主清理出现异常时附固定说明，不覆盖首错，也不推断资源已成功释放；驱动运行时构造失败仍须关闭已创建代理。
+- TLS 原始头启动探针预算 5000 ms、宿主两类就绪等待各 10000 ms，均与模型 PoolConfig.timeoutMs 无关。构建既可能失败返回，也可能同步抛出，须用 try/await/catch 覆盖；不能只在返回 Promise 上接 catch。
+- 双客户端验证共享合成 HOME/config/cwd，但使用不同 session；取消及关闭只操作对应终端进程组。排队请求断开与日志终态分开观测：日志会在串行队列轮到该请求时收口，模型发送和账本预留仍应为零。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 诊断及行为 |
+| --- | --- |
+| 证书生成失败 / 构建失败 / Node 缺失 | certificate / forwarder_build 等实际阶段及固定检查代码，503，零模型 |
+| TLS 验证、原始头不匹配 | tls_probe 及白名单 TLS 代码或 RAW_HEADERS_MISMATCH，不放行转发 |
+| 等待超时、提前 EOF、截断或损坏帧 | 宿主已知阶段及对应 CHANNEL_*，不输出帧原文 |
+| 隔离、目标拒绝、运行时校验失败 | driver_isolation / proxy_probe / runtime_verify 及固定代码，清理已创建资源 |
+| 子进程没有诊断或未知代码 | 保留宿主阶段、UNKNOWN；不通过通用 message 猜测原因 |
+| 清理自身也失败 | 其他清理仍尝试，原始阶段与原因保持，附固定清理异常说明 |
+| 已发送请求取消 / 排队取消或退出 | 已发送最多一次且不重放；排队零发送；另一会话可继续 |
+
+### 5. Scenarios and Examples
+
+- 正常：独立初始化完成 TLS、隔离与目标拒绝自检；账本 reserved=0，首次业务前不启动模型 worker。
+- 边界：子进程报告 `{stage:"tls_probe",failureCode:"CERT_NOT_YET_VALID"}`，宿主保留具体子阶段并返回安全 503；只有未知子阶段时才使用宿主等待阶段。
+- 错误用法：为定位 503 落盘整个异常、私有帧或 stderr，或把 500 ms 模型预算当成启动探针截止。正确做法：只展示白名单证据，按实际启动预算和故障注入验证。
+- 错误用法：过早阻塞第一个子代理，再等待其余 Agent 的权限辅助请求；单账号串行池可能因此无法完成场景准备。正确做法：先观测六个独立实际子代理均已发起，再以闸门触发故障；录制层必须传播断开，工装不能额外施加默认空闲截止。
+
+### 6. Tests Required
+
+- tests/unit/local-pool-startup.test.ts：未知降级、直接代码与嵌套 cause 区别、旧 fatal 兼容、敏感扩展字段丢弃，真实管道 EOF/截断/格式/超时。
+- tests/local-pool/startup.test.ts 与 tests/fixtures/local-pool-startup.ts：十一种故障、各自下一独立启动、四实例并发逐次回执、零模型、进程与临时目录清理；清理回执失败不能覆盖首错或阻止其他清理。
+- tests/local-pool/session-isolation.test.ts 与 isolation-client.py：两个真实 PTY、各三个实际 Explore，活动取消、排队取消、子代理期间异常退出、排队异常退出；核对存活会话续轮、原始 SHA/CCH、会话头、父子证据及账本，无重复发送和跨会话污染。
+- 所有上述模型验证使用仅 lo 的独立网络、合成账号和回环假池；故障注入仅属于测试工装，不增加产品环境开关或真实账号调用。

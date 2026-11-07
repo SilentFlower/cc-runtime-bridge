@@ -9,6 +9,7 @@ import { BridgeError, isObject } from '../../src/shared/errors';
 import { Redactor } from '../../src/control/redaction';
 import { BodyCapture, POOL_MODEL, POOL_FAILURE_CODES, REQUEST_LIMIT, preparePoolRequest, sample, validatePoolConfig, type ForwarderFrame, type PoolConfig, type PoolPrepared } from './pool-common';
 import { PoolTransportObserver } from './pool-transport';
+import { LocalPoolStartupError, type LocalPoolStartupStage } from './local-pool-startup';
 
 /** 独立 Node 接收端的启动合同，不经命令行传递池 Key。 */
 interface Setup { type: 'init'; socketPath: string; keyFile: string; certFile: string; config: PoolConfig }
@@ -16,6 +17,7 @@ interface Setup { type: 'init'; socketPath: string; keyFile: string; certFile: s
 interface Pending { id: number; request: IncomingMessage; response: ServerResponse; raw: string; headers: HeaderPair[]; abort: AbortController; timer: ReturnType<typeof setTimeout> | undefined; started: boolean }
 
 const send = async (frame: ForwarderFrame): Promise<void> => { if (!process.stdout.write(JSON.stringify(frame) + '\n')) await once(process.stdout, 'drain'); };
+let startupStage: LocalPoolStartupStage | null = 'forwarder_start';
 
 /** 运行有限验收或显式手工联调的 Node TLS 转发器。 @return 父管道关闭后资源已收口。 */
 async function main(): Promise<void> {
@@ -23,15 +25,17 @@ async function main(): Promise<void> {
   const iterator = input[Symbol.asyncIterator]();
   const first = await iterator.next();
   const value: unknown = JSON.parse(first.value ?? 'null');
-  if (!isObject(value) || value.type !== 'init' || !['socketPath','keyFile','certFile'].every(k => typeof value[k] === 'string') || !isObject(value.config)) throw new Error('初始化帧格式错误');
+  if (!isObject(value) || value.type !== 'init' || !['socketPath','keyFile','certFile'].every(k => typeof value[k] === 'string') || !isObject(value.config)) throw new LocalPoolStartupError('forwarder_start', 'INIT_FRAME_INVALID');
   const setup = value as unknown as Setup;
   validatePoolConfig(setup.config);
+  startupStage = 'certificate';
   const cert = await readFile(setup.certFile), key = await readFile(setup.keyFile);
   const pending = new Map<number, Pending>();
   const active = new Set<Promise<void>>();
   let sequence = 0, attempts = 0, closing = false;
   const expected = ['Host','api.anthropic.com','X-Dup','one','x-dUP','two','Content-Length','2','Connection','close'];
   let probeMatched = false;
+  startupStage = 'tls_listen';
   const server = createServer({ key, cert, ALPNProtocols: ['http/1.1'] }, (request, response) => {
     const chunks: Buffer[] = []; let bytes = 0;
     request.on('data', (chunk: Buffer) => { bytes += chunk.length; if (setup.config.mode === 'manual' || bytes <= REQUEST_LIMIT) chunks.push(chunk); else request.destroy(); });
@@ -55,14 +59,20 @@ async function main(): Promise<void> {
     });
   });
   server.requestTimeout = setup.config.mode === 'manual' ? 0 : 30000;
-  await new Promise<void>(resolve => server.listen(setup.socketPath, resolve)); await chmod(setup.socketPath, 0o600);
   await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('原始头探针超时')), 5000);
+    server.once('error', reject);
+    server.listen(setup.socketPath, () => { server.off('error', reject); resolve(); });
+  }); await chmod(setup.socketPath, 0o600);
+  startupStage = 'tls_probe';
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { socket.destroy(); reject(new LocalPoolStartupError('tls_probe', 'CHANNEL_TIMEOUT')); }, 5000);
     const socket = connect({ path: setup.socketPath, servername: 'api.anthropic.com', ca: cert }, () => socket.write('POST /__raw_headers_probe HTTP/1.1\r\nHost: api.anthropic.com\r\nX-Dup: one\r\nx-dUP: two\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}'));
     socket.on('data', () => {}); socket.on('error', error => { clearTimeout(timer); reject(error); });
-    socket.on('end', () => { clearTimeout(timer); if (probeMatched) resolve(); else reject(new Error('原始头探针不匹配')); });
+    socket.on('end', () => { clearTimeout(timer); if (probeMatched) resolve(); else reject(new LocalPoolStartupError('tls_probe', 'RAW_HEADERS_MISMATCH')); });
   });
+  startupStage = 'forwarder_verify';
   await send({ type: 'ready', namespace: await readlink('/proc/self/ns/net'), rawHeadersMatched: probeMatched });
+  startupStage = null;
 
   const forward = async (item: Pending, allowed: boolean, reason?: string): Promise<void> => {
     // 响应标志头也可能被通用规则识别为秘密，不能污染下一请求的正文预览。
@@ -131,4 +141,4 @@ async function main(): Promise<void> {
   }
 }
 
-void main().then(() => process.exit(0)).catch(async () => { await send({ type: 'fatal', message: 'TLS 采集转发器已失败，详细状态见安全报告' }).catch(() => {}); process.exit(1); });
+void main().then(() => process.exit(0)).catch(async error => { await send({ type: 'fatal', message: 'TLS 采集转发器已失败', ...(startupStage === null ? {} : { startup: new LocalPoolStartupError(startupStage, error).startup }) }).catch(() => {}); process.exit(1); });

@@ -11,6 +11,7 @@ import { PrivateProcess } from './pool-process';
 import { decodeForwarderFrame, poolProxyEnvironment, preparePoolRequest, validatePoolConfig, verifyCch, type ForwarderFrame, type PoolConfig } from './pool-common';
 import { decodeLocalDriverFrame, type LocalDriverFrame } from './local-pool-protocol';
 import { LocalPoolLedger } from './local-pool-ledger';
+import { LocalPoolStartupError, type LocalPoolStartupStage } from './local-pool-startup';
 
 /** 活动作业同时绑定原生私有事件和唯一 TLS 实收。 */
 interface ActiveRequest {
@@ -48,33 +49,55 @@ export class LocalPoolEngine implements Engine {
   static async open(binary: string, pool: PoolConfig, ledger: LocalPoolLedger): Promise<LocalPoolEngine> {
     validatePoolConfig(pool);
     if (pool.mode !== 'manual') throw new Error('常驻入口必须显式选择手工联调模式');
-    const root = await mkdtemp(join(tmpdir(), 'ccrb-local-pool-'));
+    let root: string | undefined, stage: LocalPoolStartupStage = 'workspace';
     let forwarder: PrivateProcess<ForwarderFrame> | undefined, driver: PrivateProcess<LocalDriverFrame> | undefined;
     try {
+      root = await mkdtemp(join(tmpdir(), 'ccrb-local-pool-'));
       const keyFile = join(root, 'key.pem'), certFile = join(root, 'cert.pem'), socketPath = join(root, 'tls.sock');
+      stage = 'certificate';
       const certificate = Bun.spawnSync(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',keyFile,'-out',certFile,'-days','1','-subj','/CN=api.anthropic.com','-addext','subjectAltName=DNS:api.anthropic.com'], { stdout: 'ignore', stderr: 'ignore' });
-      if (certificate.exitCode !== 0) throw new Error('本地证书生成失败');
-      const bundle = await Bun.build({ entrypoints: [resolve('scripts/testing/pool-forwarder.ts')], target: 'node', format: 'esm', outdir: root, naming: 'forwarder.mjs' });
-      if (!bundle.success) throw new Error('TLS 接收端构建失败');
-      const node = Bun.which('node'); if (!node) throw new Error('缺少 Node TLS 接收端');
+      if (certificate.exitCode !== 0) throw new LocalPoolStartupError(stage, 'CERTIFICATE_GENERATION_FAILED');
+      stage = 'forwarder_build';
+      let bundle: Awaited<ReturnType<typeof Bun.build>>;
+      try { bundle = await Bun.build({ entrypoints: [resolve('scripts/testing/pool-forwarder.ts')], target: 'node', format: 'esm', outdir: root, naming: 'forwarder.mjs' }); }
+      catch { throw new LocalPoolStartupError('forwarder_build', 'BUILD_FAILED'); }
+      if (!bundle.success) throw new LocalPoolStartupError(stage, 'BUILD_FAILED');
+      stage = 'node';
+      const node = Bun.which('node'); if (!node) throw new LocalPoolStartupError(stage, 'NODE_NOT_FOUND');
+      stage = 'proxy_environment';
       const proxyEnv = poolProxyEnvironment(process.env, pool.live);
-      if (Object.keys(proxyEnv).length && !new TextDecoder().decode(Bun.spawnSync([node,'--help']).stdout).includes('--use-env-proxy')) throw new Error('Node 不支持宿主代理配置');
+      if (Object.keys(proxyEnv).length && !new TextDecoder().decode(Bun.spawnSync([node,'--help']).stdout).includes('--use-env-proxy')) throw new LocalPoolStartupError(stage, 'PROXY_CONFIG_UNSUPPORTED');
       const env = { HOME: root, LANG: 'C.UTF-8', PATH: process.env.PATH ?? '/usr/bin:/bin' };
+      stage = 'forwarder_start';
       forwarder = new PrivateProcess([node, ...(Object.keys(proxyEnv).length ? ['--use-env-proxy'] : []), join(root, 'forwarder.mjs')], { ...env, ...proxyEnv }, decodeForwarderFrame);
       await forwarder.send({ type: 'init', socketPath, keyFile, certFile, config: pool });
-      const tlsReady = await forwarder.next(10000), namespace = await readlink('/proc/self/ns/net');
-      if (tlsReady.type !== 'ready' || !tlsReady.rawHeadersMatched || tlsReady.namespace !== namespace) throw new Error('TLS 原始头或空间自检失败');
+      const tlsReady = await forwarder.next(10000);
+      if (tlsReady.type === 'fatal') throw new LocalPoolStartupError(tlsReady.startup?.stage ?? stage, tlsReady.startup?.failureCode);
+      stage = 'forwarder_verify';
+      const namespace = await readlink('/proc/self/ns/net');
+      if (tlsReady.type !== 'ready') throw new LocalPoolStartupError(stage, 'CHANNEL_INVALID');
+      if (!tlsReady.rawHeadersMatched) throw new LocalPoolStartupError(stage, 'RAW_HEADERS_MISMATCH');
+      if (tlsReady.namespace !== namespace) throw new LocalPoolStartupError(stage, 'ISOLATION_CHECK_FAILED');
+      stage = 'driver_setup';
       await mkdir(join(root, 'driver'), { mode: 0o700 });
+      stage = 'driver_start';
       driver = new PrivateProcess(['unshare','--net',process.execPath,resolve('scripts/testing/local-pool-driver.ts')], env, decodeLocalDriverFrame);
       await driver.send({ root: join(root, 'driver'), socketPath, certFile, binary: resolve(binary) });
       const ready = await driver.next(10000);
-      if (ready.type !== 'ready' || ready.namespace === namespace || ready.interfaces.join(',') !== 'lo' || !ready.rejectedTargetProbe || ready.envNames.some(name => /POOL|REQUESTER|PROXY|ANTHROPIC|CLAUDE/.test(name))) throw new Error('本地驱动隔离自检失败');
+      if (ready.type === 'fatal') throw new LocalPoolStartupError(ready.startup?.stage ?? stage, ready.startup?.failureCode);
+      stage = 'driver_isolation';
+      if (ready.type !== 'ready') throw new LocalPoolStartupError(stage, 'CHANNEL_INVALID');
+      if (ready.namespace === namespace || ready.interfaces.join(',') !== 'lo' || !ready.rejectedTargetProbe || ready.envNames.some(name => /POOL|REQUESTER|PROXY|ANTHROPIC|CLAUDE/.test(name))) throw new LocalPoolStartupError(stage, 'ISOLATION_CHECK_FAILED');
       const engine = new LocalPoolEngine(root, pool, ledger, forwarder, driver, ready);
       engine.loop = engine.readCaptures();
       return engine;
-    } catch {
-      await driver?.close(); await forwarder?.close(); await rm(root, { recursive: true, force: true });
-      throw new BridgeError('local_pool_startup', '本地池联调初始化失败，请检查运行时、Node、unshare 和配置；未发起池推理', 503);
+    } catch (error) {
+      const failure = new LocalPoolStartupError(stage, error);
+      // 每项都尝试收口；清理异常不能阻止后续清理或覆盖启动首错。
+      const cleanup = await Promise.allSettled([driver?.close(), forwarder?.close()]);
+      if (root) cleanup.push(...await Promise.allSettled([rm(root, { recursive: true, force: true })]));
+      if (cleanup.some(result => result.status === 'rejected')) failure.message += '；本地资源清理出现异常';
+      throw failure;
     }
   }
 
