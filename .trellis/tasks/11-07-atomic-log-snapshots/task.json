@@ -1,0 +1,42 @@
+{
+  "id": "atomic-log-snapshots",
+  "name": "atomic-log-snapshots",
+  "title": "修复请求日志快照原子性",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-07",
+  "completedAt": "2026-11-07",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-07T14:54:48Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-07-api-integrity-repairs",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成日志请求行与阶段索引原子提交、详情同一读快照",
+      "并发读取与故障回滚回归通过",
+      "联合原版、TLS、真实 API 与历史保留验收通过"
+    ],
+    "partialStep": null,
+    "nextStep": "无，任务已完成",
+    "notes": "完整验收证据：artifacts/api-integrity-20261107T143214420014Z；TLS verify 保持开启；四次真实预算已使用，不追加模型调用。",
+    "updatedAt": "2026-11-07T14:54:48Z"
+  }
+}

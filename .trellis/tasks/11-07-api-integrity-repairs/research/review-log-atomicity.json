@@ -1,0 +1,19 @@
+{
+  "reproduced": true,
+  "modelRequests": 0,
+  "productionWrites": 0,
+  "observation": "请求行已经 success，响应阶段仍是旧的 incomplete 快照",
+  "observations": [
+    {
+      "id": "7180e366-62e6-4969-8c64-b7059b914957",
+      "attempt": 0,
+      "read": 17,
+      "requestState": "success",
+      "finishedAt": "2026-11-07T13:53:23.117Z",
+      "responseStatus": "incomplete",
+      "responseBytes": 9,
+      "source": "实际 LogStore.detail 返回，未修改生产数据"
+    }
+  ],
+  "storeError": null
+}

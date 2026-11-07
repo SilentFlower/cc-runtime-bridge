@@ -1,0 +1,110 @@
+[
+  {
+    "scene": "json",
+    "requestId": "3eff4d45-21ea-49ae-8bd0-51cec1c98cf1",
+    "inputThinking": {
+      "type": "disabled"
+    },
+    "outboundThinkingPresent": false,
+    "outboundOutputConfig": {
+      "effort": "high"
+    },
+    "responseBlockTypes": [
+      "thinking",
+      "text"
+    ],
+    "contextPromptId": "37bba390-076d-47c2-9806-71cb237c6108",
+    "preparedPromptHeader": "37bba390-076d-47c2-9806-71cb237c6108",
+    "finalPromptHeader": "37bba390-076d-47c2-9806-71cb237c6108",
+    "hostInstructionPathPresent": true,
+    "gitStatusPresent": true,
+    "finalStatus": "complete",
+    "bodyBytes": 11845,
+    "callerBodyBytes": 230,
+    "safeguardsPresent": true,
+    "rootModel": "deepseek-flash",
+    "finalAndPreparedShaEqual": true,
+    "billingHasCch": false
+  },
+  {
+    "scene": "sse",
+    "requestId": "plain-api-tls-sse-46838a51",
+    "inputThinking": {
+      "type": "disabled"
+    },
+    "outboundThinkingPresent": false,
+    "outboundOutputConfig": {
+      "effort": "high"
+    },
+    "responseBlockTypes": [
+      "thinking",
+      "text"
+    ],
+    "contextPromptId": "20dd856b-fe96-4759-9bc8-62fcb5955b94",
+    "preparedPromptHeader": "20dd856b-fe96-4759-9bc8-62fcb5955b94",
+    "finalPromptHeader": "20dd856b-fe96-4759-9bc8-62fcb5955b94",
+    "hostInstructionPathPresent": true,
+    "gitStatusPresent": true,
+    "finalStatus": "complete",
+    "bodyBytes": 11821,
+    "callerBodyBytes": 195,
+    "safeguardsPresent": true,
+    "rootModel": "deepseek-flash",
+    "finalAndPreparedShaEqual": true,
+    "billingHasCch": false
+  },
+  {
+    "scene": "tool-call",
+    "requestId": "plain-api-tls-tool-call-b5ae011a",
+    "inputThinking": {
+      "type": "disabled"
+    },
+    "outboundThinkingPresent": false,
+    "outboundOutputConfig": {
+      "effort": "high"
+    },
+    "responseBlockTypes": [
+      "thinking",
+      "tool_use"
+    ],
+    "contextPromptId": "f696122f-d602-4ccf-b18b-8908f9edc7d8",
+    "preparedPromptHeader": "f696122f-d602-4ccf-b18b-8908f9edc7d8",
+    "finalPromptHeader": "f696122f-d602-4ccf-b18b-8908f9edc7d8",
+    "hostInstructionPathPresent": true,
+    "gitStatusPresent": true,
+    "finalStatus": "complete",
+    "bodyBytes": 12199,
+    "callerBodyBytes": 584,
+    "safeguardsPresent": true,
+    "rootModel": "deepseek-flash",
+    "finalAndPreparedShaEqual": true,
+    "billingHasCch": false
+  },
+  {
+    "scene": "tool-followup",
+    "requestId": "plain-api-tls-tool-followup-7d63f7ae",
+    "inputThinking": {
+      "type": "disabled"
+    },
+    "outboundThinkingPresent": false,
+    "outboundOutputConfig": {
+      "effort": "high"
+    },
+    "responseBlockTypes": [
+      "thinking",
+      "text"
+    ],
+    "contextPromptId": "1febf01c-e77f-4605-83d5-5be029cd041b",
+    "preparedPromptHeader": null,
+    "finalPromptHeader": null,
+    "hostInstructionPathPresent": true,
+    "gitStatusPresent": true,
+    "finalStatus": "complete",
+    "bodyBytes": 12429,
+    "callerBodyBytes": 860,
+    "safeguardsPresent": true,
+    "rootModel": "deepseek-flash",
+    "finalAndPreparedShaEqual": true,
+    "billingHasCch": false
+  }
+]

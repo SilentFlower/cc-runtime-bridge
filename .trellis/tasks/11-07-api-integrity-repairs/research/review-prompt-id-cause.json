@@ -1,0 +1,28 @@
+{
+  "scope": "固定 293 静态因果分析，未新增模型调用",
+  "adapter": "src/runtime/293/cli.ts:98 仅给最后一条业务消息写 promptId",
+  "toolContinuation": "最后一条是 tool_result；前面的真实用户消息没有 promptId",
+  "nativeSelection": "ZQ 排除包含 tool_result 的记录；oze 向前寻找真正用户轮次；uVe 取其 promptId；IOe 主会话无父 prompt 回退；K_t 把结果交给 yN；yN 在 promptId 未定义时不添加关联头",
+  "sourceHashes": {
+    "chunk-g263vvvn.js": "76efda96f539b504094b8bf16620aaffed35f759f0714326d45e46b838eca9ab",
+    "chunk-aqh2c7wz.js": "721d660d0210003338b96bedcd572c82d0a9fe5aa0c96adad9649fb2873034ae"
+  },
+  "snippets": [
+    {
+      "function": "ZQ",
+      "excerpt": "function ZQ(e){if(Uwe(e.message.content))return!1;return Boolean(e.promptId||e.turnOrigin||!(e.isMeta||e.isVirtual||e.isVisibleInTranscriptOnly))}var zat=1e7;function Gat(e,n){return typeof e===\"number\"&&Number.isInteger(e)&&e>=n&&e<=zat}function Bq(e){if(typeof e!==\"object\"||e===null||!(\"promptIndex\"in e)||!(\"turnIndex\"in e))return!1;let{promptIndex:n,turnIndex:r}=e;return Gat(r,1)&&Gat(n,0)&&n<=r}function eJ(e,n){let r=e[n];if(r?.type!==\"user\"||!Bq(r.turnPosition))return;let{turnIndex:s}=r.turnPosition,{promptIndex:g}=r.turnPosition;for(let h=n-1;h>=0;h--){let S=e[h];if(S?.type!==\"user\"||!Bq(S.turnPosition))continue;if(S.turnPosition.turnIn"
+    },
+    {
+      "function": "oze",
+      "excerpt": "function oze(e){for(let n=e.length-1;n>=0;n--){let r=e[n];if(r.type!==\"user\")continue;if(B_e(r))return-1;if(ZQ(r))return n}return-1}function uVe(e){let n=oze(e);if(n===-1)return;let r=e[n];return r.type===\"user\"?r.promptId:void 0}var VUr={\"auto-continuation\":!0,channel:!0,coordinator:!0,human:!0,observer:!0,\"observer-activity\":!0,peer:!0,plugin:!0,\"slack-ping\":!0,\"task-notification\":!0,unclassified:!0};function sze(e){let n=e?.kind;if(n===void 0)return\"unstamped\";return Object.hasOwn(VUr,n)?n:\"unclassified\"}function Son(e){let n=oze(e);if(n===-1)return;let r=e[n];if(r.type!==\"user\")return;if(r.isCompactSummary)return\"compacted\";return sze(r.o"
+    },
+    {
+      "function": "uVe",
+      "excerpt": "function uVe(e){let n=oze(e);if(n===-1)return;let r=e[n];return r.type===\"user\"?r.promptId:void 0}var VUr={\"auto-continuation\":!0,channel:!0,coordinator:!0,human:!0,observer:!0,\"observer-activity\":!0,peer:!0,plugin:!0,\"slack-ping\":!0,\"task-notification\":!0,unclassified:!0};function sze(e){let n=e?.kind;if(n===void 0)return\"unstamped\";return Object.hasOwn(VUr,n)?n:\"unclassified\"}function Son(e){let n=oze(e);if(n===-1)return;let r=e[n];if(r.type!==\"user\")return;if(r.isCompactSummary)return\"compacted\";return sze(r.origin)}function bvn(e){let n=oze(e);if(n===-1)return;let r=e[n];return r.type===\"user\"?r.turnOrigin:void 0}function bon(e){let n=oze"
+    },
+    {
+      "function": "IOe",
+      "excerpt": "function IOe(e,n){let r;try{r=Qfr(e)}catch(s){c(q(s)),r=void 0}return r??(aE(n)&&!n.isMainSession?n.parentPromptId:void 0)}function Jfr(e){try{return bvn(e)}catch(n){c(q(n));return}}function Zfr(e){try{return bon(e)}catch(n){c(q(n));return}}function epr(e,n){return von(F().host,e,new Set(n.filter((r)=>Zge(r)||r.mcpInfo?.accountMemory===!0).map((r)=>r.name)))}function ron(e,n){if(!(\"thread\"in e))return e;let{thread:r,...s}=e;return{...s,messages:n.messages,system:n.system,...n.tools!==void 0&&{tools:n.tools}}}function tpr(){if(!th())return!1;let e=Pe();switch(e){case\"firstParty\":return XVe(e);case\"anthropicGoogleCloud\":return zN(e);case\"anthro"
+    }
+  ]
+}

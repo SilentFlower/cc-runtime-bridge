@@ -1,0 +1,42 @@
+{
+  "id": "api-disabled-thinking",
+  "name": "api-disabled-thinking",
+  "title": "保留普通 API 显式关闭 thinking 参数",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-07",
+  "completedAt": "2026-11-07",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-07T14:54:48Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-07-api-integrity-repairs",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成显式 disabled 有界补齐及发送前保留校验",
+      "普通/原生、缺省、严格边界及 TLS 实收回归通过",
+      "四次真实 API 响应均遵守关闭 thinking"
+    ],
+    "partialStep": null,
+    "nextStep": "无，任务已完成",
+    "notes": "完整验收证据：artifacts/api-integrity-20261107T143214420014Z；TLS verify 保持开启；四次真实预算已使用，不追加模型调用。",
+    "updatedAt": "2026-11-07T14:54:48Z"
+  }
+}

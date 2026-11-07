@@ -1,0 +1,15 @@
+{
+  "tasks": {
+    ".trellis/tasks/11-07-api-integrity-repairs": "planning",
+    ".trellis/tasks/11-07-atomic-log-snapshots": "planning",
+    ".trellis/tasks/11-07-api-tool-prompt-id": "planning",
+    ".trellis/tasks/11-07-api-disabled-thinking": "planning"
+  },
+  "implementationStarted": false,
+  "productDiffEmpty": true,
+  "baselineUntrackedFilesUnchanged": true,
+  "sourceHeadUnchanged": true,
+  "serviceTlsCapture": "verify",
+  "serviceTlsVerifierState": "ready",
+  "modelRequestsDuringPlanning": 0
+}

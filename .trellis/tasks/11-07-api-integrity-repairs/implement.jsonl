@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "后端规范入口"}
+{"file": ".trellis/tasks/11-07-api-integrity-repairs/research/runtime-contracts.md", "reason": "本轮运行时规范原文及完整源文件位置"}
+{"file": ".trellis/tasks/11-07-api-integrity-repairs/research/logging-contracts.md", "reason": "本轮快照/TLS规范原文及完整源文件位置"}
+{"file": ".trellis/tasks/11-07-api-integrity-repairs/research/findings.md", "reason": "已复现证据及范围"}
