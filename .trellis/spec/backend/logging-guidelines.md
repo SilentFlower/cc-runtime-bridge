@@ -189,4 +189,47 @@
 - 同一单元套件核对诊断损坏降级、零值/未知区别、额外敏感字段丢弃、错误码白名单、旧回执兼容及观测失败不改变原操作；tests/pool/transport.test.ts 的真实 Node 直连/HTTPS 代理矩阵核对收头前断连、流中断、CONNECT 拒绝、单次池实收和下一请求恢复，tests/local-pool/gateway.test.ts 核对实际 CLI 回执经宿主持久化到账本。
 - tests/integration/control.test.ts：启动侧秘密、最终样本缺失/异常、off/summary/debug、原始 SHA256 与截断，采集失败不改变响应。
 - tests/integration/local-pool.test.ts 包裹 tests/local-pool：无外网模拟池，真实客户端/工具续轮/交互终端、子代理、端口冲突、取消、错误/显式超时/重定向、显式有限 20 次拒绝及不限次数连续 25 次保持参数；另验证 Sonnet 5、26 MiB 完整正文和 66 秒长请求、启动环境及凭据落盘；桌面及 390 像素页面、脚本安全、三次刷新零推理。
-- 当前原版 + preload 的离线 15 个池场景回归，旧轻量产物不声明已包含新源码合同；真实手工实例只检查健康/页面及隔离，不自动发送真实池推理。
+- 当前原版 + preload 的离线池场景回归，旧轻量产物不声明已包含新源码合同；真实手工实例只检查健康/页面及隔离，不自动发送真实池推理。
+
+## Scenario: 基于客户端启动证据的代理关联视图
+
+### 1. Scope / Trigger
+
+- 实际 CLI 子代理可能只提供 session、agent ID 和子代理 billing，没有 parent-agent-id 或 agent-type。日志可补充有证据的关联视图，不能冒充原始入站或当时实际发送值。
+
+### 2. Signatures
+
+- collectAgentLaunches(prepared: PreparedInput): AgentLaunches；resolveAgentAssociation(context: RequestContext, candidates, incomplete): AgentAssociation。
+- RequestRow.agentLaunches 可选；LogStore.detail(id) 的 RequestDetail.agentAssociation 可选；isAgentLaunches / isAgentAssociation 与 decodeLogDetail 集中验证。
+
+### 3. Contracts
+
+- 只对已识别原生入站提取：assistant Agent tool_use 与 user 的同 tool_use_id 成功 tool_result，固定 293 成功启动格式中的 childAgentId，匹配调用的 subagent_type，以及证据所属请求的规范 parentAgentId。自由文本、失败结果或孤立块不构成启动证据，重复/未知成功格式明确不完整。
+- AgentLaunches={state:complete|incomplete,links:[{childAgentId,parentAgentId,agentType,toolUseId}]}，两个缺失关联字段为 null。最多 32 条、JSON 容器及分隔符在内最多 16 KiB、最多扫描 4096 个内容块；父代理和类型沿既有 512 字符及 Latin-1 无控制字符边界，childAgentId/toolUseId 另限 128 位字母数字下划线连字符。
+- 元数据经 Redactor 后沿既有 request payload 保存，不新增表或迁移历史。脱敏破坏身份、超限、提取异常时保存 incomplete，不把占位符当 ID。off 不保存新记录，summary 保留必要证据摘要而不保存工具正文，证据随日志容量及保留期清理。
+- 详情关联只读查询同 sessionId、同 childAgentId；数据库先按声明去重再返回最多 32 条，额外取一条检测溢出。重复历史不耗尽额度，取出的内容和证据请求 ID 同源，不扫描调试正文或创建全局永久关系 Map。
+- AgentAssociation={state,parentAgentId,agentType,parentSource,typeSource,evidence:[{requestId,toolUseId}]}。state=explicit|linked|unknown|conflict|incomplete；来源=explicit|client_tool_result|unknown。显式值优先，不同声明不任意取最新值；空值和 unknown 来源一致。
+- 后到证据在刷新时可见，不回写 context、原始请求行的父代理值、capture/SHA 或已发送头。旧记录无元数据则未知；证据是客户端声明，不是身份认证。默认 agent:custom 不能证明实际类型为自定义代理。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 关联视图 |
+| --- | --- |
+| 两字段显式给出且无矛盾 | explicit，值保持 |
+| 缺失字段由同会话的完整一致证据补齐 | linked，来源及证据定位可见 |
+| 无证据、证据过期、旧记录无新字段 | unknown，不猜直接父代理或类型 |
+| 不同父代理/类型，或证据与显式值矛盾 | conflict，显式值保留，不任取冲突值 |
+| 提取/查询超限、损坏、查询失败或采集缺口 | incomplete，未确认字段不补齐，不重放模型 |
+| 相同 ID 出现在不同会话 | 不关联 |
+
+### 5. Scenarios and Examples
+
+- 正常：子代理先到，主会话后续消息含配对启动记录；刷新子代理详情可显示父代理和 Explore 类型，发生时字段仍为空。
+- 边界：同一启动历史出现在 33 条请求中仍可关联；证据正文过期而摘要有效时仍可查，证据摘要被清理后恢复未知。
+- 错误用法：把同会话主请求当所有子代理的直接父代理，或用后来证据改写过去的出站头。正确做法：按成功工具结果及所属规范上下文关联，仅更新只读视图。
+
+### 6. Tests Required
+
+- tests/unit/request-attribution.test.ts：角色/ID/工具/成功格式配对，伪造文本、重复、块数/字节/条数上限、显式值、冲突和未知。
+- tests/integration/storage.test.ts：迟到、多子代理、嵌套、跨会话、重复去重、超限、损坏、summary/off、脱敏、重启及清理；原始快照不变。
+- tests/local-pool/attribution.test.ts 与 tests/browser/logs.spec.ts：实际子代理报告回传、关联与来源、证据跳转、历史兼容和手机布局。

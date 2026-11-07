@@ -151,3 +151,58 @@ test('入口拒绝而未解析的请求显示实际状态', async ({ page, reque
   await expect(detail.locator('.detail-grid')).toContainText('接入路径未解析');
   await expect(detail.getByText('旧记录未注明', { exact: true })).toHaveCount(0);
 });
+
+test('迟到启动证据可刷新关联，来源、未知和发生时上下文清楚区分', async ({ page, request }) => {
+  const linkedSession = '77777777-7777-4777-8777-777777777777';
+  await seed(request, 'ui-linked-child', { sessionId: linkedSession, requestClass: 'subagent', agentId: 'linked-child' });
+  await page.goto('/'); await page.getByLabel('每 3 秒刷新').uncheck();
+  await page.getByTitle('ui-linked-child', { exact: true }).click();
+  const detail = page.getByRole('dialog');
+  await expect(detail.getByText('关联信息未知', { exact: true })).toBeVisible();
+  await expect(detail.getByText('未知（客户端未提供且无可用证据）', { exact: true })).toBeVisible();
+  const response = await request.post('/api/requests', { data: {
+    request_id: 'ui-launch-evidence', context: { agentKind: 'main', agentId: 'linked-parent', sessionId: linkedSession },
+    body: { model: 'fixture', max_tokens: 64, stream: false, system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli; cch=12345;' }], metadata: { user_id: JSON.stringify({ device_id: 'a'.repeat(64), account_uuid: '', session_id: linkedSession }) }, messages: [
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu-ui', name: 'Agent', input: { subagent_type: 'Explore' } }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu-ui', content: [{ type: 'text', text: 'Async agent launched successfully. (This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)\nagentId: linked-child (internal ID - do not mention to user.)\n合成启动说明' }] }] },
+    ] },
+  } });
+  expect(response.status()).toBe(200); await response.body();
+  await expect.poll(async () => (await (await request.get('/api/logs/ui-linked-child')).json()).agentAssociation?.state).toBe('linked');
+  await detail.getByRole('button', { name: '刷新详情', exact: true }).click();
+  await expect(detail.getByText('由证据关联', { exact: true })).toBeVisible();
+  await expect(detail.getByText('linked-parent', { exact: true })).toBeVisible();
+  await expect(detail.getByText('Explore', { exact: true })).toBeVisible();
+  await expect(detail.getByText('客户端工具结果', { exact: true })).toHaveCount(2);
+  await expect(detail.getByText('发生时父 Agent ID', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/attribution-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await detail.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'artifacts/attribution-mobile.png' });
+  await detail.getByRole('button', { name: '证据请求 ui-launch-evidence', exact: true }).click();
+  await expect(detail.locator('#detail-id')).toHaveText('ui-launch-evidence');
+});
+
+test('分类用途和识别来源可见，旧记录缺字段仍兼容', async ({ page }) => {
+  await page.route('**/api/logs/ui-compact', async route => {
+    const response = await route.fetch(), value = await response.json();
+    value.request.requestClass = 'auxiliary';
+    value.context = { ...value.context, inputFormat: 'claude_code', requestClass: 'auxiliary', querySource: 'auto_mode', classification: { purpose: 'auto_permission_classifier', source: 'native_profile', profile: 'cc293-auto-mode-xml-s1' } };
+    await route.fulfill({ response, json: value });
+  });
+  await page.goto('/'); await page.getByLabel('每 3 秒刷新').uncheck();
+  await page.getByTitle('ui-compact', { exact: true }).click();
+  const detail = page.getByRole('dialog');
+  await expect(detail.getByText('自动权限分类', { exact: true })).toBeVisible();
+  await expect(detail.getByText('固定 293 原生构造证据', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.unroute('**/api/logs/ui-compact');
+  await page.route('**/api/logs/ui-main', async route => {
+    const response = await route.fetch(), value = await response.json();
+    delete value.context.inputFormat; delete value.context.classification; delete value.agentAssociation;
+    await route.fulfill({ response, json: value });
+  });
+  await page.getByTitle('ui-main', { exact: true }).click();
+  await expect(detail.getByText('旧记录未注明', { exact: true })).toBeVisible();
+});

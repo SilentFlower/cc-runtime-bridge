@@ -374,3 +374,45 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/unit/native-input.test.ts：默认严格行为、cli/sdk-cli、CCH 缺失/有效/重复/损坏/扩展值歧义、实际生成上下文缺失、业务与缓存保持。
 - tests/unit/worker-protocol.test.ts：内部枚举、原生格式限定，不能靠包装改变策略。
 - tests/local-pool/gateway.test.ts：实际 --print、真实伪终端交互 CLI、Read 工具续轮、有效/缺失 CCH、子代理与 TLS 非零 CCH；测试在无外网空间运行。
+
+## Scenario: 实际 CLI 自动权限分类归因
+
+### 1. Scope / Trigger
+
+- 对已经通过固定 293 billing/metadata 校验的原生正文识别用途；普通 API 不根据业务关键词推断类别。
+- 识别只声明客户端提供的原生构造证据，不授予身份认证、配置修改或本地工具执行权限。
+
+### 2. Signatures
+
+- readNativeClassification(body: MessageBody): NativeClassification | undefined；prepareInput(input: BridgeInput): PreparedInput。
+- RequestContext.classification 可选：purpose=auto_permission_classifier、source=native_profile、profile=cc293-auto-mode-xml-s1|cc293-auto-mode-xml-s2。
+- isNativeClassification(value: unknown): value is NativeClassification；HTTP ContextInput 不接收 classification，私有作业和日志 API 使用集中校验。
+
+### 3. Contracts
+
+- 固定版本已验证 XML 两阶段共同使用完整 system 静态摘要，按官方结构只规范化 deny rules 列表插槽，其余静态内容及对应阶段收尾摘要必须一致。system 最多 160000 字符，规则行最多 16384 字符；未知或超限保持未识别，不成为新的业务准入限制。
+- 校验原生文本块、一个 transcript 或前置上下文加 transcript 两种消息布局、temperature=1、非流式且不声明工具。第一阶段包含唯一 </block> stop，第二阶段没有 stop；不能只凭 max_tokens、模型、billing 三位后缀或关键词识别。输出和思考预算不改变用途，参数原值保持。
+- 已识别请求为 auxiliary / auto_mode，分类证据随当前上下文持久化。显式类别冲突返回 context_conflict/400，不静默覆盖。普通 auxiliary 继续使用原有 side_query。
+- 未验证变体保持原分类并明确未识别特殊用途；不为取得识别标记改正文、增加调用或切换模型。旧日志不回填。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 固定 XML 第一/第二阶段完整证据符合 | auxiliary / auto_mode，保存对应 profile |
+| deny rules 合法变化 | 规范化列表后核对完整静态摘要 |
+| 普通关键词、局部特征、损坏静态正文或未验证布局 | 未识别，仍按既有入口规则转发 |
+| 已识别用途与显式类别冲突 | context_conflict/400，模型零发送 |
+| HTTP 注入内部 classification | 不支持字段/422 |
+| 私有分类标签与接入类型、类别或 querySource 不符 | runtime_protocol/502 |
+
+### 5. Scenarios and Examples
+
+- 正常：实际 CLI 发起 Agent 和 SubagentHandback，各自的分类请求被标为辅助；进入复核的第二阶段仍保持辅助用途。
+- 边界：没有用户附件时仅一个 transcript 消息；附带用户上下文时为两条消息。思考预算可以改变输出上限，不因此认作主对话。
+- 错误用法：看见 max_tokens=64 或 </block> 就标分类，或固定一次完整提示词哈希忽略动态规则。正确做法：校验固定构造的完整证据，未知变体保留未识别。
+
+### 6. Tests Required
+
+- tests/local-pool/attribution.test.ts：实际 CLI 默认、deny rules、两阶段复核三组回环，auxiliary/auto_mode/profile、原文内存与 TLS SHA/CCH、工具报告真实送达及每入站单次发送。
+- tests/unit/request-attribution.test.ts、tests/unit/log-api.test.ts：关键词/单字段反例、普通 auxiliary、HTTP 禁注入、日志和私有协议一致性；实际 CLI 验收只在合成凭据、独立 HOME 和无外网空间执行。

@@ -1,9 +1,10 @@
 import { Database } from 'bun:sqlite';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { LogFilters, RequestDetail, RequestRow } from '../shared/contracts';
+import type { AgentAssociation, AgentAssociationEvidence, AgentLaunchEvidence, LogFilters, RequestContext, RequestDetail, RequestRow } from '../shared/contracts';
 import type { LogSnapshot, LogWriterConfig } from './log-schema';
 import { isObject } from '../shared/errors';
+import { AGENT_EVIDENCE_LIMIT, isAgentLaunches, resolveAgentAssociation } from '../shared/request-attribution';
 
 /** 非阻塞日志存储，写入与清理运行在独立线程，查询使用 WAL 只读连接。 */
 export class LogStore {
@@ -123,6 +124,28 @@ export class LogStore {
     return { rows, total };
   }
 
+  private association(request: RequestRow, context: RequestContext): AgentAssociation {
+    const candidates: (AgentLaunchEvidence & AgentAssociationEvidence)[] = [];
+    let incomplete = this.failedIds.has(request.id) || this.error !== null;
+    try {
+      incomplete ||= this.db.query(`SELECT 1 FROM requests WHERE session_id=? AND json_type(payload,'$.agentLaunches') IS NOT NULL AND
+        (COALESCE(json_extract(payload,'$.agentLaunches.state'),'')!='complete' OR COALESCE(json_type(payload,'$.agentLaunches.links'),'')!='array') LIMIT 1`).get(context.sessionId) !== null;
+      // 先按声明去重再限制数量，长会话反复携带相同历史不会耗尽关联额度。
+      // SQLite 的单个 MIN 聚合会从该证据请求所在行取得 link，证据定位与内容保持同源。
+      const rows = this.db.query<{ id: string; link: string }, [string, string, number]>(`SELECT MIN(r.id) AS id,e.value AS link FROM requests r,json_each(r.payload,'$.agentLaunches.links') e
+        WHERE r.session_id=? AND json_extract(e.value,'$.childAgentId')=?
+        GROUP BY json_extract(e.value,'$.parentAgentId'),json_extract(e.value,'$.agentType'),json_extract(e.value,'$.toolUseId') LIMIT ?`).all(context.sessionId, context.agentId ?? '', AGENT_EVIDENCE_LIMIT + 1);
+      incomplete ||= rows.length > AGENT_EVIDENCE_LIMIT;
+      for (const row of rows.slice(0, AGENT_EVIDENCE_LIMIT)) {
+        const value: unknown = { state: 'complete', links: [JSON.parse(row.link)] };
+        if (!isAgentLaunches(value)) { incomplete = true; continue; }
+        incomplete ||= this.failedIds.has(row.id);
+        candidates.push({ ...value.links[0]!, requestId: row.id });
+      }
+    } catch { incomplete = true; }
+    return resolveAgentAssociation(context, candidates, incomplete);
+  }
+
   /** 读取一个请求及独立正文文件。
    * @param id 请求 ID。
    * @return 详情，记录不存在时返回 null。
@@ -141,7 +164,10 @@ export class LogStore {
       }
       return parsed;
     }));
-    return { request, context: JSON.parse(row.context_json), decisions: JSON.parse(row.decisions_json), captures: records };
+    const context = JSON.parse(row.context_json) as RequestContext | null;
+    return { request, context, decisions: JSON.parse(row.decisions_json), captures: records,
+      ...(context && (context.agentKind === 'subagent' || context.agentKind === 'teammate') ? { agentAssociation: this.association(request, context) } : {}),
+    };
   }
 
   /** 等待已提交日志，用于有序关闭和验收，不在响应热路径调用。

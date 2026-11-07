@@ -44,6 +44,43 @@ export interface ContextInput {
   workflowRunId?: string;
 }
 
+/** 固定原生构造的分类用途证据，不作为客户端身份认证。 */
+export interface NativeClassification {
+  purpose: 'auto_permission_classifier';
+  source: 'native_profile';
+  profile: 'cc293-auto-mode-xml-s1' | 'cc293-auto-mode-xml-s2';
+}
+
+/** 从同一请求的 Agent 调用与成功结果中配对的关联声明。 */
+export interface AgentLaunchEvidence {
+  childAgentId: string;
+  parentAgentId: string | null;
+  agentType: string | null;
+  toolUseId: string;
+}
+
+/** 有界提取结果；不完整时不能据已保存前缀宣称证据完整。 */
+export interface AgentLaunches {
+  state: 'complete' | 'incomplete';
+  links: AgentLaunchEvidence[];
+}
+
+/** 详情中的关联证据定位，不包含工具原文。 */
+export interface AgentAssociationEvidence {
+  requestId: string;
+  toolUseId: string;
+}
+
+/** 只读关联视图，和发生时的原始上下文保持独立。 */
+export interface AgentAssociation {
+  state: 'explicit' | 'linked' | 'unknown' | 'conflict' | 'incomplete';
+  parentAgentId: string | null;
+  agentType: string | null;
+  parentSource: 'explicit' | 'client_tool_result' | 'unknown';
+  typeSource: 'explicit' | 'client_tool_result' | 'unknown';
+  evidence: AgentAssociationEvidence[];
+}
+
 /** 经验证的内部调用，不允许头部改变控制配置。 */
 export interface BridgeInput {
   schema_version: 1;
@@ -57,6 +94,7 @@ export interface BridgeInput {
 
 /** 已解析的调用上下文，各表示都以此为同一来源。 */
 export interface RequestContext {
+  classification?: NativeClassification;
   inputFormat?: 'api' | 'claude_code';
   requestClass: RequestClass;
   sessionId: string;
@@ -109,6 +147,7 @@ export interface CaptureRecord {
 
 /** 一个请求的列表行及发生时的运行快照。 */
 export interface RequestRow {
+  agentLaunches?: AgentLaunches;
   id: string;
   createdAt: string;
   finishedAt: string | null;
@@ -132,6 +171,7 @@ export interface RequestRow {
 
 /** 详情接口一次返回可审计的字段与阶段数据。 */
 export interface RequestDetail {
+  agentAssociation?: AgentAssociation;
   request: RequestRow;
   context: RequestContext | null;
   decisions: HeaderDecision[];

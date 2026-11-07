@@ -89,6 +89,16 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 
 子代理指定已加载的原生 agentType 且省略 system 时，使用其官方定义；未知类型需提供业务 system。未提供 agentType 时保留调用方上下文，使用通用 CLI 正文，不猜测自定义代理定义。workflow、compaction、auxiliary、side_reply 保留原生类别和父子关联；该分类不会自动创建终端中的工作流、压缩任务、标题或其它辅助推理。输出风格产生无法与已解析主来源一致的配置时，在发送前拒绝。
 
+### 自动权限分类与日志关联
+
+固定 293 原生请求中，已验证的 XML 自动权限分类第一、第二阶段会识别为 `requestClass=auxiliary`、`querySource=auto_mode`。`context.classification` 可选，包含 `purpose=auto_permission_classifier`、`source=native_profile`、`profile=cc293-auto-mode-xml-s1|cc293-auto-mode-xml-s2`。识别校验完整静态提示词摘要、官方动态权限规则段及请求结构，不以业务关键词或单个输出参数猜用途；未知变体继续转发，页面标明未识别特殊用途。与显式类别冲突时返回 400。此元数据由服务生成，不能通过 HTTP context 注入，也不作为身份认证。
+
+新日志行可含 `agentLaunches={state,links}`。每条 link 保存从配对 Agent 调用/成功启动结果中取得的 `childAgentId`、`parentAgentId`、`agentType`、`toolUseId`，不保存工具正文。最多 32 条、原始提取元数据最多 16 KiB，扫描最多 4096 个内容块；缺口标为 incomplete。off 不新增记录，summary 可保存该关联摘要，随日志保留期和容量回收。
+
+子代理详情可含只读 `agentAssociation={state,parentAgentId,agentType,parentSource,typeSource,evidence}`，`evidence` 是 `{requestId,toolUseId}` 数组。state 为 explicit / linked / unknown / conflict / incomplete；字段来源为 explicit / client_tool_result / unknown。显式值优先，未提供的字段可由同会话、同子代理 ID 的启动记录补充；每次查询最多 32 条去重后的证据，额外结果、损坏或提取缺口不冒充完整关联。不同会话不关联，冲突不任意选值。
+
+后到证据在刷新详情时生效，不修改发生时 context、原始请求行的父代理值、capture 或已发送头。没有证据、证据已过期或旧记录不含新元数据时保持未知。页面区分有效关联、来源与发生时上下文，不把缺失代理类型当成已知自定义类型。
+
 ## 响应与取消
 
 HTTP 状态、合法端到端响应头及响应逻辑字节原样返回。content-length、content-encoding、连接级字段与 set-cookie 不沿用，以适配原生 Response 可能已解压的内容。

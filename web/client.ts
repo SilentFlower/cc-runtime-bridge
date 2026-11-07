@@ -131,8 +131,26 @@ function summary(value: RequestDetail): void {
   const row = value.request;
   const grid = element('div', undefined, 'detail-grid');
   grid.append(field('接入路径', value.context?.inputFormat === 'claude_code' ? '原生 CC 正文接入' : value.context?.inputFormat === 'api' ? '普通 API 原生组装' : value.context ? '旧记录未注明' : '未解析'));
-  grid.append(field('状态', STATES[row.state] ?? row.state), field('HTTP 状态', row.httpStatus), field('模型', row.model), field('请求类别', CLASSES[row.requestClass] ?? row.requestClass), field('引擎', row.engine), field('上下文来源', value.context?.source === 'client' ? '调用方上下文' : value.context ? '桥接器默认' : '未解析'), field('开始时间', date(row.createdAt)), field('完成时间', date(row.finishedAt)), field('会话 ID', row.sessionId), field('Prompt ID', row.promptId), field('Agent ID', row.agentId), field('父 Agent ID', row.parentAgentId), field('二进制 SHA256', row.binarySha256, true));
+  const association = value.agentAssociation;
+  grid.append(field('状态', STATES[row.state] ?? row.state), field('HTTP 状态', row.httpStatus), field('模型', row.model), field('请求类别', CLASSES[row.requestClass] ?? row.requestClass), field('引擎', row.engine), field('上下文来源', value.context?.source === 'client' ? '调用方上下文' : value.context ? '桥接器默认' : '未解析'), field('开始时间', date(row.createdAt)), field('完成时间', date(row.finishedAt)), field('会话 ID', row.sessionId), field('Prompt ID', row.promptId), field('Agent ID', row.agentId), field('父 Agent ID', association?.parentAgentId ?? row.parentAgentId), field('二进制 SHA256', row.binarySha256, true));
+  if (value.context?.inputFormat === 'claude_code') grid.append(field('请求用途', value.context.classification ? '自动权限分类' : '未识别特殊用途'));
+  if (value.context?.classification) grid.append(field('归类来源', '固定 293 原生构造证据'));
+  if (value.context?.agentKind === 'subagent' || value.context?.agentKind === 'teammate') {
+    const source = { explicit: '调用方显式提供', client_tool_result: '客户端工具结果', unknown: '未知' };
+    const states = { explicit: '显式关联', linked: '由证据关联', unknown: '关联信息未知', conflict: '关联证据冲突', incomplete: '关联证据不完整' };
+    grid.append(field('代理类型', association?.agentType ?? value.context.agentType ?? '未知（客户端未提供且无可用证据）'), field('关联状态', association ? states[association.state] : '旧记录未注明'), field('父代理信息来源', association ? source[association.parentSource] : '未知'), field('代理类型来源', association ? source[association.typeSource] : '未知'));
+    if (association?.parentSource === 'client_tool_result' || association?.typeSource === 'client_tool_result') grid.append(field('发生时父 Agent ID', row.parentAgentId), field('发生时代理类型', value.context.agentType));
+  }
   content.append(grid);
+  if (association?.state === 'conflict' || association?.state === 'incomplete') content.append(element('p', '关联证据存在冲突或缺口；显式提供的信息保留，未确认的字段不会自动补齐。', 'notice warning'));
+  if (association?.evidence.length) {
+    content.append(element('p', '以下客户端启动记录支持此关联视图；它们不代表当时已发送了缺失的关联字段。', 'section-note'));
+    const evidence = element('div', undefined, 'detail-buttons');
+    for (const id of new Set(association.evidence.map(e => e.requestId))) {
+      const button = element('button', '证据请求 ' + id, 'button'); button.addEventListener('click', () => { void openDetail(id); }); evidence.append(button);
+    }
+    content.append(evidence);
+  }
   if (row.error) content.append(element('p', row.error, 'notice warning'));
   if (row.captureError) content.append(element('p', row.captureError, 'notice warning'));
   const actions = element('div', undefined, 'detail-buttons');

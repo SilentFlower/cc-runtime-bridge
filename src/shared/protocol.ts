@@ -1,6 +1,7 @@
 import type { HeaderPair, RuntimeEvent, RuntimeJob, RuntimePayload, WorkerCommand, WorkerFrame } from './contracts';
 import { BridgeError, isObject } from './errors';
 import { isCachePolicyDecision, isTelemetryHandshake } from './runtime-policy';
+import { isNativeClassification } from './request-attribution';
 
 function headerPairs(value: unknown): value is HeaderPair[] {
   return Array.isArray(value) && value.every(x => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string');
@@ -45,6 +46,7 @@ export function decodeRuntimeJob(value: unknown): RuntimeJob {
   if (isObject(prepared.input) && prepared.input.nativeIngressPolicy !== undefined && (!['strict', 'local_base_url'].includes(String(prepared.input.nativeIngressPolicy)) || prepared.input.inputFormat !== 'claude_code')) throw new BridgeError('runtime_protocol', '运行时原生入站策略不合法', 502);
   if (isObject(prepared.input) && prepared.input.inputFormat !== undefined && !['api', 'claude_code'].includes(String(prepared.input.inputFormat))) throw new BridgeError('runtime_protocol', '运行时接入类型不合法', 502);
   if (!isObject(prepared.input) || prepared.input.request_id !== value.request_id || !isObject(prepared.input.body) || !Array.isArray(prepared.input.body.messages) || !isObject(prepared.context) || typeof prepared.context.sessionId !== 'string' || typeof prepared.context.promptId !== 'string' || !headerPairs(prepared.headers)) throw new BridgeError('runtime_protocol', '运行时作业缺少上下文');
+  if (prepared.context.classification !== undefined && (!isNativeClassification(prepared.context.classification) || prepared.input.inputFormat !== 'claude_code' || prepared.context.requestClass !== 'auxiliary' || prepared.context.querySource !== 'auto_mode')) throw new BridgeError('runtime_protocol', '运行时分类证据不匹配');
   return value as unknown as RuntimeJob;
 }
 

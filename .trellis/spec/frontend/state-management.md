@@ -27,6 +27,8 @@
 - demo/fixture 必须明显标记演示与未调用上游。wire_final 不可用时显示未采集，不能以中间原文填充。
 - 文本、模型名、原文全部通过 textContent 渲染；不得通过 innerHTML 解释输入。复制只使用已经脱敏的接口文本。
 - 同会话按钮用发生时的 sessionId 查询；父 agentId 与 agentId 保留快照，不依赖活跃进程对象。
+- context.classification 存在时显示“自动权限分类”和固定 293 原生构造来源；其他原生请求显示“未识别特殊用途”，不把默认主类别当作已识别的特殊用途。
+- 子代理详情消费服务端 agentAssociation 显示有效父代理/类型、逐字段来源和 explicit/linked/unknown/conflict/incomplete 状态；由证据补齐时另示发生时空值，证据按钮打开对应请求。页面不解析 Agent 文本，不把缺失类型当已知 custom；关联合同由 backend/logging-guidelines.md 所有。
 - 表单子元素不能命名为 reset，以免覆盖 HTMLFormElement.reset()；当前按钮 ID 为 reset-filters。
 - 复制提示在对话框打开时挂到 dialog 内，以免被原生顶层对话框遮住。
 
@@ -58,3 +60,4 @@
 - tests/browser/logs.spec.ts 另核对原生路径/中间值标签、demo 来源保留，以及入口失败不能被误标成旧记录；历史缺字段、分页与独立最终采样使用导入夹具核对。
 - 改动异步读取或销毁流程时，核对 AbortController 与结果归属，关闭或换 ID 后旧响应不能覆盖页面。
 - bun run typecheck 与 bun run build；浏览器验收使用独立目录、显式 demo 和无外网空间。
+- tests/browser/logs.spec.ts 另覆盖迟到证据刷新、来源与原始上下文区分、证据跳转、分类用途、旧记录缺字段及 390 像素展示；tests/unit/log-api.test.ts 覆盖新字段空值/来源和分类协议一致性。

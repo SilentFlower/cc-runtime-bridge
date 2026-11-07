@@ -5,6 +5,7 @@ import { LogStore } from './log-store';
 import { Redactor } from './redaction';
 import { ResponseObserver } from './response-observer';
 import { describeCachePolicy } from '../shared/runtime-policy';
+import { collectAgentLaunches, isAgentLaunches } from '../shared/request-attribution';
 
 /** 本地 TLS 接收端的完整实体样本，只能从启动侧私有采集器提供。 */
 export interface FinalCaptureSample {
@@ -58,6 +59,10 @@ export class RequestTrace {
       agentId: context?.agentId ?? null, parentAgentId: context?.parentAgentId ?? null, state: 'queued', httpStatus: null, durationMs: null, headersMs: null, firstOutputMs: null,
       mode: options.mode, engine: options.engine, binarySha256: options.binarySha256 ?? null, error: null, captureError: null,
     };
+    if (prepared?.input.inputFormat === 'claude_code' && options.mode !== 'off') {
+      try { this.row.agentLaunches = collectAgentLaunches(prepared); }
+      catch { this.row.agentLaunches = { state: 'incomplete', links: [] }; }
+    }
     this.capture('ingress', options.ingressText ?? (typeof raw === 'string' ? raw : JSON.stringify(raw)), headers, 'http_ingress', 'utf8');
     this.capture('header_policy', JSON.stringify(prepared?.decisions ?? []), [], 'header_policy', 'json');
     for (const stage of ['cc_prepared', 'wire_final', 'upstream_response'] as const) {
@@ -88,6 +93,8 @@ export class RequestTrace {
       decisions: this.redactor.value(this.prepared?.decisions ?? []) as LogSnapshot['decisions'],
       captures: [...this.captures.values()],
     };
+    // 脱敏可能遮去代理 ID；不能把遮盖后的占位符再当作可关联的身份。
+    if (snapshot.request.agentLaunches !== undefined && !isAgentLaunches(snapshot.request.agentLaunches)) snapshot.request.agentLaunches = { state: 'incomplete', links: [] };
     if (!this.store.record(snapshot)) this.row.captureError = this.store.error;
   }
 

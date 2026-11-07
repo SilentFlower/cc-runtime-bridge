@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import { Database } from 'bun:sqlite';
 import { LogStore } from '../../src/control/log-store';
 import type { LogSnapshot, LogWriterConfig } from '../../src/control/log-schema';
+import { RequestTrace } from '../../src/control/trace';
+import { parseInput } from '../../src/shared/input';
+import { prepareInput } from '../../src/control/header-policy';
 
 const roots: string[] = [];
 const stores: LogStore[] = [];
@@ -79,4 +82,101 @@ test('正文文件损坏或丢失会明确标出采集失败', async () => {
   const detail = await store.detail('missing-body');
   expect(detail?.captures[0]?.status).toBe('failed');
   expect(detail?.captures[0]?.text).toBeNull();
+});
+
+/** 创建同会话的子代理或启动证据快照。
+ * @param id 请求标识。
+ * @param child 是否为子代理请求。
+ * @param agentId 规范代理标识。
+ * @return 独立快照，不修改既有记录。
+ */
+function associationSnapshot(id: string, child: boolean, agentId = child ? 'child-a' : 'root-a'): LogSnapshot {
+  const value = snapshot(id);
+  value.request.agentId = agentId; value.context!.agentId = agentId;
+  if (child) {
+    value.request.requestClass = 'subagent'; value.context!.requestClass = 'subagent'; value.context!.agentKind = 'subagent';
+  } else {
+    value.request.agentLaunches = { state: 'complete', links: [{ childAgentId: 'child-a', parentAgentId: agentId, agentType: 'Explore', toolUseId: 'toolu-a' }] };
+  }
+  return value;
+}
+
+test('后到启动证据在刷新时关联，跨会话隔离，重启后无需工具正文', async () => {
+  const initial = await open(); const child = associationSnapshot('child', true);
+  initial.store.record(child); await initial.store.flush();
+  const before = await initial.store.detail('child');
+  expect(before?.agentAssociation).toMatchObject({ state: 'unknown', parentAgentId: null, agentType: null });
+  const unrelated = associationSnapshot('other-session', false, 'unrelated');
+  unrelated.request.sessionId = unrelated.context!.sessionId = 'another-session';
+  initial.store.record(unrelated); initial.store.record(associationSnapshot('parent-evidence', false)); await initial.store.flush();
+  const linked = await initial.store.detail('child');
+  expect(linked?.agentAssociation).toMatchObject({ state: 'linked', parentAgentId: 'root-a', agentType: 'Explore', evidence: [{ requestId: 'parent-evidence', toolUseId: 'toolu-a' }] });
+  expect(linked?.request).toEqual(before?.request); expect(linked?.context).toEqual(before?.context); expect(linked?.captures).toEqual(before?.captures);
+  const second = associationSnapshot('second-child', true, 'child-b'), secondParent = associationSnapshot('second-parent', false, 'root-b');
+  secondParent.request.agentLaunches!.links[0]!.childAgentId = 'child-b';
+  secondParent.request.agentLaunches!.links[0]!.agentType = 'Plan';
+  initial.store.record(second); initial.store.record(secondParent); await initial.store.flush();
+  expect((await initial.store.detail('second-child'))?.agentAssociation).toMatchObject({ state: 'linked', parentAgentId: 'root-b', agentType: 'Plan' });
+  expect((await initial.store.detail('child'))?.agentAssociation).toEqual(linked?.agentAssociation);
+  await initial.store.close(); stores.splice(stores.indexOf(initial.store), 1);
+  const { store } = await open(initial.config);
+  expect((await store.detail('child'))?.agentAssociation).toEqual(linked?.agentAssociation);
+});
+
+test('多层代理只取直接父上下文，冲突不任意覆盖，显式值保持', async () => {
+  const { store } = await open();
+  const middle = associationSnapshot('middle', true, 'middle-a');
+  middle.request.agentLaunches = { state: 'complete', links: [{ childAgentId: 'child-a', parentAgentId: 'middle-a', agentType: 'Explore', toolUseId: 'toolu-nested' }] };
+  const child = associationSnapshot('child', true);
+  store.record(middle); store.record(child); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation).toMatchObject({ state: 'linked', parentAgentId: 'middle-a' });
+  store.record(associationSnapshot('conflicting-parent', false)); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation).toMatchObject({ state: 'conflict', parentAgentId: null, agentType: 'Explore' });
+  child.context!.parentAgentId = 'explicit'; child.context!.agentType = 'explicit-type'; child.request.parentAgentId = 'explicit';
+  store.record(child); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation).toMatchObject({ state: 'conflict', parentAgentId: 'explicit', agentType: 'explicit-type', parentSource: 'explicit', typeSource: 'explicit' });
+});
+
+test('摘要证据随保留期清理，查询上限和提取缺口均不冒充完整关联', async () => {
+  const { store, config } = await open();
+  store.record(associationSnapshot('child', true)); store.record(associationSnapshot('parent', false)); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation?.state).toBe('linked');
+  // 只改变测试库的过期列，再触发既有清理器；不靠保留在内存中的关系绕过保留期。
+  const db = new Database(config.dbPath);
+  db.query('UPDATE requests SET created_at=? WHERE id=?').run(new Date(Date.now() - 8 * 86400000).toISOString(), 'parent'); db.close();
+  store.record(snapshot('cleanup-trigger')); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation?.state).toBe('unknown');
+  for (let i = 0; i < 33; i++) { store.record(associationSnapshot('evidence-' + i, false)); await store.flush(); }
+  expect((await store.detail('child'))?.agentAssociation?.state).toBe('linked');
+  for (let i = 0; i < 33; i++) {
+    const distinct = associationSnapshot('distinct-' + i, false); distinct.request.agentLaunches!.links[0]!.toolUseId = 'toolu-' + i;
+    store.record(distinct); await store.flush();
+  }
+  expect((await store.detail('child'))?.agentAssociation).toMatchObject({ state: 'incomplete', parentAgentId: null, agentType: null });
+  const incomplete = associationSnapshot('partial', false); incomplete.request.agentLaunches!.state = 'incomplete';
+  store.record(incomplete); await store.flush();
+  expect((await store.detail('child'))?.agentAssociation?.state).toBe('incomplete');
+  const damaged = new Database(config.dbPath);
+  damaged.query('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify({ ...snapshot('cleanup-trigger').request, agentLaunches: { state: 'complete', links: ['not-json'] } }), 'cleanup-trigger');
+  damaged.close();
+  expect((await store.detail('child'))?.agentAssociation?.state).toBe('incomplete');
+});
+
+test('summary 保留有界关联元数据且脱敏，off 不保存新证据', async () => {
+  const { store } = await open();
+  const session = '11111111-1111-4111-8111-111111111111';
+  const text = 'Async agent launched successfully. (This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)\nagentId: child-a (internal ID - do not mention to user.)\nsummary-secret-canary';
+  const body = { model: 'fixture', system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli;' }], metadata: { user_id: JSON.stringify({ device_id: 'a'.repeat(64), account_uuid: '', session_id: session }) }, messages: [{ role: 'assistant', content: [{ type: 'tool_use', id: 'toolu-a', name: 'Agent', input: { subagent_type: 'Explore' } }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu-a', content: [{ type: 'text', text }] }] }] };
+  for (const mode of ['summary', 'off'] as const) {
+    const prepared = prepareInput(parseInput({ request_id: 'trace-' + mode, body }, [], 'local_base_url'));
+    const trace = new RequestTrace(prepared, body, [], store, { mode, maxBodyBytes: 1024, engine: 'test/fixture', secrets: { token: 'summary-secret-canary' } });
+    trace.finish('error'); await store.flush();
+    const detail = await store.detail('trace-' + mode);
+    if (mode === 'off') expect(detail).toBeNull();
+    else { expect(detail?.request.agentLaunches?.links).toHaveLength(1); expect(detail?.captures.every(c => c.text === null)).toBe(true); expect(JSON.stringify(detail)).not.toContain('summary-secret-canary'); }
+  }
+  const hiddenId = prepareInput(parseInput({ request_id: 'hidden-agent-id', body }, [], 'local_base_url'));
+  new RequestTrace(hiddenId, body, [], store, { mode: 'summary', maxBodyBytes: 1024, engine: 'test/fixture', secrets: { token: 'child-a' } }).finish('error');
+  await store.flush();
+  expect((await store.detail('hidden-agent-id'))?.request.agentLaunches).toEqual({ state: 'incomplete', links: [] });
 });
