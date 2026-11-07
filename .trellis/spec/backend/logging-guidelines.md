@@ -282,3 +282,63 @@
 - tests/local-pool/startup.test.ts 与 tests/fixtures/local-pool-startup.ts：十一种故障、各自下一独立启动、四实例并发逐次回执、零模型、进程与临时目录清理；清理回执失败不能覆盖首错或阻止其他清理。
 - tests/local-pool/session-isolation.test.ts 与 isolation-client.py：两个真实 PTY、各三个实际 Explore，活动取消、排队取消、子代理期间异常退出、排队异常退出；核对存活会话续轮、原始 SHA/CCH、会话头、父子证据及账本，无重复发送和跨会话污染。
 - 所有上述模型验证使用仅 lo 的独立网络、合成账号和回环假池；故障注入仅属于测试工装，不增加产品环境开关或真实账号调用。
+
+## Scenario: 手工本地池失败现场自动取证
+
+### 1. Scope / Trigger
+
+- 手工服务就绪后，后台汇总既有失败日志与同轮账本；一次性命令也可补采已停止服务的记录。取证不启动引擎、不调用模型、不读取真实池配置，不改变转发、重试、业务响应或日志等级。
+- 数据所有者仍为 RequestTrace、日志表和 LocalPoolLedger；取证只读取脱敏元数据，不创建 LogStore 写线程、迁移数据库、读取正文或把中间值当最终实收。
+
+### 2. Signatures
+
+- `PoolIncidentCollector.open(options: PoolIncidentOptions): Promise<PoolIncidentCollector>`；options 含 runId、directory、可选新 output 目录及安全日志状态／固定诊断回调。
+- `collect(requestId?: string): Promise<PoolIncidentStatus>` 一次性扫描；`start(): void` 后台轮询；`status(): PoolIncidentStatus` 返回副本；`close(finalScan = true): Promise<void>` 停止并收口，重复关闭复用结果。
+- `projectPoolIncident(input: PoolIncidentEvidence): PoolIncidentReport` 是唯一白名单投影；传输阶段与计数继续复用 decodePoolTransportDiagnostics，错误码复用 POOL_FAILURE_CODES。
+- `bun run collect:pool-incidents --run <ID> --run-dir <目录> [--request-id <ID>] [--output <新目录>]`；不接收外部地址、Key 或模型参数。
+
+### 3. Contracts
+
+- ready.json、ledger.json 与显式 runId 必须一致，至少一份有效运行元数据确认归属；仅按完全相同的 requestId 关联预留。重复预留为冲突，缺失／损坏字段为未知，不从时间接近、会话或异常原文猜测。
+- 使用独立 readonly/strict SQLite 连接和 query_only，查询 requests/captures 元数据。正文只检查固定 bodies 目录中合法普通文件的存在性与尺寸；recordedStatus 和 bodyStorage 分开，哈希只保留原观测摘要，不声称重新验证正文。
+- 自动候选为 error、http_error、stream_error、incomplete；success 与正常 canceled 不生成故障报告。日志 off 明示不能取得完整证据；summary 的头值标未保存；离线命令无法知道当前内存采集状态时保持未知。
+- 每批最多 100 条，按 `(created_at,id)` 键分页，每个完整循环从头扫描，避免漏掉旧请求的晚终态；后台间隔 2 秒，收口等待阈值 5 秒，未取得回执仍保存明确缺口，不等待业务或重放请求。
+- 报告写入 `<run>/incidents/reports/<requestId>.json`，状态写入 `<run>/incidents/status.json`，合法请求 ID `status` 不得碰撞。旧平铺报告只读兼容并保留原文件；旧 status.json 始终属于进度文件。补采新证据须用新的 output，不覆盖旧快照。
+- schemaVersion=1 报告固定包含 collectedAt、runId、requestId、request、forwarding、transport、captures、correlations、evidenceGaps、interpretation。request 保存终态、时间、HTTP 状态、模式及采集异常是否存在；不复制 error、context 或模型正文。
+- forwarding 分开保存 sourceState、reservedAt、attempted、localStatus、upstreamStatus、outcome、failureCode；未观测池响应头时 upstreamStatus=null，不以本地 502 回填。transport 的阶段与连接累计计数不能证明池端接收、执行或安全重试，rootCause 保持 unknown。
+- captures 保留五阶段、attempt、时间、来源、表示、记录状态、观测／保存字节、SHA256 和正文存储检查。缺证以显式 null/unknown 及固定缺口码表示；不能用字段缺失冒充合法部分证据。
+- 标识仅取 wire_final 的 x-client-request-id，以及 upstream_response 的 x-oneapi-request-id、x-ds-trace-id、x-amz-cf-id；注明 stage、attempt、header。同源同头不同值标冲突，不同头的标识独立；代理 CONNECT ID 无证据时未知。值限 256 位受限 ASCII，拒绝脱敏占位符、控制字符和非法值。
+- 已有报告去重前必须完整验证固定字段、嵌套结构、枚举、可空值、阶段覆盖、标识对应关系及身份，拒绝额外载荷。完整声明未知的合法报告可复用；损坏或冲突文件保留并报 REPORT_CONFLICT，不静默跳过。
+- 输出目录权限 0700，报告／状态 0600；拒绝符号链接输出。报告先写临时文件，再排他发布；状态只在自身目录原子更新。元数据／报告上限 1 MiB，账本读取上限 32 MiB，超限或落盘失败只影响取证，不限制业务发送或调用预算。
+- 正常关闭在业务收口后停止定时器、等待当前批并做有界最终扫描；预算阈值 5 秒，未完成标 SHUTDOWN_PARTIAL。最终状态必须累计各页故障，末页成功不能清除前页失败；取证清理错误不覆盖业务清理错误。
+- PoolIncidentStatus 保存 active/degraded/stopped、扫描时间、完整循环、计数、日志可用性和固定故障码。源码载荷、任意异常、完整头、凭据、地址和正文均不进入报告或诊断日志；输出不可写时仅输出固定故障码。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 必须行为 |
+| --- | --- |
+| runId 冲突、运行身份无法确认 | RUN_MISMATCH / SOURCE_INVALID，拒绝跨源拼接 |
+| 来源不存在、损坏、超限或占锁 | 固定 SOURCE_*，可用证据保留缺口，不触发模型 |
+| 已有报告缺字段、非法嵌套值、额外载荷或身份冲突 | REPORT_CONFLICT，保留原文件 |
+| 已有报告完整声明 null/unknown | 合法复用，不当成损坏，也不补造值 |
+| 指定请求不存在或尚非失败终态 | REQUEST_NOT_FOUND / REQUEST_NOT_TERMINAL，不生成终态报告 |
+| 输出不可用或最终扫描未结束 | REPORT_WRITE_FAILED / SHUTDOWN_PARTIAL，业务行为不变 |
+| 首页失败、后页成功 | 最终 stopped 状态仍保留前页故障码 |
+
+### 5. Scenarios and Examples
+
+```bash
+bun run collect:pool-incidents --run manual-001 --run-dir artifacts/local-pool-runs/manual-001 --request-id status
+```
+
+- 正常：该请求的报告保存为 `incidents/reports/status.json`，不会覆盖 `incidents/status.json`；重复扫描只读校验后跳过。
+- 边界：旧账本没有传输诊断，或摘要没有响应标识，报告明确未知；原有平铺报告完整有效时只读复用。
+- 错误用法：只看 schema/runId 或数组长度就认定已有报告完整，或用最后一页成功表示整个收口成功。正确做法：验证完整报告结构，并累计全部扫描页的故障。
+- 错误用法：因没有池响应头断言模型未执行，或为补证据重放。正确做法：区分本地观测和池端证据，保留未知及原始单次发送约束。
+
+### 6. Tests Required
+
+- tests/unit/pool-incidents.test.ts：字段白名单、秘密排除、旧字段／零值、标识冲突、无代理证据、时间与阶段损坏、未知及 summary 语义。
+- tests/integration/pool-incidents.test.ts：真实表只读补采、源记录不变、正文未打开、权限、分页／晚终态、并发采集、跨运行、CLI、来源和输出故障、停止后无活动。
+- 同集成套件固定回归 CHK-001/FBK-001/FBK-002：保留字 ID、旧平铺报告、首中尾页故障及恢复、末页成功仍保留前页错误、损坏嵌套／额外字段与合法部分证据的区别。
+- tests/local-pool/incidents.test.ts：无外网固定原版的连接拒绝、收头前断连、HTTP／流错误、缺终态、多会话精确归属、随后独立请求成功、取证不可用不影响业务、零真实推理及无重放。

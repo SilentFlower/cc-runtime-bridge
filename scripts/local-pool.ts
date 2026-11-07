@@ -5,6 +5,7 @@ import { readConfig, startServer, type RunningServer, type LocalPoolStatus } fro
 import { loadPoolConfig, validatePoolConfig, POOL_MODEL, SYNTHETIC_KEY, type PoolConfig } from './testing/pool-common';
 import { LocalPoolEngine } from './testing/local-pool-engine';
 import { LocalPoolLedger } from './testing/local-pool-ledger';
+import { PoolIncidentCollector, poolIncidentCode, type PoolIncidentCode } from './testing/local-pool-incidents';
 import { BridgeError, isObject } from '../src/shared/errors';
 import { verifyRuntime } from '../src/runtime/profile';
 
@@ -54,7 +55,17 @@ export async function startLocalPool(options: LocalPoolOptions): Promise<LocalPo
     await writeFile(join(directory, 'ready.json'), JSON.stringify(info, null, 2) + '\n', { mode: 0o600 });
     let closing: Promise<void> | undefined;
     const running = app;
-    return { app, directory, status: () => ledger.status(), close: () => closing ??= running.close() };
+    let incidents: PoolIncidentCollector | undefined;
+    const diagnostic = (code: PoolIncidentCode): void => { try { process.stderr.write('本地池取证：' + code + '\n'); } catch {} };
+    // 取证与业务启动隔离，只读取已脱敏持久证据，失败不能令已就绪的服务退役。
+    try {
+      incidents = await PoolIncidentCollector.open({ directory, runId: options.runId, getLogStatus: () => ({ mode: config.logMode, captureErrorPresent: running.store.error !== null }), onDiagnostic: diagnostic });
+      incidents.start();
+    } catch (error) { diagnostic(poolIncidentCode(error)); }
+    return { app, directory, status: () => ledger.status(), close: () => closing ??= (async () => {
+      try { await running.close(); }
+      finally { try { await incidents?.close(); } catch (error) { diagnostic(poolIncidentCode(error)); } }
+    })() };
   } catch (error) {
     if (app) await app.close(); else await engine.close();
     if (isObject(error) && error.code === 'EADDRINUSE') throw new BridgeError('local_pool_port', '本地监听端口已占用：' + (options.port ?? 8787), 503);
@@ -83,7 +94,7 @@ if (import.meta.main) {
     const args = readArguments(process.argv.slice(2));
     const pool: PoolConfig = { ...await loadPoolConfig(args.poolEnv), mode: 'manual', maxRequests: null, timeoutMs: 0 };
     const running = await startLocalPool({ binary: args.binary, pool, runId: args.runId, directory: join('artifacts/local-pool-runs', args.runId), port: args.port });
-    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；请求次数：不限；模型参数：原样转发；无本地请求总超时\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n启动真实推理次数：0\n');
+    process.stdout.write('本地池联调已启动：http://127.0.0.1:' + running.app.server.port + '\n模型：' + POOL_MODEL + '；请求次数：不限；模型参数：原样转发；无本地请求总超时\nPID：' + process.pid + '；停止：Ctrl+C 或 kill ' + process.pid + '\n运行记录：' + running.directory + '\n失败取证及状态：' + join(running.directory, 'incidents') + '\n启动真实推理次数：0\n');
     let closing = false;
     const close = async (): Promise<void> => { if (closing) return; closing = true; await running.close(); process.exit(0); };
     process.on('SIGTERM', () => { void close(); }); process.on('SIGINT', () => { void close(); });

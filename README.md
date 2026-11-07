@@ -86,6 +86,18 @@ Base URL 不加 `/v1`。客户端模型使用上述 Claude 标识，池侧实际
 
 连接异常可查看该轮 `ledger.json` 的 `failureCode` 与 `transportDiagnostics`，区分发送前、等待响应头及响应体阶段。阶段仅表示本地观测，字节数是关联连接的累计计数；缺失为未知，不能据此断定模型没有执行或安全重试。未收到池响应头时 `upstreamStatus` 保持 `null`，本地错误码单独记录。
 
+手工服务自动把失败现场保存到该轮 `incidents/reports/<请求ID>.json`，取证状态为 `incidents/status.json`。报告仅包含已脱敏元数据、传输诊断和有来源的标识，不读取提示词或响应正文，也不新增模型调用。它按运行和请求精确关联，等待短暂收口后保存；已有报告不覆盖，缺失、冲突或采集失败明确可见。旧平铺报告继续只读识别，原文件保留；新报告与状态分目录，合法请求 ID `status` 不再冲突。正常取消不自动报故障。日志关闭、过期、丢失或进程强杀可能缺证；本地 TLS 实收与发送事件均不能证明池端执行，原始断连根因仍需结合现场调查。
+
+可以在服务停止后补采尚有记录的失败请求；`--output` 必须使用新目录，适合单独保存迟到证据，不覆盖原报告：
+
+```bash
+bun run collect:pool-incidents --run manual-001 \
+  --run-dir artifacts/local-pool-runs/manual-001 \
+  --request-id 请求ID --output artifacts/manual-001-supplement
+```
+
+省略 `--request-id` 补采本轮所有失败记录，省略 `--output` 使用该轮 incidents 目录。来源轮次冲突时拒绝拼接；旧记录缺少诊断时保持未知。取证异常只记录固定故障码，不改变业务响应或重试策略。
+
 日志详情的“最终出站采样”来自 Node TLS 实收，位于池映射之前；发送前参数与它分别展示。池映射后的参数不代表池端网络实收。原生工作进程使用合成凭据、独立 HOME/config、仅回环网络，遥测关闭。池若不支持某个原生字段，将显示实际错误，不静默删字段。
 
 ### HTTP 入口

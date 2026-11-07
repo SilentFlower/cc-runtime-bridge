@@ -15,7 +15,8 @@
     "test:ui": "bun scripts/test-ui.ts",
     "test:pool": "bun scripts/test-pool.ts",
     "test:pool:page": "bun scripts/test-pool-page.ts",
-    "start:pool": "bun scripts/local-pool.ts"
+    "start:pool": "bun scripts/local-pool.ts",
+    "collect:pool-incidents": "bun scripts/collect-pool-incidents.ts"
   },
   "engines": { "bun": ">=1.3.14" },
   "devDependencies": {
