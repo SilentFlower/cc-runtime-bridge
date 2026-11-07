@@ -8,6 +8,7 @@ import type { LogSnapshot, LogWriterConfig } from '../../src/control/log-schema'
 import { RequestTrace } from '../../src/control/trace';
 import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
+import type { CaptureStage } from '../../src/shared/contracts';
 
 const roots: string[] = [];
 const stores: LogStore[] = [];
@@ -82,6 +83,64 @@ test('正文文件损坏或丢失会明确标出采集失败', async () => {
   const detail = await store.detail('missing-body');
   expect(detail?.captures[0]?.status).toBe('failed');
   expect(detail?.captures[0]?.text).toBeNull();
+});
+
+/** 生成可从每个阶段独立辨认代次的快照，验证发布一致性而非写入顺序。
+ * @param id 合成请求标识。
+ * @param generation 快照代次，零代表运行中。
+ * @param bytes 正文填充大小。
+ * @return 含五个阶段的独立快照。
+ */
+function versionedSnapshot(id: string, generation: number, bytes = 0): LogSnapshot {
+  const value = snapshot(id, 0, '', generation ? 'success' : 'running');
+  value.request.durationMs = generation;
+  value.context!.promptId = 'generation-' + generation;
+  const stages: CaptureStage[] = ['ingress', 'header_policy', 'cc_prepared', 'wire_final', 'upstream_response'];
+  const text = generation + ':' + 'x'.repeat(bytes);
+  value.captures = stages.map(stage => ({ ...value.captures[0]!, stage, note: String(generation), text, observedBytes: Buffer.byteLength(text), storedBytes: Buffer.byteLength(text), status: !generation && stage === 'upstream_response' ? 'incomplete' : 'complete' }));
+  return value;
+}
+
+test('并发读取请求行和五阶段时只看到同一代已提交快照', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ccrb-snapshot-')); roots.push(root);
+  const { store } = await open({ dbPath: join(root, 'logs.sqlite'), bodyDir: join(root, 'bodies'), retainDays: 7, debugRetainDays: 3, maxBytes: 32 * 1024 * 1024 });
+  store.record(versionedSnapshot('atomic', 0)); await store.flush();
+  for (let generation = 1; generation <= 4; generation++) {
+    store.record(versionedSnapshot('atomic', generation, 1024 * 1024));
+    for (let read = 0; read < 100; read++) {
+      const detail = await store.detail('atomic');
+      expect(detail).not.toBeNull();
+      const observed = detail!.request.durationMs!;
+      expect(detail!.context!.promptId).toBe('generation-' + observed);
+      expect(detail!.captures).toHaveLength(5);
+      for (const capture of detail!.captures) {
+        expect(capture.note).toBe(String(observed));
+        expect(capture.text?.startsWith(observed + ':')).toBe(true);
+      }
+      if (observed === generation) break;
+    }
+    await store.flush();
+    expect((await store.detail('atomic'))?.request.durationMs).toBe(generation);
+  }
+  expect(store.error).toBeNull();
+});
+
+test('后续阶段写入失败时请求行与所有阶段整组回滚，旧正文仍可读', async () => {
+  const { store, config } = await open();
+  store.record(versionedSnapshot('rollback', 0)); await store.flush();
+  const before = await store.detail('rollback');
+  const db = new Database(config.dbPath);
+  try {
+    // 在最后一个阶段拒绝更新，确保此前请求行和阶段也必须回滚。
+    db.exec("CREATE TRIGGER reject_final_stage BEFORE UPDATE ON captures WHEN NEW.stage='upstream_response' BEGIN SELECT RAISE(ABORT, 'synthetic_stage_failure'); END");
+    store.record(versionedSnapshot('rollback', 1)); await store.flush();
+    expect(store.error).not.toBeNull();
+    const after = await store.detail('rollback');
+    expect(after?.request.state).toBe('running');
+    expect(after?.request.captureError).not.toBeNull();
+    expect(after?.context).toEqual(before?.context);
+    expect(after?.captures).toEqual(before?.captures);
+  } finally { db.close(); }
 });
 
 /** 创建同会话的子代理或启动证据快照。

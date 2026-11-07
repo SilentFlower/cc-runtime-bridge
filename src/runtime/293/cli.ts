@@ -53,6 +53,13 @@ export async function prepareCli(prepared: PreparedInput, bindings: NativeBindin
   const { body } = prepared.input;
   const requestedTools = body.tools ?? [];
   const context = prepared.context;
+  let promptIndex = -1;
+  // 官方轮次选择器跳过任何含工具结果的消息，ID 必须归到此前真实用户轮次。
+  for (let index = body.messages.length - 1; index >= 0; index--) {
+    const message = body.messages[index]!;
+    if (message.role === 'user' && (typeof message.content === 'string' || !message.content.some(block => block.type === 'tool_result'))) { promptIndex = index; break; }
+  }
+  if (promptIndex < 0) throw new BridgeError('unsupported_parameter', '普通 API 历史缺少可归属 Prompt ID 的用户轮次，需要提供完整用户与工具历史', 422);
   const { core } = bindings;
   bindings.state.bf(body.model);
   const querySource = context.querySource;
@@ -94,8 +101,8 @@ export async function prepareCli(prepared: PreparedInput, bindings: NativeBindin
       business.push(value);
       continue;
     }
-    const human = context.requestClass === 'main' && context.agentKind === 'main' && !content.every(block => block.type === 'tool_result');
-    const value = core.Re({ content, ...(index === body.messages.length - 1 ? { promptId: context.promptId } : {}), ...(human ? { origin: { kind: 'human' } } : {}) });
+    const human = context.requestClass === 'main' && context.agentKind === 'main' && content.length > 0 && !content.some(block => block.type === 'tool_result');
+    const value = core.Re({ content, ...(index === promptIndex ? { promptId: context.promptId } : {}), ...(human ? { origin: { kind: 'human' } } : {}) });
     if (human) {
       value.turnOrigin = 'human';
       value.turnPosition = core.Fyn(business, 'human');

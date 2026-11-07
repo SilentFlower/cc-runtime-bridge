@@ -151,12 +151,21 @@ export class LogStore {
    * @return 详情，记录不存在时返回 null。
    */
   async detail(id: string): Promise<RequestDetail | null> {
-    const row = this.db.query<{ payload: string; context_json: string; decisions_json: string }, [string]>('SELECT payload,context_json,decisions_json FROM requests WHERE id=?').get(id);
-    if (!row) return null;
-    const request = JSON.parse(row.payload) as RequestRow;
-    if (this.failedIds.has(id)) request.captureError = this.error;
-    const captures = this.db.query<{ payload: string; body_file: string | null }, [string]>('SELECT payload,body_file FROM captures WHERE request_id=? ORDER BY rowid').all(id);
-    const records = await Promise.all(captures.map(async capture => {
+    // WAL 允许查询期间提交新快照；把元数据读在同一事务内，避免跨代拼接。
+    const snapshot = this.db.transaction(() => {
+      const row = this.db.query<{ payload: string; context_json: string; decisions_json: string }, [string]>('SELECT payload,context_json,decisions_json FROM requests WHERE id=?').get(id);
+      if (!row) return null;
+      const request = JSON.parse(row.payload) as RequestRow;
+      if (this.failedIds.has(id)) request.captureError = this.error;
+      const captures = this.db.query<{ payload: string; body_file: string | null }, [string]>('SELECT payload,body_file FROM captures WHERE request_id=? ORDER BY rowid').all(id);
+      const context = JSON.parse(row.context_json) as RequestContext | null;
+      return { request, context, decisions: JSON.parse(row.decisions_json), captures,
+        ...(context && (context.agentKind === 'subagent' || context.agentKind === 'teammate') ? { agentAssociation: this.association(request, context) } : {}),
+      };
+    })();
+    if (!snapshot) return null;
+    // 文件 IO 在事务外等待，避免把异步读取变成数据库长事务。
+    const records = await Promise.all(snapshot.captures.map(async capture => {
       const parsed = JSON.parse(capture.payload);
       if (capture.body_file) {
         try { parsed.text = await readFile(join(this.config.bodyDir, capture.body_file), 'utf8'); }
@@ -164,10 +173,7 @@ export class LogStore {
       }
       return parsed;
     }));
-    const context = JSON.parse(row.context_json) as RequestContext | null;
-    return { request, context, decisions: JSON.parse(row.decisions_json), captures: records,
-      ...(context && (context.agentKind === 'subagent' || context.agentKind === 'teammate') ? { agentAssociation: this.association(request, context) } : {}),
-    };
+    return { ...snapshot, captures: records };
   }
 
   /** 等待已提交日志，用于有序关闭和验收，不在响应热路径调用。

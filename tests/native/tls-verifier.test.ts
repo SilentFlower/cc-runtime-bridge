@@ -120,6 +120,90 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     evidence.push({ case: 'first-actual-relay', state: result.record.request.state, final: result.record.captures.find(value => value.stage === 'wire_final') });
   }, 30000);
 
+  test.each([false, true])('工具续轮六类 Prompt ID 与独立 TLS 实收一致：verify=%s', async verify => {
+    const running = await app(await endpoint(), verify);
+    const tool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
+    const messages = [{ role: 'user', content: '查询工具状态' }, { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_prompt', name: tool.name, input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_prompt', content: 'ready' }] }];
+    try {
+      for (const requestClass of ['main', 'subagent', 'workflow', 'compaction', 'auxiliary', 'side_reply']) {
+        const promptId = randomUUID(), sessionId = randomUUID();
+        const child = requestClass === 'subagent' || requestClass === 'workflow';
+        const context = { requestClass, promptId, sessionId, ...(child ? { agentId: 'tls-child', parentAgentId: 'tls-parent', agentType: 'Explore' } : {}), ...(requestClass === 'workflow' ? { workflowRunId: 'tls-workflow' } : {}) };
+        const before = (await inspect()).calls.length;
+        const result = await send(running, 'json', { model: 'claude-sonnet-5-5', messages, tools: [tool] }, context);
+        expect({ status: result.response.status, error: result.response.status === 200 ? '' : result.raw }).toEqual({ status: 200, error: '' });
+        const report = await inspect(), call = report.calls.at(-1)!;
+        expect(report.calls.length).toBe(before + 1);
+        const received = JSON.parse(await readFile(call.file, 'utf8'));
+        expect(new Headers(received.headers).get('x-claude-code-prompt-id')).toBe(promptId);
+        expect(result.record.context?.promptId).toBe(promptId);
+        expect(result.record.request.captureError).toBeNull();
+        verifyCch(received.body);
+        if (verify) assertFinal(result.record, call);
+        else expect(result.record.captures.find(capture => capture.stage === 'wire_final')?.status).toBe('unavailable');
+        evidence.push({ case: 'tool-prompt-' + requestClass, verify, promptId, finalSha256: call.bodySha256, httpSha256: call.rawSha256 });
+      }
+    } finally { await close(running); }
+  }, 30000);
+
+  test.each([[false, false], [true, false], [false, true], [true, true]])('显式 disabled 保留到独立 TLS 实收：verify=%s customBase=%s', async (verify, customBase) => {
+    const running = await app(await endpoint(), verify, customBase ? { CCRB_NATIVE_BASE_URL: 'https://fixture.local' } : {});
+    const tool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
+    const history = [{ role: 'user', content: '查询工具状态' }, { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_disabled', name: tool.name, input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_disabled', content: 'ready' }] }];
+    try {
+      for (const shape of [{ stream: false }, { stream: true }, { stream: false, messages: history, tools: [tool] }]) {
+        const body = { model: 'deepseek-flash', thinking: { type: 'disabled' }, ...shape };
+        const original = JSON.stringify(body), before = (await inspect()).calls.length;
+        const result = await send(running, 'json', body);
+        expect({ status: result.response.status, error: result.response.status === 200 ? '' : result.raw }).toEqual({ status: 200, error: '' });
+        expect(result.record.request.state).toBe('success');
+        expect(result.record.request.captureError).toBeNull();
+        expect(result.response.headers.get('content-type')).toContain(shape.stream ? 'text/event-stream' : 'application/json');
+        const report = await inspect(), call = report.calls.at(-1)!;
+        expect(report.calls.length).toBe(before + 1);
+        const received = JSON.parse(await readFile(call.file, 'utf8'));
+        expect(JSON.parse(received.body).thinking).toEqual({ type: 'disabled' });
+        const prepared = result.record.captures.find(capture => capture.stage === 'cc_prepared')!;
+        expect(prepared.sha256).toBe(createHash('sha256').update(prepared.text!).digest('hex'));
+        const cch = customBase ? null : verifyCch(received.body);
+        expect(cch ? prepared.text!.replace('cch=00000', 'cch=' + cch.actual) : prepared.text).toBe(received.body);
+        if (verify) assertFinal(result.record, call);
+        else expect(result.record.captures.find(capture => capture.stage === 'wire_final')?.status).toBe('unavailable');
+        expect(JSON.stringify(body)).toBe(original);
+        evidence.push({ case: 'disabled-' + (shape.messages ? 'tool-history' : shape.stream ? 'sse' : 'json'), verify, customBase, bodySha256: call.bodySha256, httpSha256: call.rawSha256 });
+      }
+      for (const body of [{ model: 'deepseek-flash' }, { model: 'deepseek-flash', ...nativeBody() }, { model: 'deepseek-flash', ...nativeBody(), thinking: { type: 'disabled', future: '保留原生扩展' } }]) {
+        const before = (await inspect()).calls.length;
+        const result = await send(running, 'json', body);
+        expect(result.response.status).toBe(200);
+        const report = await inspect(), call = report.calls.at(-1)!;
+        expect(report.calls.length).toBe(before + 1);
+        const received = JSON.parse(await readFile(call.file, 'utf8'));
+        const thinking = JSON.parse(received.body).thinking;
+        if ('thinking' in body) expect(thinking).toEqual(body.thinking);
+        else if ('system' in body) expect(thinking).toBeUndefined();
+        else expect(thinking).toEqual({ type: 'adaptive', display: 'updates' });
+        expect(result.record.context?.inputFormat).toBe('system' in body ? 'claude_code' : 'api');
+        if (!customBase) verifyCch(received.body);
+        if (verify) assertFinal(result.record, call);
+      }
+    } finally { await close(running); }
+  }, 30000);
+
+  test.each([false, true])('普通 API 不可保留的 thinking 明确拒绝且零发送：verify=%s', async verify => {
+    const running = await app(await endpoint(), verify);
+    try {
+      for (const body of [{ model: 'deepseek-flash', thinking: { type: 'disabled', future: '不能丢弃' } }, { model: 'deepseek-flash', thinking: { type: 'unknown' } }, { model: 'claude-sonnet-4-6', thinking: { type: 'enabled', budget_tokens: 2048 } }]) {
+        const before = (await inspect()).calls.length;
+        const result = await send(running, 'json', body);
+        expect(result.response.status).toBe(422);
+        expect(result.raw).toContain('unsupported_parameter');
+        expect(result.raw).toContain('thinking');
+        expect((await inspect()).calls.length).toBe(before);
+      }
+    } finally { await close(running); }
+  }, 30000);
+
   test.each(['literal', 'trailing_space', 'leading_space', 'cch_first', 'cch_last', 'escaped_prefix', 'literal_no_cch'])('CHK-001/CHK-002 实际原版回环：%s', async scene => {
     const target = await endpoint();
     const before = (await inspect()).calls.length;

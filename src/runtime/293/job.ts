@@ -190,13 +190,18 @@ export async function generateNativeRequest(prepared: PreparedInput, bindings: N
                 if (!isObject(result)) throw new Error('原生正文不是 JSON 对象');
                 // 原生入站只借用此处的发送上下文；种子历史随后被完整替换，不能据其提醒布局拦截业务。
                 if (purpose === 'business') {
+                  // CLI 以省略表示关闭，普通 API 的明确值必须保留；只适配已知完整形状，避免吞掉扩展或覆盖原生不同值。
+                  if (body.thinking?.type === 'disabled' && Object.keys(body.thinking).length === 1 && result.thinking === undefined) {
+                    result.thinking = structuredClone(body.thinking);
+                    init.body = JSON.stringify(result);
+                  }
                   ensureMessages(body.messages, metadata, result.messages);
                   for (const key of ['max_tokens', 'temperature', 'tool_choice', 'output_config'] as const) {
                     if (body[key] !== undefined) ensureSubset(body[key], result[key], key);
                   }
                   // 省略也表示无工具，不能让原生默认声明绕过保留检查。
                   ensureSubset(body.tools ?? [], result.tools, 'tools');
-                  if (body.thinking !== undefined && !(body.thinking.type === 'disabled' && result.thinking === undefined)) ensureSubset(body.thinking, result.thinking, 'thinking');
+                  if (body.thinking !== undefined) ensureSubset(body.thinking, result.thinking, 'thinking');
                 }
                 if (signal.aborted) throw new DOMException('请求已取消', 'AbortError');
                 captured = { body: result, headers: new Headers(init.headers), agent: cli.agent };

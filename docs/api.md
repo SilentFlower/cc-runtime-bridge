@@ -60,7 +60,7 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 | tools | 省略或 [] 均无工具；非空数组为完整列表，不加入 CC 内置、延迟或搜索工具；schema 经原生 extraToolSchemas 输入 |
 | tool_choice | 交给实际原生构造，不在入口根据工具列表或 thinking 组合提前拒绝 |
 | max_tokens、temperature | 映射原生输出预算和温度参数，只检查有限数值结构，不自设模型能力范围 |
-| thinking | 交给实际原生构造，不在入口添加枚举或最小预算政策 |
+| thinking | 交给实际原生构造；完整对象恰为 {"type":"disabled"} 且被原生省略时补齐原值，再做保留检查；不在入口添加枚举或最小预算政策 |
 | output_config | effort、format；模型或原生能力不能表达时返回 422 |
 | stream | true 返回原始 SSE；false 或省略返回原始 JSON |
 
@@ -70,7 +70,7 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 
 普通 API 的显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未知合法端到端请求头采用默认保留策略。完整原生 billing 由上一节的独立分支处理。
 
-省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。调用方应按实际需要明确选择受支持参数。
+省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。普通 API 的显式 {"type":"disabled"} 被原生省略时由桥接补齐，额外字段及原生已有不同值不能套用这项适配。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。完整原生 CC 正文仍保持原值；最终发送该字段不保证自定义池遵守关闭，响应原样返回。
 
 模型参数的业务规则由前置服务与上游判断。普通 API 仍检查实际组装所需结构与显式字段保留；原生构造无法保留时明确失败，不能静默丢字段。原生正文则直接保留参数，不让上下文种子的默认模型判断覆盖原始请求。原生构造错误和模型失败事件直接收口，不隐式切换模型或重试。
 
@@ -84,6 +84,7 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 - agentKind 支持 main、subagent、teammate；类别与身份冲突返回错误。
 - 压缩可以保留主代理或子代理身份，不能只改变 request-class 头。
 - 普通 API 的 sessionId、promptId 未提供时生成；原生分支优先使用 metadata 会话及可选 billing prompt，缺少 prompt 时生成。promptId 必须为 UUID。
+- 普通 API 的有效 promptId 绑定历史中最近一条不含 tool_result 的 user 轮次，工具结果仍保持续轮语义；调用方可显式复用该 ID 关联同一次工具往返。没有可归属用户轮次的历史返回 422，发送前拒绝；sessionId 不代替 promptId。
 
 账号工作进程惰性启动、串行常驻，每轮建立独立原生会话根并以 session transition 恢复指定会话身份。正常完成后复用进程，取消或异常后隔离重建；不重放当前请求。它保留请求关联，不在本地维护可执行的用户代理循环。原版和精简版的构建与身份合同见 [运行时说明](runtime.md)。
 

@@ -34,6 +34,7 @@
 - 控制配置中的显式 API key 使用官方本地规则只记录使用确认标识，不保存完整密钥；已有 rejected 决定返回 native_configuration/503，不改写拒绝状态。初始化、预热及测试不能因此触发真实账号登录或付费推理。
 - worker_ready 晚于原生绑定、Nst 与本地构造依赖初始化；本地初始化使用独立根，发送前中止，不发模型请求或业务事件，成本计入总启动时间。每轮经 nEr 创建全新原生根，AsyncLocalStorage/yLs 绑定作用域，再调用 t_；同 sessionId 也不能复用上一轮账本、请求日志及取消状态。
 - 普通 API 只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。原生入站的扩展正文及必要改写另见后文合同。
+- 普通 API 的 business 构造仅对完整对象恰为 thinking={type:'disabled'} 且原生结果缺失 thinking 的情况补齐原值，同步 result 与 init.body 后再做完整保留校验。省略保持原生默认；额外字段和原生已有不同值不适用补齐，不能静默删改。transport_context 种子与完整原生业务不应用此适配。cc_prepared、同次 Ree 实际发送及 TLS 哈希必须反映相同正文；上游仍返回 thinking 时原样保留，不过滤或重发。
 - OM 的 deps.callModel 仅进入一次 K_t；其 fetchOverride 取得同一官方 SDK 的正文、头及发送上下文，在显式字段核验后由 Ree 唯一发送。stream 仅按调用方明确值映射；SDK 不取得 Response，桥接独占原始逻辑响应，读取收口后立即取消原生解析。调用次数守卫禁止模型重试，不创建第二个 SDK，不替换全局 fetch；本地工具、代理循环及自动辅助压缩禁用，显式 compaction 保留。
 - 只在精简构建复用固定摘要的六个纯正文格式化函数 KLo、XLo、QLo、nNo、sNo、pNo。每次仍求值原生条件与外层钩子，每个工厂仅保留最近一次原始条件及字符串；UTF-8 键和值每项 ≤64 KiB、六项 ≤384 KiB，不代表堆或 RSS 上限。失败和超限不入缓存；整份提示词、权限/工具选择、会话段落表、memory 读取及请求正文不跨作业缓存。
 - HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error；final_capture_ready(attempt=1) 仅由控制侧独立采集器产生，工作进程不得伪造。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
@@ -44,6 +45,7 @@
 - Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。其余合法端到端扩展默认保留，不允许笼统删除 x-claude-code-*。
 - 透传头与 SDK 默认头重名时，先聚合调用方完整的同名有序值，再覆盖该默认值；不能在默认值后再次 append。Accept 和 anthropic-dangerous-direct-browser-access 不因 SDK 已有相同默认值而重复，调用方显式不同值和合法多值仍保持；beta/version 及运行时所属字段沿各自专用规则处理。
 - 上下文为类别、agentKind、agentId、parentAgentId、agentType、sessionId、promptId、workflowRunId 的同一来源。promptId 必须为 UUID。
+- 普通 API 的有效 promptId 归到最近一条不含任何 tool_result 的 user 实体，由官方轮次选择器生成 billing 与请求头；工具结果及混合结果不冒充新的 human。显式 ID 可由调用方跨工具往返复用，省略仍按请求生成，不用 sessionId 代替，也不共享上一原生根。没有可归属用户轮次时在构造前返回 unsupported_parameter/422，零发送。
 - 类别支持 main、subagent、workflow、compaction、auxiliary、side_reply。子代理必须有 agentId；workflow 还需要 workflowRunId；主代理独立 agentId 须显式 agentKind=main。
 - 响应逻辑字节原样返回，删除不匹配逻辑正文的长度、编码及连接字段。工具交给调用方，不注册本地执行器。取消解除待消费片段并收口原生进程，不重放模型请求。
 - 新增公共类、接口和公开方法写中文 JSDoc；导入或调用现有内部接口前读取定义与实测证据。
@@ -54,6 +56,8 @@
 | --- | --- |
 | 普通 API 不支持的正文键、system 缓存参数、beta 或原生无法保留的显式值 | 422，发送前拒绝 |
 | 上下文冲突、非法头、无效 promptId | 400 |
+| 普通 API 历史无可归属用户轮次 | unsupported_parameter/422，零业务发送 |
+| 明确且仅含 type=disabled 的 thinking 被原生省略 | 补齐明确值并同步实际发送正文，再校验；带额外字段或原生已有不同值且无法保留时 unsupported_parameter/422、零发送 |
 | 合法透传头与 SDK 默认值重名 | 保持调用方完整头值，合法多值按序保留；不拼入 SDK 默认值 |
 | 重复 request_id | 409，不覆盖已有记录 |
 | 超过 16 个执行或等待作业 | 按原顺序继续串行执行，不产生本地 queue_full |
@@ -74,6 +78,8 @@
 - 边界：26 MiB 请求和超过 50 秒的首响应等待保持可转发，日志可截断预览但保留原始字节数及哈希。不能把有限验收的预算或日志容量当作业务准入政策。
 - 错误用法：子代理只强行声明 requestClass=main；这样会使身份与 billing 矛盾。正确做法是保留 subagent 和真实关联，冲突明确拒绝。
 - 错误用法：将整个 API JSON 转成 prompt，或收到 tool_use 后本地执行。正确做法是结构化映射，单轮返回原始工具事件。
+- 错误用法：只给数组末尾的 tool_result 写 promptId，官方轮次选择会跳过该记录。正确做法是把有效 ID 绑定到最近的实际用户轮次，验证日志、billing 与最终头一致；没有该轮次则明确拒绝。
+- 错误用法：把原生省略 disabled 当作保留成功，或为关闭效果删除响应 thinking 块。正确做法是在明确的普通 API 适配边界补齐发送值，并分别验证实际写出和上游响应语义；省略参数及完整原生正文不套用补齐。
 - 错误用法：将入站 Accept 或浏览器访问开关追加到 SDK 已有默认值，产生 application/json, application/json 或 true, true。正确做法是先保留调用方同名完整表示，再覆盖该透传字段的默认值。
 - 演示必须显式选择 demo；它只产生合成内容，不能作为原生发送证明。
 - 正常复用：连续两个主/子代理作业保持同 PID，但每轮使用独立 session 根和 prompt；只有下面的匹配空闲帧到达后，才能接收下一作业：
@@ -91,6 +97,8 @@
 - tests/unit/profile.test.ts：错误二进制不执行、不回退。
 - tests/unit/engine.test.ts、worker-protocol.test.ts：同 PID 与哈希次数、文件替换、错归属/载荷覆盖、双终态/缺 idle、迟到帧、取消、背压和关闭；错误作业不得重放。
 - tests/native/native.test.ts：无外网 TLS 上游独立核对 CCH、metadata/session/prompt、六类请求、thinking/工具历史、非流式、HTTP/SSE 错误及取消后下一请求；实际模型发送次数必须符合 attempt=1。
+- 同一套件另核对完整工具续轮、混合文本/结果、最近用户轮次、显式/自动 promptId、同会话独立根，以及无用户轮次 422/零发送；tests/native/tls-verifier.test.ts 在 off/verify 下逐项核对六类续轮的独立实收头、实体与整体 HTTP 哈希及原生 CCH。
+- tests/native/tls-verifier.test.ts 在 off/verify 和默认/自定义 Base URL 下核对显式 disabled 的 JSON、SSE、工具历史，准备值与独立 TLS 实收只允许原生 CCH 差异；另核对省略时的原生 adaptive、原生业务省略/扩展保真，以及普通额外字段、未知类型和 enabled 改 adaptive 的 422 零发送。
 - 同一原生套件对普通 API 和原生入站核对 Accept、浏览器访问开关的精确值、显式不同值及大小写混合的 Accept-Language 有序多值；tests/local-pool/gateway.test.ts 另核对实际 293 --print 客户端的 Node TLS 实收头值不重复。
 - 同一原生套件分别核对原版与精简版的 User-Agent 为 claude-cli/2.1.293 (external, cli)，billing 包含 cc_entrypoint=cli；不再主动设置 SDK client-app。最终 CCH 由实际 TLS 接收正文独立验证，不用标签替换或日志投影代替原生生成；兼容与 CCH 不能解释为账号免封保证。
 - 原版与登记轻量文件运行同一原生套件，核对同 session 多轮、Unicode、空闲及流中崩溃后的重建。独立部署须隐藏原版/源码/构建目录后仍能运行；重复生成核对分发及执行体 SHA256。

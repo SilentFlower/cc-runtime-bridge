@@ -840,6 +840,59 @@ native('官方 293 的无外网回环链路', () => {
     expect(requests.at(-1)!.raw).toContain('toolu_native_history'); assertCch(requests.at(-1)!.raw);
   });
 
+  test.each(['main', 'subagent', 'workflow', 'compaction', 'auxiliary', 'side_reply'])('普通 API 工具续轮的 Prompt ID 与实际用户轮次一致：%s', async requestClass => {
+    mode = 'normal';
+    const promptId = '77777777-7777-4777-8777-777777777777';
+    const sessionId = '88888888-8888-4888-8888-888888888888';
+    const child = requestClass === 'subagent' || requestClass === 'workflow';
+    const context = { requestClass, promptId, sessionId, ...(child ? { agentId: 'tool-child', parentAgentId: 'tool-parent', agentType: 'Explore' } : {}), ...(requestClass === 'workflow' ? { workflowRunId: 'tool-workflow' } : {}) };
+    const messages = nativeHistory.map(message => message.role === 'assistant' ? { ...message, content: (message.content as { type: string }[]).filter(block => block.type !== 'thinking') } : message);
+    const before = requests.length;
+    const result = await send({ model: 'claude-sonnet-5-5', messages, tools: [nativeTool], stream: true }, context);
+    expect(result.response.status).toBe(200); expect(requests.length).toBe(before + 1);
+    const wire = requests.at(-1)!, headers = new Headers(wire.headers);
+    expect(headers.get('x-claude-code-prompt-id')).toBe(promptId);
+    expect(headers.get('x-claude-code-session-id')).toBe(sessionId);
+    expect(wire.raw).toContain('cc_prompt_id=' + promptId);
+    const detail = await app.store.detail(result.id);
+    expect(detail?.context?.promptId).toBe(promptId);
+    expect(detail?.request.promptId).toBe(promptId);
+    assertCch(wire.raw);
+  });
+
+  test('普通 API 工具续轮自动 ID、多个用户轮次与混合结果保持同次归因', async () => {
+    mode = 'normal';
+    const messages = [
+      ...nativeHistory.map(message => message.role === 'assistant' ? { ...message, content: (message.content as { type: string }[]).filter(block => block.type !== 'thinking') } : message),
+      { role: 'user', content: '继续查询最新状态' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_second', name: 'lookup_status', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_second', content: 'new-ready' }, { type: 'text', text: '客户端补充的结果说明' }] },
+    ];
+    const sessionId = '99999999-9999-4999-8999-999999999999';
+    const ids: string[] = [];
+    for (let round = 0; round < 2; round++) {
+      const before = requests.length;
+      const result = await send({ model: 'claude-sonnet-5-5', messages, tools: [nativeTool], stream: true }, { sessionId });
+      expect(result.response.status).toBe(200); expect(requests.length).toBe(before + 1);
+      const detail = (await app.store.detail(result.id))!;
+      ids.push(detail.context!.promptId);
+      const wire = requests.at(-1)!;
+      expect(new Headers(wire.headers).get('x-claude-code-prompt-id')).toBe(detail.context!.promptId);
+      expect(detail.context!.promptId).not.toBe(sessionId);
+      expect(wire.raw).toContain('new-ready'); expect(wire.raw).toContain('客户端补充的结果说明');
+      assertCch(wire.raw);
+    }
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  test('工具续轮缺少可归属用户轮次时明确拒绝且零发送', async () => {
+    const before = requests.length;
+    const result = await send({ model: 'claude-sonnet-5-5', messages: nativeHistory.slice(1), tools: [nativeTool], stream: true });
+    expect(result.response.status).toBe(422);
+    expect(JSON.parse(result.raw).error.type).toBe('unsupported_parameter');
+    expect(requests.length).toBe(before);
+  });
+
   test('原生版本和上下文冲突、私有控制字段在发送前明确拒绝', async () => {
     const wrong = nativeBody(); (wrong.system as { text: string }[])[0]!.text = (wrong.system as { text: string }[])[0]!.text.replace('2.1.293', '2.1.303');
     for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ env: { PATH: '/untrusted' } }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {

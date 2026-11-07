@@ -50,19 +50,26 @@ function cleanup(): void {
 
 function save(snapshot: LogSnapshot, sequence: number): void {
   const row = snapshot.request;
-  db.query('INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload,context_json=excluded.context_json,decisions_json=excluded.decisions_json').run(row.id, row.createdAt, row.model, row.state, row.requestClass, row.sessionId, JSON.stringify(row), JSON.stringify(snapshot.context), JSON.stringify(snapshot.decisions));
-  for (const capture of snapshot.captures) {
+  // 正文先写到本轮唯一文件；索引尚未发布时，读者继续读取旧快照。
+  const changes = snapshot.captures.flatMap(capture => {
     const previous = db.query<{ payload: string; body_file: string | null }, [string, string, number]>('SELECT payload,body_file FROM captures WHERE request_id=? AND stage=? AND attempt=?').get(row.id, capture.stage, capture.attempt);
-    const payload = { ...capture, text: null };
-    if (previous?.payload === JSON.stringify(payload)) continue;
+    const payload = JSON.stringify({ ...capture, text: null });
+    if (previous?.payload === payload) return [];
     let file: string | null = null;
     if (capture.text !== null) {
       file = row.id + '-' + capture.stage + '-' + capture.attempt + '-' + sequence + '.txt';
       writeFileSync(join(config.bodyDir, file), capture.text, { mode: 0o600 });
     }
-    db.query('INSERT INTO captures VALUES (?,?,?,?,?) ON CONFLICT(request_id,stage,attempt) DO UPDATE SET payload=excluded.payload,body_file=excluded.body_file').run(row.id, capture.stage, capture.attempt, JSON.stringify(payload), file);
-    // 旧文件延后由清理器回收，查询方即使已取到旧索引也仍有机会完成读取。
-  }
+    return [{ stage: capture.stage, attempt: capture.attempt, payload, file }];
+  });
+  // 请求终态和全部阶段索引必须一起发布；阶段失败时不能留下成功请求行。
+  db.transaction(() => {
+    db.query('INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload,context_json=excluded.context_json,decisions_json=excluded.decisions_json').run(row.id, row.createdAt, row.model, row.state, row.requestClass, row.sessionId, JSON.stringify(row), JSON.stringify(snapshot.context), JSON.stringify(snapshot.decisions));
+    for (const change of changes) {
+      db.query('INSERT INTO captures VALUES (?,?,?,?,?) ON CONFLICT(request_id,stage,attempt) DO UPDATE SET payload=excluded.payload,body_file=excluded.body_file').run(row.id, change.stage, change.attempt, change.payload, change.file);
+    }
+  })();
+  // 回滚后的新文件及不再引用的旧文件均延后清理，保护已取得旧索引的读者。
   cleanup();
 }
 
