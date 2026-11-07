@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"遵循既有采集完整性、日志等级、脱敏、只读存储、手工账本及故障隔离合同"}
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"保持固定运行时、单次发送、取消、合法头部与本地 Base URL 的既有行为"}
+{"file":".trellis/tasks/11-07-pool-incident-forensics/research/findings.md","reason":"取证来源、终态与账本时序、真实可见标识和未知边界的源码依据"}
