@@ -27,7 +27,7 @@
 - demo/fixture 必须明显标记演示与未调用上游。wire_final 不可用时显示未采集，不能以中间原文填充。
 - 文本、模型名、原文全部通过 textContent 渲染；不得通过 innerHTML 解释输入。复制只使用已经脱敏的接口文本。
 - 同会话按钮用发生时的 sessionId 查询；父 agentId 与 agentId 保留快照，不依赖活跃进程对象。
-- context.classification 存在时显示“自动权限分类”和固定 293 原生构造来源；其他原生请求显示“未识别特殊用途”，不把默认主类别当作已识别的特殊用途。
+- context.classification 按 purpose 显示“自动权限分类”“会话标题生成”或“会话压缩”，并显示固定 293 原生构造来源；类别与 querySource 的唯一映射和 profile 校验由 backend/runtime-contract.md 所有，页面复用共享解码器。其他原生请求显示“未识别特殊用途”，不把默认主类别当作已识别的特殊用途。
 - 子代理详情消费服务端 agentAssociation 显示有效父代理/类型、逐字段来源和 explicit/linked/unknown/conflict/incomplete 状态；由证据补齐时另示发生时空值，证据按钮打开对应请求。页面不解析 Agent 文本，不把缺失类型当已知 custom；关联合同由 backend/logging-guidelines.md 所有。
 - 表单子元素不能命名为 reset，以免覆盖 HTMLFormElement.reset()；当前按钮 ID 为 reset-filters。
 - 复制提示在对话框打开时挂到 dialog 内，以免被原生顶层对话框遮住。

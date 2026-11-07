@@ -13,7 +13,35 @@ function field(value: unknown): value is string { return typeof value === 'strin
  * @return 是否为当前接纳的证据合同。
  */
 export function isNativeClassification(value: unknown): value is NativeClassification {
-  return isObject(value) && value.purpose === 'auto_permission_classifier' && value.source === 'native_profile' && ['cc293-auto-mode-xml-s1', 'cc293-auto-mode-xml-s2'].includes(String(value.profile));
+  if (!isObject(value) || value.source !== 'native_profile') return false;
+  switch (value.purpose) {
+    case 'auto_permission_classifier': return ['cc293-auto-mode-xml-s1', 'cc293-auto-mode-xml-s2'].includes(String(value.profile));
+    case 'session_title': return value.profile === 'cc293-session-title-v1';
+    case 'compaction': return value.profile === 'cc293-compact-full-v1';
+    default: return false;
+  }
+}
+
+/** 将已验证用途映射到统一类别和官方来源，避免入口与解码边界各自维护规则。
+ * @param classification 已验证的固定版本用途证据。
+ * @return 对应请求类别和原生 querySource。
+ */
+export function classificationContext(classification: NativeClassification): Pick<RequestContext, 'requestClass' | 'querySource'> {
+  switch (classification.purpose) {
+    case 'auto_permission_classifier': return { requestClass: 'auxiliary', querySource: 'auto_mode' };
+    case 'session_title': return { requestClass: 'auxiliary', querySource: 'generate_session_title' };
+    case 'compaction': return { requestClass: 'compaction', querySource: 'compact' };
+  }
+}
+
+/** 核对用途证据与上下文，私有协议和日志读取复用同一合同。
+ * @param value 未知上下文；不据此验证上下文的其他字段。
+ * @return 接入类型、用途、类别及来源是否一致。
+ */
+export function isNativeClassificationContext(value: unknown): boolean {
+  if (!isObject(value) || value.inputFormat !== 'claude_code' || !isNativeClassification(value.classification)) return false;
+  const expected = classificationContext(value.classification);
+  return value.requestClass === expected.requestClass && value.querySource === expected.querySource;
 }
 
 /** 校验有界启动证据，旧记录或损坏数据不能当作空的完整结果。

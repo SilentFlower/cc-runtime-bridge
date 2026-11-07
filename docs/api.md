@@ -89,9 +89,19 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 
 子代理指定已加载的原生 agentType 且省略 system 时，使用其官方定义；未知类型需提供业务 system。未提供 agentType 时保留调用方上下文，使用通用 CLI 正文，不猜测自定义代理定义。workflow、compaction、auxiliary、side_reply 保留原生类别和父子关联；该分类不会自动创建终端中的工作流、压缩任务、标题或其它辅助推理。输出风格产生无法与已解析主来源一致的配置时，在发送前拒绝。
 
-### 自动权限分类与日志关联
+### 原生用途识别与日志关联
 
-固定 293 原生请求中，已验证的 XML 自动权限分类第一、第二阶段会识别为 `requestClass=auxiliary`、`querySource=auto_mode`。`context.classification` 可选，包含 `purpose=auto_permission_classifier`、`source=native_profile`、`profile=cc293-auto-mode-xml-s1|cc293-auto-mode-xml-s2`。识别校验完整静态提示词摘要、官方动态权限规则段及请求结构，不以业务关键词或单个输出参数猜用途；未知变体继续转发，页面标明未识别特殊用途。与显式类别冲突时返回 400。此元数据由服务生成，不能通过 HTTP context 注入，也不作为身份认证。
+固定 293 原生请求通过完整构造证据识别用途，`context.classification` 可选，`source` 固定为 `native_profile`：
+
+| purpose | profile | requestClass | querySource |
+| --- | --- | --- | --- |
+| auto_permission_classifier | cc293-auto-mode-xml-s1 / cc293-auto-mode-xml-s2 | auxiliary | auto_mode |
+| session_title | cc293-session-title-v1 | auxiliary | generate_session_title |
+| compaction | cc293-compact-full-v1 | compaction | compact |
+
+权限分类核对完整静态摘要、两阶段结构及官方动态权限规则插槽；标题生成核对完整身份和 system 摘要、单条会话包装及默认或显式语言收尾；手动和自动压缩核对末条用户消息的完整摘要指令，支持字符串和末尾文本块，仅规范化官方附加要求插槽。识别不改变原始正文、模型预算或主/子代理身份，不因历史里曾出现压缩指令就把后续请求归为压缩。
+
+不以业务关键词或单个输出参数猜用途；未知变体继续转发，页面标明未识别特殊用途。与显式类别冲突时返回 400。用途、profile、类别和 querySource 必须匹配，损坏日志或私有作业的混搭证据拒绝。此元数据由服务生成，不能通过 HTTP context 注入，也不作为身份认证；旧日志不回填。
 
 新日志行可含 `agentLaunches={state,links}`。每条 link 保存从配对 Agent 调用/成功启动结果中取得的 `childAgentId`、`parentAgentId`、`agentType`、`toolUseId`，不保存工具正文。最多 32 条、原始提取元数据最多 16 KiB，扫描最多 4096 个内容块；缺口标为 incomplete。off 不新增记录，summary 可保存该关联摘要，随日志保留期和容量回收。
 

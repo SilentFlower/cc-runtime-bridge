@@ -375,24 +375,34 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/unit/worker-protocol.test.ts：内部枚举、原生格式限定，不能靠包装改变策略。
 - tests/local-pool/gateway.test.ts：实际 --print、真实伪终端交互 CLI、Read 工具续轮、有效/缺失 CCH、子代理与 TLS 非零 CCH；测试在无外网空间运行。
 
-## Scenario: 实际 CLI 自动权限分类归因
+## Scenario: 实际 CLI 原生用途归因
 
 ### 1. Scope / Trigger
 
 - 对已经通过固定 293 billing/metadata 校验的原生正文识别用途；普通 API 不根据业务关键词推断类别。
+- 实际 CLI 的自动权限分类、会话标题、手动和自动压缩可能没有显式 request-class；由完整已验证构造补充用途，不能全部回落为主会话。
 - 识别只声明客户端提供的原生构造证据，不授予身份认证、配置修改或本地工具执行权限。
 
 ### 2. Signatures
 
 - readNativeClassification(body: MessageBody): NativeClassification | undefined；prepareInput(input: BridgeInput): PreparedInput。
-- RequestContext.classification 可选：purpose=auto_permission_classifier、source=native_profile、profile=cc293-auto-mode-xml-s1|cc293-auto-mode-xml-s2。
-- isNativeClassification(value: unknown): value is NativeClassification；HTTP ContextInput 不接收 classification，私有作业和日志 API 使用集中校验。
+- RequestContext.classification 可选，NativeClassification 是 purpose/profile 配对的联合，source 固定 native_profile；HTTP ContextInput 不接收 classification。
+- classificationContext(classification: NativeClassification): Pick<RequestContext, 'requestClass' | 'querySource'>；isNativeClassification(value: unknown): value is NativeClassification；isNativeClassificationContext(value: unknown): boolean。入口、私有作业和日志 API 复用统一映射与校验。
+
+| purpose | profile | requestClass | querySource |
+| --- | --- | --- | --- |
+| auto_permission_classifier | cc293-auto-mode-xml-s1 / cc293-auto-mode-xml-s2 | auxiliary | auto_mode |
+| session_title | cc293-session-title-v1 | auxiliary | generate_session_title |
+| compaction | cc293-compact-full-v1 | compaction | compact |
 
 ### 3. Contracts
 
 - 固定版本已验证 XML 两阶段共同使用完整 system 静态摘要，按官方结构只规范化 deny rules 列表插槽，其余静态内容及对应阶段收尾摘要必须一致。system 最多 160000 字符，规则行最多 16384 字符；未知或超限保持未识别，不成为新的业务准入限制。
 - 校验原生文本块、一个 transcript 或前置上下文加 transcript 两种消息布局、temperature=1、非流式且不声明工具。第一阶段包含唯一 </block> stop，第二阶段没有 stop；不能只凭 max_tokens、模型、billing 三位后缀或关键词识别。输出和思考预算不改变用途，参数原值保持。
-- 已识别请求为 auxiliary / auto_mode，分类证据随当前上下文持久化。显式类别冲突返回 context_conflict/400，不静默覆盖。普通 auxiliary 继续使用原有 side_query。
+- 标题核对完整 CLI 身份及标题 system 摘要、唯一用户文本块中的 session 包装和完整收尾；不声明工具。身份最多 512、system 最多 160000 个 string.length 单位。默认语言收尾完整核验；显式 language 只规范化官方语言插槽，插槽 1–512 单位，其余收尾保持完整摘要匹配。
+- 压缩只核对末条 user 的字符串或末尾 text 块，指令最多 160000 个 string.length 单位；固定收尾和完整提示词摘要同时匹配。仅在官方 Additional Instructions 插槽有非空附加要求时规范化该段，手动和自动压缩共用同一 profile；此前历史及整个大正文不套用此指令长度上限，不扫描旧指令给后续请求贴标签。
+- 已识别用途依上表生成类别及官方来源，证据随当前上下文持久化。显式类别冲突返回 context_conflict/400，不静默覆盖。普通 auxiliary 继续使用原有 side_query；压缩保留主/子身份、session、agent、parent、类型和 workflow 关联。
+- 原始正文、缓存、工具、输出和思考预算保持原值；profile 不以预算、模型名或短关键词认定。私有作业要求 input 与 context 接入类型一致为 claude_code；日志中的用途、profile、requestClass 和 querySource 组合必须一致。
 - 未验证变体保持原分类并明确未识别特殊用途；不为取得识别标记改正文、增加调用或切换模型。旧日志不回填。
 
 ### 4. Validation & Error Matrix
@@ -401,6 +411,10 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 | --- | --- |
 | 固定 XML 第一/第二阶段完整证据符合 | auxiliary / auto_mode，保存对应 profile |
 | deny rules 合法变化 | 规范化列表后核对完整静态摘要 |
+| 默认或显式语言的完整标题构造 | auxiliary / generate_session_title，保存标题 profile |
+| 字符串或末尾文本块承载完整压缩指令 | compaction / compact，保留代理身份及关联 |
+| 合法附加压缩要求 | 只在核验时规范化对应插槽，出站原文保持 |
+| 历史中有压缩指令，当前末条为普通业务 | 不继承压缩用途 |
 | 普通关键词、局部特征、损坏静态正文或未验证布局 | 未识别，仍按既有入口规则转发 |
 | 已识别用途与显式类别冲突 | context_conflict/400，模型零发送 |
 | HTTP 注入内部 classification | 不支持字段/422 |
@@ -409,10 +423,15 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 ### 5. Scenarios and Examples
 
 - 正常：实际 CLI 发起 Agent 和 SubagentHandback，各自的分类请求被标为辅助；进入复核的第二阶段仍保持辅助用途。
+- 正常：交互 CLI 自动生成标题时归入辅助；同一会话 /compact 和长上下文自动压缩均归入压缩，恢复后的普通请求不继续标压缩。
 - 边界：没有用户附件时仅一个 transcript 消息；附带用户上下文时为两条消息。思考预算可以改变输出上限，不因此认作主对话。
+- 边界：无工具模式把压缩指令直接放在 content 字符串，带工具模式放在末尾文本块；子代理发生压缩仍保持子代理身份和父代理声明。
 - 错误用法：看见 max_tokens=64 或 </block> 就标分类，或固定一次完整提示词哈希忽略动态规则。正确做法：校验固定构造的完整证据，未知变体保留未识别。
+- 错误用法：业务仅提到标题、总结或复制一段局部指令就被归类。正确做法：标题校验完整 system 和包装；压缩校验当前末尾完整静态指令与固定收尾。
 
 ### 6. Tests Required
 
 - tests/local-pool/attribution.test.ts：实际 CLI 默认、deny rules、两阶段复核三组回环，auxiliary/auto_mode/profile、原文内存与 TLS SHA/CCH、工具报告真实送达及每入站单次发送。
+- tests/local-pool/session-purpose.test.ts：实际默认/显式中文交互标题、会话恢复、手动和长上下文自动压缩；字符串布局、完整前后缀、预算独立性、显式类别冲突、压缩子身份保留、原始内存与 TLS SHA/CCH、日志解码及每入站单次发送。
 - tests/unit/request-attribution.test.ts、tests/unit/log-api.test.ts：关键词/单字段反例、普通 auxiliary、HTTP 禁注入、日志和私有协议一致性；实际 CLI 验收只在合成凭据、独立 HOME 和无外网空间执行。
+- tests/browser/logs.spec.ts：三个用途及固定来源标签正确，历史缺字段仍可读。双实际交互客户端各 3 个子代理的隔离验收另核对文本块布局、两个 session 的父子证据、恢复和两种压缩以及最终 SHA/CCH，不能用单次 HTTP 200 代替完整流程。

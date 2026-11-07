@@ -3,6 +3,7 @@ import type { BridgeInput, ContextInput, HeaderDecision, HeaderPair, PreparedInp
 import { REQUEST_CLASSES } from '../shared/input';
 import { BridgeError } from '../shared/errors';
 import { readNativeClassification } from '../shared/native-classifier';
+import { classificationContext } from '../shared/request-attribution';
 
 const CONNECTION_HEADERS = new Set(['connection', 'keep-alive', 'proxy-connection', 'proxy-authenticate', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
 const CREDENTIAL_HEADERS = new Set(['authorization', 'x-api-key', 'proxy-authorization', 'cookie']);
@@ -55,8 +56,9 @@ export function prepareInput(input: BridgeInput): PreparedInput {
     decision(lower === 'anthropic-beta' || lower === 'anthropic-version' ? 'runtime' : 'keep', lower === 'anthropic-beta' || lower === 'anthropic-version' ? '按原生能力校验并合并，不静默删除' : '合法端到端扩展，默认保留');
   }
   const classification = input.inputFormat === 'claude_code' ? readNativeClassification(input.body) : undefined;
-  if (classification && context.requestClass !== undefined && context.requestClass !== 'auxiliary') throw new BridgeError('context_conflict', '原生分类用途与显式请求类别冲突');
-  const requestClass = context.requestClass ?? (classification ? 'auxiliary' : context.agentKind === 'main' ? 'main' : context.agentId ? 'subagent' : 'main');
+  const classified = classification ? classificationContext(classification) : undefined;
+  if (classified && context.requestClass !== undefined && context.requestClass !== classified.requestClass) throw new BridgeError('context_conflict', '原生分类用途与显式请求类别冲突');
+  const requestClass = context.requestClass ?? classified?.requestClass ?? (context.agentKind === 'main' ? 'main' : context.agentId ? 'subagent' : 'main');
   if (!REQUEST_CLASSES.includes(requestClass as RequestClass)) throw new BridgeError('unsupported_context', '当前 293 不支持该请求类别', 422);
   const kind = context.agentKind ?? ((requestClass === 'subagent' || requestClass === 'workflow' || context.agentId) ? (context.agentType === 'teammate' ? 'teammate' : 'subagent') : 'main');
   if (requestClass === 'main' && kind !== 'main') throw new BridgeError('context_conflict', '主请求类别与子代理上下文冲突');
@@ -73,7 +75,7 @@ export function prepareInput(input: BridgeInput): PreparedInput {
   if (requestClass === 'compaction') querySource = 'compact';
   if (requestClass === 'auxiliary') querySource = 'side_query';
   if (requestClass === 'side_reply') querySource = 'side_reply';
-  if (classification) querySource = 'auto_mode';
+  if (classified) querySource = classified.querySource;
   const sessionId = context.sessionId ?? randomUUID();
   const resolved: RequestContext = {
     ...(classification ? { classification } : {}),

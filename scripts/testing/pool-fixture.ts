@@ -38,12 +38,17 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
       if (['401','429','500'].includes(chosen)) return Response.json({ type: 'error', error: { message: '合成池错误回显：' + apiKey } }, { status: Number(chosen), headers: { 'x-echo-secret': apiKey } });
       const agentMode = chosen === 'agent' || chosen === 'agent-two-stage';
       if (agentMode && (Array.isArray(body.stop_sequences) && body.stop_sequences.includes('</block>') || body.max_tokens === 8192)) return Response.json({ id: 'msg_classifier_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: [{ type: 'text', text: chosen === 'agent-two-stage' && body.max_tokens === 64 ? '<block>yes</block><category>Irreversible Local Destruction</category><reason>合成复核测试</reason>' : '<block>no</block>' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } });
+      const sessionMode = chosen === 'session-purpose', history = sessionMode ? JSON.stringify(body.messages) : '';
+      const compact = sessionMode && history.includes('CRITICAL: Respond with TEXT ONLY.');
+      const title = sessionMode && Array.isArray(body.system) && body.system.some(block => typeof block.text === 'string' && block.text.startsWith('You are naming a coding session'));
+      const responseText = chosen === 'secret' ? '前缀' + apiKey + '后缀</pre><script>globalThis.poolXss=1</script>' : compact ? '<summary>本机假池 OK，保留当前会话。</summary>' : title ? '{"title":"本机会话用途测试"}' : '本机假池 OK';
       const hasToolResult = Array.isArray(body.messages) && body.messages.some(message => message && Array.isArray(message.content) && message.content.some((block: JsonObject) => block.type === 'tool_result'));
       const handback = agentMode && Array.isArray(body.tools) && body.tools.some(tool => tool.name === 'SubagentHandback');
       const tool = chosen === 'tool' && !hasToolResult && toolFile ? { type: 'tool_use', id: 'toolu_local_fixture', name: 'Read', input: { file_path: toolFile } }
         : handback ? { type: 'tool_use', id: 'toolu_handback_fixture', name: 'SubagentHandback', input: { message: '本机假池 OK' } }
         : agentMode && !hasToolResult ? { type: 'tool_use', id: 'toolu_agent_fixture', name: 'Agent', input: { description: '验证实际子代理关联', prompt: '只回复本机假池 OK，然后调用 SubagentHandback 交回报告。', subagent_type: 'Explore' } } : null;
-      const message = { id: 'msg_pool_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: tool ? [tool] : [{ type: 'text', text: chosen === 'secret' ? '前缀' + apiKey + '后缀</pre><script>globalThis.poolXss=1</script>' : '本机假池 OK' }], stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
+      // 用量只驱动真实客户端的预算分支，不表示真实模型执行或计费。
+      const message = { id: 'msg_pool_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: tool ? [tool] : [{ type: 'text', text: responseText }], stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null, usage: { input_tokens: sessionMode && !compact && history.includes('CCRB_LONG_HISTORY_') ? 125000 : 1, output_tokens: 1 } };
       if (chosen === 'json') return Response.json(message, { headers: { 'access-control-allow-credentials': 'true' } });
       if (chosen === 'secret') {
         const text = JSON.stringify(message), at = text.indexOf(apiKey) + Math.floor(apiKey.length / 2);
@@ -73,7 +78,7 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
           }
           controller.enqueue(event({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }));
           const count = chosen === 'large' ? 150 : 1;
-          for (let i = 0; i < count && !stopped; i++) { controller.enqueue(event({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chosen === 'large' ? 'x'.repeat(8192) : '本机假池 OK' } })); if (chosen === 'large') await Bun.sleep(1); }
+          for (let i = 0; i < count && !stopped; i++) { controller.enqueue(event({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chosen === 'large' ? 'x'.repeat(8192) : responseText } })); if (chosen === 'large') await Bun.sleep(1); }
           if (stopped) return;
           if (chosen === 'event-error') controller.enqueue(event({ type: 'error', error: { message: '合成 SSE 错误 ' + apiKey } }));
           else if (chosen !== 'incomplete') { controller.enqueue(event({ type: 'content_block_stop', index: 0 })); controller.enqueue(event({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } })); controller.enqueue(event({ type: 'message_stop' })); }

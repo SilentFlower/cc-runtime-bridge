@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
-import type { RequestDetail } from '../../src/shared/contracts';
+import type { NativeClassification, RequestClass, RequestDetail } from '../../src/shared/contracts';
 import { decodeLogDetail, decodeLogList } from '../../src/shared/log-api';
 import { prepareInput } from '../../src/control/header-policy';
 import { parseInput } from '../../src/shared/input';
 import { decodeRuntimeJob } from '../../src/shared/protocol';
+import { classificationContext, isNativeClassification } from '../../src/shared/request-attribution';
 
 /** 创建只用于边界解码的旧版详情。
  * @return 不含新字段的完整旧记录。
@@ -33,4 +34,29 @@ test('分类用途须与auxiliary和auto_mode一致，私有作业不能只贴�
   const prepared = prepareInput(parseInput({ model: 'fixture', messages: [{ role: 'user', content: '离线' }] }));
   prepared.context.classification = classification;
   expect(() => decodeRuntimeJob({ type: 'request_start', schema_version: 1, request_id: prepared.input.request_id, prepared })).toThrow('分类证据');
+});
+
+test('三种用途的类别和官方来源在日志及私有作业中保持一致，混搭证据拒绝', () => {
+  const cases: { classification: NativeClassification; requestClass: RequestClass; querySource: string }[] = [
+    { classification: { purpose: 'auto_permission_classifier', source: 'native_profile', profile: 'cc293-auto-mode-xml-s2' }, requestClass: 'auxiliary', querySource: 'auto_mode' },
+    { classification: { purpose: 'session_title', source: 'native_profile', profile: 'cc293-session-title-v1' }, requestClass: 'auxiliary', querySource: 'generate_session_title' },
+    { classification: { purpose: 'compaction', source: 'native_profile', profile: 'cc293-compact-full-v1' }, requestClass: 'compaction', querySource: 'compact' },
+  ];
+  for (const item of cases) {
+    expect(classificationContext(item.classification)).toEqual({ requestClass: item.requestClass, querySource: item.querySource });
+    const value = fixture(), resolved = classificationContext(item.classification);
+    value.context = { ...value.context!, inputFormat: 'claude_code', ...resolved, classification: item.classification };
+    expect(decodeLogDetail(value).context?.classification).toEqual(item.classification);
+    const prepared = prepareInput(parseInput({ model: 'fixture', messages: [{ role: 'user', content: '离线' }] }));
+    prepared.input.inputFormat = 'claude_code'; prepared.context = value.context;
+    const job = { type: 'request_start', schema_version: 1, request_id: prepared.input.request_id, prepared };
+    expect(decodeRuntimeJob(job).prepared.context.classification).toEqual(item.classification);
+    for (const change of [{ requestClass: 'main' }, { querySource: 'side_query' }, { inputFormat: 'api' }, { classification: { ...item.classification, profile: 'unknown' } }, { classification: { ...item.classification, source: 'bridge_default' } }]) {
+      const context = { ...value.context, ...change };
+      expect(() => decodeLogDetail({ ...value, context })).toThrow('分类证据');
+      expect(() => decodeRuntimeJob({ ...job, prepared: { ...prepared, context } })).toThrow('分类证据');
+    }
+  }
+  expect(isNativeClassification({ purpose: 'session_title', source: 'native_profile', profile: 'cc293-compact-full-v1' })).toBe(false);
+  expect(isNativeClassification({ purpose: 'compaction', source: 'native_profile', profile: 'cc293-session-title-v1' })).toBe(false);
 });

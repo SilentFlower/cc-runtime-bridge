@@ -85,3 +85,11 @@ test('普通业务的分类关键词和相同输出参数不是原生分类证�
   expect(prepareInput(parseInput({ body, context: { requestClass: 'auxiliary' } }, [], 'local_base_url')).context.querySource).toBe('side_query');
   expect(() => parseInput({ body, context: { classification: { purpose: 'auto_permission_classifier' } } }, [], 'local_base_url')).toThrow('暂不支持字段');
 });
+
+test('标题和压缩的局部文字不能把普通业务误归类', () => {
+  for (const text of ['<session>\n会话标题\n</session>\n\nWrite the title', 'CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.\n\nAdditional Instructions:\n请总结\n\nREMINDER: Do NOT call any tools.']) {
+    const body = { model: 'fixture', system: [{ type: 'text', text: 'x-anthropic-billing-header: cc_version=2.1.293.abc; cc_entrypoint=cli;' }, { type: 'text', text: '普通业务身份' }, { type: 'text', text: 'You are naming a coding session' }], messages: [{ role: 'user' as const, content: [{ type: 'text', text }] }], metadata: { user_id: JSON.stringify({ device_id: 'a'.repeat(64), account_uuid: '', session_id: '11111111-1111-4111-8111-111111111111' }) } };
+    expect(readNativeClassification(body)).toBeUndefined();
+    expect(prepareInput(parseInput(body, [], 'local_base_url')).context.requestClass).toBe('main');
+  }
+});

@@ -185,19 +185,25 @@ test('迟到启动证据可刷新关联，来源、未知和发生时上下文�
 });
 
 test('分类用途和识别来源可见，旧记录缺字段仍兼容', async ({ page }) => {
-  await page.route('**/api/logs/ui-compact', async route => {
-    const response = await route.fetch(), value = await response.json();
-    value.request.requestClass = 'auxiliary';
-    value.context = { ...value.context, inputFormat: 'claude_code', requestClass: 'auxiliary', querySource: 'auto_mode', classification: { purpose: 'auto_permission_classifier', source: 'native_profile', profile: 'cc293-auto-mode-xml-s1' } };
-    await route.fulfill({ response, json: value });
-  });
   await page.goto('/'); await page.getByLabel('每 3 秒刷新').uncheck();
-  await page.getByTitle('ui-compact', { exact: true }).click();
   const detail = page.getByRole('dialog');
-  await expect(detail.getByText('自动权限分类', { exact: true })).toBeVisible();
-  await expect(detail.getByText('固定 293 原生构造证据', { exact: true })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await page.unroute('**/api/logs/ui-compact');
+  for (const item of [
+    { purpose: 'auto_permission_classifier', profile: 'cc293-auto-mode-xml-s1', requestClass: 'auxiliary', querySource: 'auto_mode', label: '自动权限分类' },
+    { purpose: 'session_title', profile: 'cc293-session-title-v1', requestClass: 'auxiliary', querySource: 'generate_session_title', label: '会话标题生成' },
+    { purpose: 'compaction', profile: 'cc293-compact-full-v1', requestClass: 'compaction', querySource: 'compact', label: '会话压缩' },
+  ]) {
+    await page.route('**/api/logs/ui-compact', async route => {
+      const response = await route.fetch(), value = await response.json();
+      value.request.requestClass = item.requestClass;
+      value.context = { ...value.context, inputFormat: 'claude_code', requestClass: item.requestClass, querySource: item.querySource, classification: { purpose: item.purpose, source: 'native_profile', profile: item.profile } };
+      await route.fulfill({ response, json: value });
+    });
+    await page.getByTitle('ui-compact', { exact: true }).click();
+    await expect(detail.getByText(item.label, { exact: true })).toBeVisible();
+    await expect(detail.getByText('固定 293 原生构造证据', { exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.unroute('**/api/logs/ui-compact');
+  }
   await page.route('**/api/logs/ui-main', async route => {
     const response = await route.fetch(), value = await response.json();
     delete value.context.inputFormat; delete value.context.classification; delete value.agentAssociation;

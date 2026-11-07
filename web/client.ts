@@ -1,4 +1,4 @@
-import type { CaptureRecord, RequestDetail, RequestRow } from '../src/shared/contracts';
+import type { CaptureRecord, NativeClassification, RequestDetail, RequestRow } from '../src/shared/contracts';
 import { decodeLogDetail, decodeLogList } from '../src/shared/log-api';
 import { isObject } from '../src/shared/errors';
 
@@ -19,6 +19,7 @@ const dialog = get<HTMLDialogElement>('detail');
 const content = get('detail-content');
 const STATES: Record<string, string> = { queued: '等待中', running: '执行中', success: '成功', http_error: '上游 HTTP 错误', stream_error: '上游响应错误', incomplete: '终态未确认', canceled: '已取消', error: '本地错误' };
 const CLASSES: Record<string, string> = { main: '主会话', subagent: '子代理', workflow: '工作流', compaction: '压缩', auxiliary: '辅助', side_reply: '旁路回复', unknown: '未解析' };
+const PURPOSES: Record<NativeClassification['purpose'], string> = { auto_permission_classifier: '自动权限分类', session_title: '会话标题生成', compaction: '会话压缩' };
 const STAGES: Record<string, string> = { ingress: '入站原文', header_policy: '头部处理', cc_prepared: 'CC 组装（中间值）', wire_final: '最终出站采样', upstream_response: '上游响应' };
 const CAPTURE: Record<string, string> = { complete: '完整', truncated: '已截断', unavailable: '未采集', failed: '采集失败', incomplete: '未完整采集' };
 const ACTIONS: Record<string, string> = { keep: '保留', drop: '删除', runtime: '运行时生成', context: '上下文映射' };
@@ -133,7 +134,7 @@ function summary(value: RequestDetail): void {
   grid.append(field('接入路径', value.context?.inputFormat === 'claude_code' ? '原生 CC 正文接入' : value.context?.inputFormat === 'api' ? '普通 API 原生组装' : value.context ? '旧记录未注明' : '未解析'));
   const association = value.agentAssociation;
   grid.append(field('状态', STATES[row.state] ?? row.state), field('HTTP 状态', row.httpStatus), field('模型', row.model), field('请求类别', CLASSES[row.requestClass] ?? row.requestClass), field('引擎', row.engine), field('上下文来源', value.context?.source === 'client' ? '调用方上下文' : value.context ? '桥接器默认' : '未解析'), field('开始时间', date(row.createdAt)), field('完成时间', date(row.finishedAt)), field('会话 ID', row.sessionId), field('Prompt ID', row.promptId), field('Agent ID', row.agentId), field('父 Agent ID', association?.parentAgentId ?? row.parentAgentId), field('二进制 SHA256', row.binarySha256, true));
-  if (value.context?.inputFormat === 'claude_code') grid.append(field('请求用途', value.context.classification ? '自动权限分类' : '未识别特殊用途'));
+  if (value.context?.inputFormat === 'claude_code') grid.append(field('请求用途', value.context.classification ? PURPOSES[value.context.classification.purpose] : '未识别特殊用途'));
   if (value.context?.classification) grid.append(field('归类来源', '固定 293 原生构造证据'));
   if (value.context?.agentKind === 'subagent' || value.context?.agentKind === 'teammate') {
     const source = { explicit: '调用方显式提供', client_tool_result: '客户端工具结果', unknown: '未知' };

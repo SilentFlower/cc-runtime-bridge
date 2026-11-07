@@ -45,11 +45,11 @@ export interface ContextInput {
 }
 
 /** 固定原生构造的分类用途证据，不作为客户端身份认证。 */
-export interface NativeClassification {
-  purpose: 'auto_permission_classifier';
-  source: 'native_profile';
-  profile: 'cc293-auto-mode-xml-s1' | 'cc293-auto-mode-xml-s2';
-}
+export type NativeClassification = { source: 'native_profile' } & (
+  { purpose: 'auto_permission_classifier'; profile: 'cc293-auto-mode-xml-s1' | 'cc293-auto-mode-xml-s2' }
+  | { purpose: 'session_title'; profile: 'cc293-session-title-v1' }
+  | { purpose: 'compaction'; profile: 'cc293-compact-full-v1' }
+);
 
 /** 从同一请求的 Agent 调用与成功结果中配对的关联声明。 */
 export interface AgentLaunchEvidence {
