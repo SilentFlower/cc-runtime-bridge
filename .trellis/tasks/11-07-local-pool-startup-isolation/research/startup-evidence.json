@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "planning-research",
+  "productCodeChanged": false,
+  "isolation": "unshare-net-loopback-only",
+  "totalAttempts": 48,
+  "startupFailures": 0,
+  "realModelCalls": 0,
+  "historicalStartupFailureRootCause": null,
+  "originalSocketFailureRootCause": null,
+  "series": [
+    {
+      "report": "artifacts/startup-research-20261107T051108338188Z/cold-report.json",
+      "attempts": 32,
+      "startupFailures": 0,
+      "modelCalls": 0,
+      "realModelCalls": 0,
+      "reservedTotal": 0,
+      "remainingDirectChildren": [],
+      "remainingNewTemporaryDirectories": [],
+      "tlsObservationComplete": false,
+      "tlsEvents": 0,
+      "qualification": "artifacts/startup-research-20261107T051108338188Z/evidence-qualification.json"
+    },
+    {
+      "report": "artifacts/startup-observed-20261107T051534122475Z/cold-report.json",
+      "attempts": 16,
+      "startupFailures": 0,
+      "modelCalls": 0,
+      "realModelCalls": 0,
+      "reservedTotal": 0,
+      "remainingDirectChildren": [],
+      "remainingNewTemporaryDirectories": [],
+      "tlsObservationComplete": true,
+      "tlsEvents": 16,
+      "qualification": null
+    }
+  ],
+  "pending": [
+    "确定性启动故障注入",
+    "双实际 CLI 取消及异常退出场景"
+  ]
+}
