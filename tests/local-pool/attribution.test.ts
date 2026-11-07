@@ -20,7 +20,8 @@ test('实际 CLI 的分类、子代理启动及报告回传具有正确归因', 
   await mkdir(config);
   await writeFile(join(config, '.claude.json'), JSON.stringify({ userID: 'a'.repeat(64), hasCompletedOnboarding: true }));
   const fixture = startPoolFixture('attribution-synthetic-pool-key'); fixture.select('agent');
-  const running = await startLocalPool({ binary, pool: { baseUrl: fixture.baseUrl, apiKey: 'attribution-synthetic-pool-key', live: false, mode: 'manual', maxRequests: 20, timeoutMs: 3000 }, runId: 'actual-attribution', directory: join(root, 'run'), port: 0 });
+  // 固定四组离线场景合计超过 20 次，使用手工不限次数账本并逐次核对假池实收。
+  const running = await startLocalPool({ binary, pool: { baseUrl: fixture.baseUrl, apiKey: 'attribution-synthetic-pool-key', live: false, mode: 'manual', maxRequests: null, timeoutMs: 3000 }, runId: 'actual-attribution', directory: join(root, 'run'), port: 0 });
   const received: { raw: string; body: MessageBody }[] = [];
   // 原始内存样本用于业务比较；脱敏预览只能展示，不能反推出原始内容。
   const recorder = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
@@ -30,8 +31,8 @@ test('实际 CLI 的分类、子代理启动及报告回传具有正确归因', 
     return new Response(response.body, { status: response.status, headers: response.headers });
   } });
   try {
-    for (const mode of ['default', 'deny', 'two-stage']) {
-      const deny = mode === 'deny'; fixture.select(mode === 'two-stage' ? 'agent-two-stage' : 'agent');
+    for (const mode of ['default', 'deny', 'two-stage', 'foreground']) {
+      const deny = mode === 'deny'; fixture.select(mode === 'two-stage' ? 'agent-two-stage' : mode === 'foreground' ? 'agent-foreground' : 'agent');
       await writeFile(join(config, 'settings.json'), JSON.stringify(deny ? { permissions: { deny: ['Bash(rm *)'] } } : {}));
       const sessionId = randomUUID(), before = fixture.calls.length;
       const cli = Bun.spawn([binary, '--print', '--model', 'claude-sonnet-4-6', '--session-id', sessionId, '--max-turns', '3', '--tools', 'Agent', '--allowedTools', 'Agent', '--', '调用 Explore 子代理，再根据它交回的报告回复。'], { cwd: root, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: root, CLAUDE_CONFIG_DIR: config, LANG: 'C.UTF-8', ANTHROPIC_BASE_URL: 'http://127.0.0.1:' + recorder.port, ANTHROPIC_AUTH_TOKEN: 'attribution-synthetic-client-token', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_AUTOUPDATER: '1', DISABLE_AUTO_COMPACT: '1', CLAUDE_CODE_MAX_OUTPUT_TOKENS: '128', MAX_THINKING_TOKENS: '0' }, stdout: 'pipe', stderr: 'pipe', stdin: 'ignore' });

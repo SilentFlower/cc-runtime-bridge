@@ -254,7 +254,8 @@
 
 ### 3. Contracts
 
-- 只对已识别原生入站提取：assistant Agent tool_use 与 user 的同 tool_use_id 成功 tool_result，固定 293 成功启动格式中的 childAgentId，匹配调用的 subagent_type，以及证据所属请求的规范 parentAgentId。自由文本、失败结果或孤立块不构成启动证据，重复/未知成功格式明确不完整。
+- 只对已识别原生入站提取：assistant Agent tool_use 与 user 的同 tool_use_id 成功 tool_result，固定 293 成功启动或报告交付格式中的 childAgentId，匹配调用的 subagent_type，以及证据所属请求的规范 parentAgentId。自由文本、失败结果或孤立块不构成启动证据，重复/未知成功格式明确不完整。
+- 异步结果沿用固定启动头及紧随的 agentId 行；前台结果接受原版 Hns 生成的完整 SubagentHandback 交付短句，包含普通及固定 SECURITY WARNING 变体，只忽略外侧缩进和空白。前台元数据限 1024 字符且必须完整匹配；报告正文、agent-message 内的任意文本不参与身份提取。同一结果出现多个前台/异步元数据块时保持 incomplete，不任取一个声明。
 - AgentLaunches={state:complete|incomplete,links:[{childAgentId,parentAgentId,agentType,toolUseId}]}，两个缺失关联字段为 null。最多 32 条、JSON 容器及分隔符在内最多 16 KiB、最多扫描 4096 个内容块；父代理和类型沿既有 512 字符及 Latin-1 无控制字符边界，childAgentId/toolUseId 另限 128 位字母数字下划线连字符。
 - 元数据经 Redactor 后沿既有 request payload 保存，不新增表或迁移历史。脱敏破坏身份、超限、提取异常时保存 incomplete，不把占位符当 ID。off 不保存新记录，summary 保留必要证据摘要而不保存工具正文，证据随日志容量及保留期清理。
 - 详情关联只读查询同 sessionId、同 childAgentId；数据库先按声明去重再返回最多 32 条，额外取一条检测溢出。重复历史不耗尽额度，取出的内容和证据请求 ID 同源，不扫描调试正文或创建全局永久关系 Map。
@@ -266,7 +267,7 @@
 | 条件 | 关联视图 |
 | --- | --- |
 | 两字段显式给出且无矛盾 | explicit，值保持 |
-| 缺失字段由同会话的完整一致证据补齐 | linked，来源及证据定位可见 |
+| 缺失字段由同会话完整一致的启动或报告交付证据补齐 | linked，来源及证据定位可见 |
 | 无证据、证据过期、旧记录无新字段 | unknown，不猜直接父代理或类型 |
 | 不同父代理/类型，或证据与显式值矛盾 | conflict，显式值保留，不任取冲突值 |
 | 提取/查询超限、损坏、查询失败或采集缺口 | incomplete，未确认字段不补齐，不重放模型 |
@@ -274,15 +275,15 @@
 
 ### 5. Scenarios and Examples
 
-- 正常：子代理先到，主会话后续消息含配对启动记录；刷新子代理详情可显示父代理和 Explore 类型，发生时字段仍为空。
+- 正常：子代理先到，主会话后续消息含配对启动记录或前台报告交付说明；刷新子代理详情可显示父代理和 Explore 类型，发生时字段仍为空。
 - 边界：同一启动历史出现在 33 条请求中仍可关联；证据正文过期而摘要有效时仍可查，证据摘要被清理后恢复未知。
 - 错误用法：把同会话主请求当所有子代理的直接父代理，或用后来证据改写过去的出站头。正确做法：按成功工具结果及所属规范上下文关联，仅更新只读视图。
 
 ### 6. Tests Required
 
-- tests/unit/request-attribution.test.ts：角色/ID/工具/成功格式配对，伪造文本、重复、块数/字节/条数上限、显式值、冲突和未知。
+- tests/unit/request-attribution.test.ts：角色/ID/工具/成功格式配对，前台普通及安全提示变体、外侧空白、完整收尾、混合/重复元数据、自关联、未知格式与伪造文本，以及块数/字节/条数上限、显式值和冲突。
 - tests/integration/storage.test.ts：迟到、多子代理、嵌套、跨会话、重复去重、超限、损坏、summary/off、脱敏、重启及清理；原始快照不变。
-- tests/local-pool/attribution.test.ts 与 tests/browser/logs.spec.ts：实际子代理报告回传、关联与来源、证据跳转、历史兼容和手机布局。
+- tests/local-pool/attribution.test.ts：实际 CLI 分别完成后台和前台 Explore，含权限分类与 SubagentHandback；父代理和类型按配对结果关联，TLS 实收的业务字段和独立 CCH 不变。tests/browser/logs.spec.ts 继续核对关联与来源、证据跳转、历史兼容和手机布局。
 
 ## Scenario: 本地池启动诊断与双客户端故障隔离
 

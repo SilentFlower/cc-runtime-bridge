@@ -5,6 +5,8 @@ export const AGENT_EVIDENCE_LIMIT = 32;
 const EVIDENCE_BYTES = 16384;
 const ID = /^[A-Za-z0-9_-]{1,128}$/;
 const LAUNCH_HEADER = 'Async agent launched successfully. (This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)';
+const HANDBACK_PREFIX = 'This agent\'s report was delivered to you as a message from "';
+const RESULT_TEXT_LIMIT = 1024;
 
 function field(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0 && value.length <= 512 && !/[\0-\x1f\x7f]/.test(value) && [...value].every(c => c.charCodeAt(0) <= 255); }
 
@@ -91,9 +93,16 @@ export function collectAgentLaunches(prepared: PreparedInput): AgentLaunches {
       completed.add(block.tool_use_id);
       blocks += block.content.length;
       if (blocks > 4096) { result.state = 'incomplete'; return result; }
-      const texts = block.content.filter(isObject).filter(b => b.type === 'text' && typeof b.text === 'string' && b.text.startsWith(LAUNCH_HEADER + '\n'));
+      // 前台交付说明是固定短句，不扫描报告正文猜身份；未知、混合或重复元数据仍明确不完整。
+      const texts = block.content.filter(isObject).filter(b => {
+        if (b.type !== 'text' || typeof b.text !== 'string') return false;
+        return b.text.startsWith(LAUNCH_HEADER + '\n') || b.text.length <= RESULT_TEXT_LIMIT && b.text.trimStart().startsWith(HANDBACK_PREFIX);
+      });
       if (texts.length !== 1) { result.state = 'incomplete'; continue; }
-      const match = /^agentId: ([A-Za-z0-9_-]{1,128}) \(internal ID - do not mention to user\.(?:\)| Use )/.exec((texts[0]!.text as string).slice(LAUNCH_HEADER.length + 1, LAUNCH_HEADER.length + 1024));
+      const text = texts[0]!.text as string;
+      const match = text.startsWith(LAUNCH_HEADER + '\n')
+        ? /^agentId: ([A-Za-z0-9_-]{1,128}) \(internal ID - do not mention to user\.(?:\)| Use )/.exec(text.slice(LAUNCH_HEADER.length + 1, LAUNCH_HEADER.length + RESULT_TEXT_LIMIT))
+        : /^This agent's report was delivered to you as a message from "([A-Za-z0-9_-]{1,128})" \(its SubagentHandback call\)(?:, under a SECURITY WARNING from auto mode — the warning above the report says why)?\. Read it there; it is not repeated here\.$/.exec(text.trim());
       if (!match) { result.state = 'incomplete'; continue; }
       const parentAgentId = prepared.context.agentId ?? null;
       if (parentAgentId === match[1]) { result.state = 'incomplete'; continue; }

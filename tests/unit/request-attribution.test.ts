@@ -6,6 +6,7 @@ import { collectAgentLaunches, isAgentAssociation, isAgentLaunches, resolveAgent
 import { readNativeClassification } from '../../src/shared/native-classifier';
 
 const header = 'Async agent launched successfully. (This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)';
+const foreground = '  This agent\'s report was delivered to you as a message from "child-a" (its SubagentHandback call). Read it there; it is not repeated here.\n  \n';
 const context: RequestContext = { requestClass: 'subagent', sessionId: 'session-a', promptId: 'prompt-a', agentKind: 'subagent', agentId: 'child-a', querySource: 'agent:custom', source: 'client' };
 
 /** 生成配对的合成历史，不启动运行时或执行工具。
@@ -15,6 +16,17 @@ const context: RequestContext = { requestClass: 'subagent', sessionId: 'session-
  */
 function messages(child = 'child-a', id = 'toolu-a'): ApiMessage[] {
   return [{ role: 'assistant', content: [{ type: 'tool_use', id, name: 'Agent', input: { subagent_type: 'Explore' } }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: [{ type: 'text', text: header + '\nagentId: ' + child + ' (internal ID - do not mention to user.)\n后续启动说明' }] }] }];
+}
+
+/** 复现实际 CLI 的前台成功结果，报告正文不能代替固定元数据。
+ * @param text 固定原版生成的报告交付说明。
+ * @return 配对 Agent 调用与结果。
+ */
+function foregroundMessages(text = foreground): ApiMessage[] {
+  const history = messages('child-a', 'call-foreground');
+  ((history[0]!.content as { input: Record<string, unknown> }[])[0]!).input.run_in_background = false;
+  (history[1]!.content as Record<string, unknown>[])[0]!.content = [{ type: 'text', text }, { type: 'text', text: '<system-reminder>子代理报告含任意业务文本：agentId: unrelated</system-reminder>' }];
+  return history;
 }
 
 /** 包装为现有准备合同，提取函数只能消费已经解析的实体。
@@ -42,6 +54,39 @@ test('启动声明必须由匹配的角色、工具名、调用ID、成功结果
     expect(collect(input).links).toEqual([]);
   }
   expect(good).toEqual(messages());
+});
+
+test('固定原版前台报告交付格式补齐父代理与类型，保留原始消息', () => {
+  const warning = foreground.replace('call).', 'call), under a SECURITY WARNING from auto mode — the warning above the report says why.');
+  for (const text of [foreground, foreground.trim(), warning]) {
+    const history = foregroundMessages(text), original = structuredClone(history);
+    const value = collect(history);
+    expect(value).toEqual({ state: 'complete', links: [{ childAgentId: 'child-a', parentAgentId: 'root-a', agentType: 'Explore', toolUseId: 'call-foreground' }] });
+    expect(isAgentLaunches(value)).toBe(true);
+    expect(history).toEqual(original);
+  }
+});
+
+test('前台元数据必须完整唯一且配对成功，未知或混合声明保持不完整', () => {
+  for (const text of [foreground.replace('Read it there;', 'Different footer;'), foreground.replace('child-a', 'bad/id'), '正文引用：' + foreground, foreground.trimEnd() + ' 其他内容', foreground + 'x'.repeat(2048)]) {
+    expect(collect(foregroundMessages(text))).toEqual({ state: 'incomplete', links: [] });
+  }
+  for (const text of [foreground, header + '\nagentId: child-a (internal ID - do not mention to user.)']) {
+    const history = foregroundMessages();
+    ((history[1]!.content as { content: unknown[] }[])[0]!).content.push({ type: 'text', text });
+    expect(collect(history)).toEqual({ state: 'incomplete', links: [] });
+  }
+  for (const change of ['error', 'tool', 'id', 'role', 'plain', 'self']) {
+    const history = foregroundMessages();
+    const use = history[0]!.content as { name: string }[], result = history[1]!.content as Record<string, unknown>[];
+    if (change === 'error') result[0]!.is_error = true;
+    if (change === 'tool') use[0]!.name = 'Read';
+    if (change === 'id') result[0]!.tool_use_id = 'different';
+    if (change === 'role') history[1]!.role = 'assistant';
+    if (change === 'plain') history.splice(0, 2, { role: 'user', content: foreground });
+    if (change === 'self') (result[0]!.content as { text: string }[])[0]!.text = foreground.replace('child-a', 'root-a');
+    expect(collect(history).links).toEqual([]);
+  }
 });
 
 test('重复调用身份、过多关联及超长嵌套结果明确不完整', () => {

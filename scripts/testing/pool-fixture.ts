@@ -36,7 +36,7 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
       if (body.model !== POOL_MODEL) return Response.json({ type: 'error', error: { message: '模型未映射' } }, { status: 400 });
       if (chosen === 'redirect') return new Response('池重定向原文', { status: 302, headers: { location: '/redirect-target' } });
       if (['401','429','500'].includes(chosen)) return Response.json({ type: 'error', error: { message: '合成池错误回显：' + apiKey } }, { status: Number(chosen), headers: { 'x-echo-secret': apiKey } });
-      const agentMode = chosen === 'agent' || chosen === 'agent-two-stage';
+      const agentMode = chosen === 'agent' || chosen === 'agent-two-stage' || chosen === 'agent-foreground';
       if (agentMode && (Array.isArray(body.stop_sequences) && body.stop_sequences.includes('</block>') || body.max_tokens === 8192)) return Response.json({ id: 'msg_classifier_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: [{ type: 'text', text: chosen === 'agent-two-stage' && body.max_tokens === 64 ? '<block>yes</block><category>Irreversible Local Destruction</category><reason>合成复核测试</reason>' : '<block>no</block>' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } });
       const sessionMode = chosen === 'session-purpose', history = sessionMode ? JSON.stringify(body.messages) : '';
       const compact = sessionMode && history.includes('CRITICAL: Respond with TEXT ONLY.');
@@ -46,7 +46,7 @@ export function startPoolFixture(apiKey: string, toolFile?: string): PoolFixture
       const handback = agentMode && Array.isArray(body.tools) && body.tools.some(tool => tool.name === 'SubagentHandback');
       const tool = chosen === 'tool' && !hasToolResult && toolFile ? { type: 'tool_use', id: 'toolu_local_fixture', name: 'Read', input: { file_path: toolFile } }
         : handback ? { type: 'tool_use', id: 'toolu_handback_fixture', name: 'SubagentHandback', input: { message: '本机假池 OK' } }
-        : agentMode && !hasToolResult ? { type: 'tool_use', id: 'toolu_agent_fixture', name: 'Agent', input: { description: '验证实际子代理关联', prompt: '只回复本机假池 OK，然后调用 SubagentHandback 交回报告。', subagent_type: 'Explore' } } : null;
+        : agentMode && !hasToolResult ? { type: 'tool_use', id: 'toolu_agent_fixture', name: 'Agent', input: { description: '验证实际子代理关联', prompt: '只回复本机假池 OK，然后调用 SubagentHandback 交回报告。', subagent_type: 'Explore', ...(chosen === 'agent-foreground' ? { run_in_background: false } : {}) } } : null;
       // 用量只驱动真实客户端的预算分支，不表示真实模型执行或计费。
       const message = { id: 'msg_pool_fixture', type: 'message', role: 'assistant', model: POOL_MODEL, content: tool ? [tool] : [{ type: 'text', text: responseText }], stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null, usage: { input_tokens: sessionMode && !compact && history.includes('CCRB_LONG_HISTORY_') ? 125000 : 1, output_tokens: 1 } };
       if (chosen === 'json') return Response.json(message, { headers: { 'access-control-allow-credentials': 'true' } });
