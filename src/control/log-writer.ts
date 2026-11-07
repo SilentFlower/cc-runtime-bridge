@@ -22,9 +22,10 @@ function deleteRequest(id: string): void {
 
 function cleanup(): void {
   const cutoff = new Date(Date.now() - config.retainDays * 86400000).toISOString();
-  for (const row of db.query<{ id: string }, [string]>('SELECT id FROM requests WHERE created_at < ?').all(cutoff)) deleteRequest(row.id);
+  // 请求可能跨过保留期，摘要和正文都必须等终态后才进入回收。
+  for (const row of db.query<{ id: string }, [string]>('SELECT id FROM requests WHERE created_at < ? AND state NOT IN ("queued","running")').all(cutoff)) deleteRequest(row.id);
   const debugCutoff = new Date(Date.now() - config.debugRetainDays * 86400000).toISOString();
-  const expired = db.query<{ request_id: string; stage: string; attempt: number; body_file: string }, [string]>('SELECT c.request_id,c.stage,c.attempt,c.body_file FROM captures c JOIN requests r ON r.id=c.request_id WHERE r.created_at < ? AND c.body_file IS NOT NULL').all(debugCutoff);
+  const expired = db.query<{ request_id: string; stage: string; attempt: number; body_file: string }, [string]>('SELECT c.request_id,c.stage,c.attempt,c.body_file FROM captures c JOIN requests r ON r.id=c.request_id WHERE r.created_at < ? AND r.state NOT IN ("queued","running") AND c.body_file IS NOT NULL').all(debugCutoff);
   for (const row of expired) {
     const existing = db.query<{ payload: string }, [string, string, number]>('SELECT payload FROM captures WHERE request_id=? AND stage=? AND attempt=?').get(row.request_id, row.stage, row.attempt);
     if (!existing) continue;

@@ -11,6 +11,36 @@ test('分片和 CRLF 不改变 SSE 终态与首输出观察', () => {
   expect(observer.invalid).toBe(false);
 });
 
+test.each(['LF', 'CRLF', 'CR', 'mixed'])('SSE %s 换行在所有分片宽度下保持相同终态', style => {
+  const data = 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"中文😀é"}}';
+  const stop = 'data: {"type":"message_stop"}';
+  const newline = style === 'CR' ? '\r' : style === 'CRLF' ? '\r\n' : '\n';
+  const raw = style === 'mixed' ? 'event: content_block_delta\r\n' + data + '\r\n\revent: message_stop\n' + stop + '\r\n\n' : ['event: content_block_delta', data, '', 'event: message_stop', stop, '', ''].join(newline);
+  const bytes = Buffer.from(raw);
+  for (let width = 1; width <= bytes.length; width++) {
+    const observer = new ResponseObserver(true);
+    for (let offset = 0; offset < bytes.length; offset += width) observer.push(bytes.subarray(offset, offset + width));
+    observer.finish();
+    expect({ style, width, terminal: observer.terminal, firstOutput: observer.firstOutput, invalid: observer.invalid }).toEqual({ style, width, terminal: true, firstOutput: true, invalid: false });
+  }
+});
+
+test('跨片 CRLF 不产生额外空行，未结束事件和超大 CR 事件仍不可验证', () => {
+  const observer = new ResponseObserver(true);
+  observer.push(Buffer.from('data: {"type":"message_stop"}\r'));
+  observer.push(Buffer.from('\n'));
+  expect(observer.terminal).toBe(false);
+  observer.finish();
+  expect(observer.invalid).toBe(true);
+  const oversized = new ResponseObserver(true);
+  for (let index = 0; index < 5; index++) oversized.push(Buffer.from((index === 0 ? 'data: ' : '') + 'x'.repeat(64 * 1024)));
+  oversized.push(Buffer.from('\r\rdata: {"type":"error","error":{"message":"failed"}}\r\r'));
+  oversized.finish();
+  expect(oversized.invalid).toBe(true);
+  expect(oversized.streamError).toBe(true);
+  expect(oversized.terminal).toBe(false);
+});
+
 test('HTTP 200 的 SSE 错误与缺失终态分别识别', () => {
   const error = new ResponseObserver(true);
   error.push(Buffer.from('event: error\ndata: {"type":"error","error":{"message":"failed"}}\n\n'));

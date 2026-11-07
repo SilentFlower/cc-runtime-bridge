@@ -46,6 +46,28 @@ test('正文先过期，摘要在各自保留期内仍然可查', async () => {
   expect(await readdir(config.bodyDir)).toHaveLength(1);
 });
 
+test.each(['queued', 'running'] as const)('跨过正文和摘要保留期的 %s 请求保留到完成', async state => {
+  const { store } = await open();
+  for (const age of [4, 8]) {
+    const value = snapshot('active-' + age, age, '执行中原文', 'running');
+    value.request.state = state;
+    store.record(value); await store.flush();
+    const active = await store.detail(value.request.id);
+    expect(active?.request.state).toBe(state);
+    expect(active?.captures[0]?.text).toBe('执行中原文');
+    value.request.state = 'success';
+    value.request.finishedAt = new Date().toISOString();
+    store.record(value); await store.flush();
+    const finished = await store.detail(value.request.id);
+    if (age > 7) expect(finished).toBeNull();
+    else {
+      expect(finished?.captures[0]?.status).toBe('unavailable');
+      expect(finished?.captures[0]?.text).toBeNull();
+    }
+  }
+  expect(store.error).toBeNull();
+});
+
 test('容量按 UTF-8 载荷计算，超限回收最旧的已完成请求', async () => {
   const initial = await open(); const config = { ...initial.config, maxBytes: 7500 };
   await initial.store.close(); stores.splice(stores.indexOf(initial.store), 1);

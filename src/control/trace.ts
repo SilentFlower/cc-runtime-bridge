@@ -167,7 +167,9 @@ export class RequestTrace {
       this.row.headersMs = Math.round(performance.now() - (this.sentAt ?? this.begin));
       this.responseHeaders = this.redactor.headers(event.headers);
       const contentType = event.headers.find(([name]) => name.toLowerCase() === 'content-type')?.[1] ?? '';
-      this.observer = new ResponseObserver(contentType.includes('text/event-stream'));
+      // 只比较忽略大小写的媒体类型主体，参数中的同名文本不能改变响应解析方式。
+      const mediaType = contentType.split(';', 1)[0]!.trim().toLowerCase();
+      this.observer = new ResponseObserver(mediaType === 'text/event-stream');
       this.captures.set('upstream_response', {
         stage: 'upstream_response', attempt: 1, capturedAt: new Date().toISOString(), source: this.options.engine.startsWith('demo') ? 'demo_fixture' : 'native_response',
         representation: 'response_logical_bytes', status: 'incomplete', observedBytes: 0, storedBytes: 0, sha256: null, text: null,

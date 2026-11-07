@@ -4,6 +4,7 @@ import { isObject } from '../shared/errors';
 export class ResponseObserver {
   private decoder = new TextDecoder();
   private buffer = '';
+  private skipLineFeed = false;
   private discard = false;
   private json = '';
   private jsonOverflow = false;
@@ -23,17 +24,23 @@ export class ResponseObserver {
    */
   push(bytes: Uint8Array): boolean {
     const before = this.firstOutput;
-    const text = this.decoder.decode(bytes, { stream: true });
+    let text = this.decoder.decode(bytes, { stream: true });
     if (!this.streaming) {
       if (this.json.length + text.length <= 10 * 1024 * 1024) this.json += text;
       else this.jsonOverflow = true;
       return false;
     }
-    this.buffer += text;
-    let match: RegExpExecArray | null;
-    while ((match = /\r?\n\r?\n/.exec(this.buffer)) !== null) {
-      const block = this.buffer.slice(0, match.index);
-      this.buffer = this.buffer.slice(match.index + match[0].length);
+    if (text) {
+      // CR 已在上一片作为换行处理；吞掉后续配对 LF，避免分片把 CRLF 变成空行。
+      const skip = this.skipLineFeed && text.startsWith('\n');
+      this.skipLineFeed = text.endsWith('\r');
+      if (skip) text = text.slice(1);
+      this.buffer += text.replace(/\r\n?/g, '\n');
+    }
+    let boundary: number;
+    while ((boundary = this.buffer.indexOf('\n\n')) !== -1) {
+      const block = this.buffer.slice(0, boundary);
+      this.buffer = this.buffer.slice(boundary + 2);
       if (block.length > 256 * 1024) this.invalid = true;
       else if (!this.discard) this.event(block);
       this.discard = false;
@@ -43,7 +50,7 @@ export class ResponseObserver {
   }
 
   private event(block: string): void {
-    const data = block.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+    const data = block.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
     if (!data) return;
     let value: unknown;
     try { value = JSON.parse(data); } catch { this.invalid = true; return; }

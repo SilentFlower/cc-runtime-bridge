@@ -158,8 +158,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         if not body.get('stream'):
             content = json.dumps(message, ensure_ascii=False).encode()
+            with LOCK:
+                CALLS[index]['responseBytes'] = len(content)
+                CALLS[index]['responseSha256'] = hashlib.sha256(content).hexdigest()
             self.send_response(200)
-            self.send_header('content-type', 'application/json')
+            self.send_header('content-type', 'application/json; note="text/event-stream"' if chosen == 'json-mime-parameter' else 'application/json')
             self.send_header('content-length', str(len(content)))
             if chosen == 'close':
                 self.send_header('connection', 'close')
@@ -169,18 +172,22 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
             return
         self.send_response(200)
-        self.send_header('content-type', 'text/event-stream')
+        self.send_header('content-type', 'Text/Event-Stream' if chosen == 'mimecase' else 'text/event-stream')
         self.send_header('transfer-encoding', 'chunked')
         self.end_headers()
 
+        response_entity = bytearray()
+
         def chunk(value):
             """写出真实分块响应。:param value: 原片段。:return: None。"""
+            response_entity.extend(value)
             self.wfile.write(('%x\r\n' % len(value)).encode() + value + b'\r\n')
             self.wfile.flush()
 
         def event(value):
             """序列化合成 SSE。:param value: 事件。:return: None。"""
-            chunk(('event: ' + value['type'] + '\ndata: ' + json.dumps(value, ensure_ascii=False) + '\n\n').encode())
+            newline = '\r' if chosen == 'crline' else '\n'
+            chunk(('event: ' + value['type'] + '\ndata: ' + json.dumps(value, ensure_ascii=False) + '\n\n').replace('\n', newline).encode())
 
         event({'type': 'message_start', 'message': {**message, 'content': [], 'stop_reason': None}})
         if chosen in ['long', 'cancel']:
@@ -198,6 +205,9 @@ class Handler(BaseHTTPRequestHandler):
         elif chosen != 'incomplete':
             event({'type': 'message_delta', 'delta': {'stop_reason': message['stop_reason']}, 'usage': {'output_tokens': 1}})
             event({'type': 'message_stop'})
+        with LOCK:
+            CALLS[index]['responseBytes'] = len(response_entity)
+            CALLS[index]['responseSha256'] = hashlib.sha256(response_entity).hexdigest()
         self.wfile.write(b'0\r\n\r\n')
         self.wfile.flush()
 

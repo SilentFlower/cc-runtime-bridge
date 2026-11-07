@@ -14,7 +14,7 @@ import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
 
 interface Endpoint { port: number; proxyPort: number; caFile: string }
-interface Call { index: number; file: string; connection: number; rawBytes: number; rawSha256: string; bodyBytes: number; bodySha256: string; tls: string; alpn: string; resumed: boolean }
+interface Call { index: number; file: string; connection: number; rawBytes: number; rawSha256: string; bodyBytes: number; bodySha256: string; tls: string; alpn: string; resumed: boolean; responseBytes?: number; responseSha256?: string }
 interface Report { calls: Call[]; hellos: { connection: number; fields: unknown }[]; targets: string[]; connectHeads: { target: string; headers: string[]; authorizationSha256: string | null }[] }
 type FixtureFrame = Endpoint | Report;
 const native = process.env.CCRB_NATIVE_ISOLATED === '1' && process.env.CCRB_TLS_VERIFIER_TEST === '1' ? describe : describe.skip;
@@ -118,6 +118,29 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     expect(report.calls.length).toBe(count + 1);
     assertFinal(result.record, report.calls.at(-1)!);
     evidence.push({ case: 'first-actual-relay', state: result.record.request.state, final: result.record.captures.find(value => value.stage === 'wire_final') });
+  }, 30000);
+
+  test.each([false, true])('合法媒体类型和 SSE 换行不改变原版响应终态：verify=%s', async verify => {
+    const running = await app(await endpoint(), verify);
+    try {
+      for (const mode of ['json', 'mimecase', 'crline', 'json-mime-parameter']) {
+        const before = (await inspect()).calls.length;
+        const result = await send(running, mode, { model: 'deepseek-flash', thinking: { type: 'disabled' }, stream: mode !== 'json-mime-parameter' });
+        const report = await inspect(), call = report.calls.at(-1)!;
+        expect(report.calls.length).toBe(before + 1);
+        expect(result.response.status).toBe(200);
+        expect(result.record.request.state).toBe('success');
+        expect(result.record.request.firstOutputMs).not.toBeNull();
+        expect(result.record.request.captureError).toBeNull();
+        const sha256 = createHash('sha256').update(result.raw).digest('hex');
+        expect(call.responseSha256).toBe(sha256);
+        expect(call.responseBytes).toBe(Buffer.byteLength(result.raw));
+        expect(result.record.captures.find(value => value.stage === 'upstream_response')?.sha256).toBe(sha256);
+        if (verify) assertFinal(result.record, call);
+        else expect(result.record.captures.find(value => value.stage === 'wire_final')?.status).toBe('unavailable');
+        evidence.push({ case: 'response-format', mode, verify, state: result.record.request.state, responseSha256: sha256, responseBytes: call.responseBytes });
+      }
+    } finally { await close(running); }
   }, 30000);
 
   test.each([false, true])('工具续轮六类 Prompt ID 与独立 TLS 实收一致：verify=%s', async verify => {
