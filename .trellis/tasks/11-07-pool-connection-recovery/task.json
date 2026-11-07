@@ -1,0 +1,44 @@
+{
+  "id": "pool-connection-recovery",
+  "name": "pool-connection-recovery",
+  "title": "定位并修复池连接异常",
+  "description": "在不重放模型请求的前提下区分池连接断连阶段，修复可复现的本地缺陷并验证故障收口与后续请求。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-07",
+  "completedAt": null,
+  "closeout": {
+    "status": "pending",
+    "closedAt": null,
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-07-transport-forwarding-repairs",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "按模型POST关联的安全诊断及私有回执、账本兼容",
+      "直连与HTTPS代理12个新增故障子场景及恢复验证",
+      "123项单测、56项原生、20项集成及实际CLI离线回归",
+      "全面检查、Spec同步及8787有序更新",
+      "业务代码已提交并推送"
+    ],
+    "partialStep": "原始真实UND_ERR_SOCKET根因仍未定位",
+    "nextStep": "后续实际调用若再现断连，按账本阶段关联代理和池侧记录继续定位",
+    "notes": "当前实现已交付；原始断连不标记为解决。交付实例 manual-transport-fix-20261106T163459481163Z，PID 219949；旧账本校验保持，真实模型自动调用为0。",
+    "updatedAt": "2026-11-07T00:57:14Z"
+  }
+}
