@@ -63,7 +63,7 @@ test('列表、四页签、脱敏复制和真实采集边界', async ({ page, co
   await expect(detail.locator('.capture-meta')).toContainText('demo_fixture');
   await detail.getByRole('button', { name: /最终出站采样/ }).click();
   await expect(detail.locator('.capture-meta')).toContainText('未采集');
-  await expect(detail.locator('.section-note')).toContainText('本版本未采集真实最终字节');
+  await expect(detail.locator('.section-note')).toContainText('未开启最终出站验证');
   await expect(detail.getByRole('button', { name: '复制', exact: true })).toBeDisabled();
   await page.screenshot({ path: 'artifacts/logs-detail-desktop.png' });
   expect(errors).toEqual([]);
@@ -101,7 +101,8 @@ test('手机详情可读，原文及模型内容只作为安全文本', async ({
   expect(await page.evaluate(() => 'ccrbInjected' in window)).toBe(false);
   await page.getByRole('button', { name: 'ui-xss', exact: true }).click();
   const detail = page.getByRole('dialog');
-  await expect(detail.getByText('<img src=x onerror="window.ccrbInjected=true">', { exact: true })).toBeVisible();
+  await expect(detail.getByText('<img src=x onerror="window.ccrbInjected=true">', { exact: true })).toHaveCount(3);
+  await expect(detail.getByText('<img src=x onerror="window.ccrbInjected=true">', { exact: true }).first()).toBeVisible();
   await detail.getByRole('tab', { name: '原始数据', exact: true }).click();
   await expect(detail.locator('pre').last()).toContainText('<img src=x');
   expect(await detail.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
@@ -211,4 +212,35 @@ test('分类用途和识别来源可见，旧记录缺字段仍兼容', async ({
   });
   await page.getByTitle('ui-main', { exact: true }).click();
   await expect(detail.getByText('旧记录未注明', { exact: true })).toBeVisible();
+});
+
+test('前置模型选择、最后写出来源及验证器失效状态只读可见', async ({ page }) => {
+  let failed = false, posts = 0;
+  await page.route('**/api/requests', async route => { posts++; await route.continue(); });
+  await page.route('**/api/health', async route => {
+    const response = await route.fetch(), value = await response.json();
+    await route.fulfill({ response, json: { ...value, tlsCapture: 'verify', nativeFinalCapture: true, tlsVerifier: { profile: 'claude-code-2.1.293', state: failed ? 'failed' : 'ready' } } });
+  });
+  await page.route('**/api/logs/ui-main', async route => {
+    const response = await route.fetch(), value = await response.json();
+    value.request.model = 'ui-effective-model';
+    value.context.modelSelection = { requested: 'ui-requested-model', effective: 'ui-effective-model', source: 'startup_override' };
+    const final = value.captures.find((capture: { stage: string }) => capture.stage === 'wire_final');
+    Object.assign(final, { source: 'native_tls_verifier', representation: 'http_entity_from_final_tls_write', status: 'complete', observedBytes: 2, storedBytes: 2, text: '{}', note: '测试显示夹具：最后 TLS 本地写出，不是上游实收证明' });
+    await route.fulfill({ response, json: value });
+  });
+  await page.goto('/'); await page.getByLabel('每 3 秒刷新').uncheck();
+  await expect(page.locator('#capture-hint')).toHaveText('最终 TLS 写出验证已开启（固定画像）');
+  await page.getByRole('button', { name: 'ui-main', exact: true }).click();
+  const detail = page.getByRole('dialog');
+  await expect(detail.getByText('ui-requested-model', { exact: true })).toBeVisible();
+  await expect(detail.getByText('本机启动配置', { exact: true })).toBeVisible();
+  await detail.getByRole('tab', { name: '原始数据', exact: true }).click();
+  await detail.getByRole('button', { name: /最终出站采样/ }).click();
+  await expect(detail.locator('.capture-meta')).toContainText('native_tls_verifier');
+  await expect(detail.locator('.section-note')).toContainText('不是上游实收证明');
+  await page.keyboard.press('Escape'); failed = true; await page.reload();
+  await expect(page.locator('#capture-hint')).toHaveText('最终 TLS 验证器不可用');
+  await expect(page.locator('#health-warning')).toContainText('TLS 辅助程序失败');
+  expect(posts).toBe(0);
 });

@@ -1,6 +1,7 @@
 import type { CaptureRecord, HeaderDecision, RequestDetail, RequestRow } from './contracts';
 import { isObject } from './errors';
 import { isAgentAssociation, isAgentLaunches, isNativeClassificationContext } from './request-attribution';
+import { isModelSelection } from './upstream';
 
 function row(value: unknown): RequestRow {
   if (!isObject(value) || ['id', 'createdAt', 'model', 'requestClass', 'sessionId', 'promptId', 'state', 'mode', 'engine'].some(key => typeof value[key] !== 'string')) throw new Error('日志列表合同不匹配');
@@ -27,6 +28,7 @@ export function decodeLogDetail(value: unknown): RequestDetail {
   const request = row(value.request);
   if (isObject(value.context) && value.context.inputFormat !== undefined && !['api', 'claude_code'].includes(String(value.context.inputFormat))) throw new Error('日志接入类型不合法');
   if (isObject(value.context) && value.context.classification !== undefined && !isNativeClassificationContext(value.context)) throw new Error('分类证据合同不匹配');
+  if (isObject(value.context) && value.context.modelSelection !== undefined && (!isModelSelection(value.context.modelSelection) || value.context.modelSelection.effective !== request.model)) throw new Error('模型选择证据合同不匹配');
   if (value.agentAssociation !== undefined && !isAgentAssociation(value.agentAssociation)) throw new Error('代理关联视图合同不匹配');
   for (const decision of value.decisions) if (!isObject(decision) || typeof decision.name !== 'string' || typeof decision.reason !== 'string' || !['keep', 'drop', 'runtime', 'context'].includes(String(decision.action))) throw new Error('头部决策合同不匹配');
   for (const capture of value.captures) {

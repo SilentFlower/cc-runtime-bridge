@@ -7,7 +7,7 @@ import { ResponseObserver } from './response-observer';
 import { describeCachePolicy } from '../shared/runtime-policy';
 import { collectAgentLaunches, isAgentLaunches } from '../shared/request-attribution';
 
-/** 本地 TLS 接收端的完整实体样本，只能从启动侧私有采集器提供。 */
+/** 独立 TLS 观测样本，只能从启动侧私有采集器提供；旧池接收端合同保持兼容。 */
 export interface FinalCaptureSample {
   body: string;
   headers: HeaderPair[];
@@ -15,6 +15,12 @@ export interface FinalCaptureSample {
   capturedAt: string;
   verified: boolean;
   note: string;
+  source?: 'native_tls_verifier';
+  observedBytes?: number;
+  sha256?: string | null;
+  complete?: boolean;
+  flushed?: boolean;
+  status?: 'failed';
 }
 
 /** 单次采集的模式、预览上限和显式秘密来源。 */
@@ -66,14 +72,14 @@ export class RequestTrace {
     this.capture('ingress', options.ingressText ?? (typeof raw === 'string' ? raw : JSON.stringify(raw)), headers, 'http_ingress', 'utf8');
     this.capture('header_policy', JSON.stringify(prepared?.decisions ?? []), [], 'header_policy', 'json');
     for (const stage of ['cc_prepared', 'wire_final', 'upstream_response'] as const) {
-      this.captures.set(stage, { stage, attempt: 1, capturedAt: new Date().toISOString(), source: 'unavailable', representation: 'unknown', status: 'unavailable', observedBytes: 0, storedBytes: 0, sha256: null, text: null, headers: [], note: stage === 'wire_final' ? '原生最终处理在 JS 拦截点之后，本版本未采集真实最终字节' : '尚未取得该阶段数据' });
+      this.captures.set(stage, { stage, attempt: 1, capturedAt: new Date().toISOString(), source: 'unavailable', representation: 'unknown', status: 'unavailable', observedBytes: 0, storedBytes: 0, sha256: null, text: null, headers: [], note: stage === 'wire_final' ? '未开启最终出站验证，未采集最后一跳字节' : '尚未取得该阶段数据' });
     }
     this.save();
   }
 
-  private capture(stage: CaptureStage, text: string, headers: HeaderPair[], source: string, representation: string): void {
+  private capture(stage: CaptureStage, text: string, headers: HeaderPair[], source: string, representation: string, incomplete = false): void {
     const bytes = Buffer.from(text);
-    const safe = this.options.mode === 'debug' ? this.redactor.preview(text, this.options.maxBodyBytes) : null;
+    const safe = this.options.mode === 'debug' ? this.redactor.preview(text, this.options.maxBodyBytes, incomplete) : null;
     const storedText = safe?.text ?? null;
     this.captures.set(stage, {
       stage, attempt: 1, capturedAt: new Date().toISOString(), source, representation,
@@ -113,14 +119,21 @@ export class RequestTrace {
     try {
       const sample = read();
       if (!sample) {
-        this.captures.get('wire_final')!.note = '本次未取得本地 TLS 最终实收，未用发送前参数补写';
+        this.captures.get('wire_final')!.note = '本次未取得最终 TLS 观测，未用发送前参数补写';
       } else {
         this.redactor.register(sample.headers);
-        this.capture('wire_final', sample.body, sample.headers, 'local_pool_node_tls_receiver', 'http_entity_body_after_native_transport');
+        this.capture('wire_final', sample.body, sample.headers, sample.source ?? 'local_pool_node_tls_receiver', sample.source ? 'http_entity_from_final_tls_write' : 'http_entity_body_after_native_transport', !!sample.source && (sample.observedBytes ?? 0) > Buffer.byteLength(sample.body));
         const captured = this.captures.get('wire_final')!;
         captured.capturedAt = sample.capturedAt;
         captured.note = this.redactor.text('HTTP/' + sample.httpVersion + '；' + sample.note);
-        if (!sample.verified) { captured.status = 'failed'; this.row.captureError = '最终 TLS 实收未通过独立核验'; }
+        if (sample.source) {
+          captured.observedBytes = sample.observedBytes ?? 0;
+          captured.sha256 = sample.sha256 ?? null;
+          if (sample.complete && sample.flushed && sample.verified && captured.observedBytes > Buffer.byteLength(sample.body)) captured.status = 'truncated';
+          if (!sample.complete || !sample.flushed) captured.status = 'incomplete';
+          if (sample.status) { captured.status = sample.status; captured.text = null; captured.storedBytes = 0; }
+        }
+        if (!sample.verified) { if (!sample.source || (sample.complete && sample.flushed)) captured.status = 'failed'; this.row.captureError = '最终 TLS 观测缺失、不完整或未通过核验'; }
       }
     } catch {
       const captured = this.captures.get('wire_final')!;
@@ -183,7 +196,7 @@ export class RequestTrace {
       if (this.observer?.streamError) { state = 'stream_error'; error = '上游响应包含错误'; }
       else if (!this.observer?.terminal || this.observer.invalid) { state = 'incomplete'; error = '响应没有可验证的完整终态'; }
     }
-    if (this.row.httpStatus !== null && this.row.httpStatus >= 400 && state !== 'canceled') state = 'http_error';
+    if (this.row.httpStatus !== null && this.row.httpStatus >= 300 && state !== 'canceled') state = 'http_error';
     this.row.state = state; this.row.error = error ? this.redactor.text(error) : null;
     this.row.finishedAt = new Date().toISOString(); this.row.durationMs = Math.round(performance.now() - this.begin);
     if (this.observer) {

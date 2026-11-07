@@ -66,11 +66,11 @@ export function mergeNativeContext(context: ContextInput, native: NativeInput): 
   return { ...context, ...native.context };
 }
 
-/** 从原生正文准备唯一发送，严格模式更新账号与 CCH，兼容模式另采用同次 CLI 入口。
+/** 从原生正文准备唯一发送，账号与 CCH 存在性以同次原生上下文为准。
  * @param body 原生业务正文。
  * @param generatedMetadata 同一 SDK 按专用账号生成的身份。
  * @param policy 启动侧入站策略。
- * @param generatedSystem 同次 SDK 实际生成的 CLI system，兼容分支用来取得真实发送入口。
+ * @param generatedSystem 同次 SDK 实际生成的 CLI system，用来取得发送入口及原生 CCH 分支。
  * @return 业务字段和缓存位置保持不变的请求正文。
  */
 export function prepareNativeBody(body: MessageBody, generatedMetadata: unknown, policy: NativeIngressPolicy = 'strict', generatedSystem?: unknown): JsonObject {
@@ -82,15 +82,22 @@ export function prepareNativeBody(body: MessageBody, generatedMetadata: unknown,
   result.metadata = { ...(body.metadata as JsonObject), user_id: JSON.stringify({ ...native.user, device_id: account.device_id, account_uuid: account.account_uuid }) };
   const blocks = result.system as JsonObject[];
   let billing = blocks[native.billingIndex]!.text as string;
-  if (policy === 'local_base_url') {
-    // 自定义 Base URL 会让客户端省略 CCH；发送入口必须来自同次真实 CLI 上下文，不能靠改日志标签证明。
+  let generatedCch: boolean | undefined;
+  if (generatedSystem !== undefined || policy === 'local_base_url') {
+    // 入站是否缺 CCH 与内部目标是否生成 CCH 是两件事，必须以同次真实 CC 上下文判断。
     let generated: NativeInput | null;
-    try { generated = readNativeInput({ system: generatedSystem, metadata: generatedMetadata }); }
+    try { generated = readNativeInput({ system: generatedSystem, metadata: generatedMetadata }, 'local_base_url'); }
     catch { throw new BridgeError('native_identity', '同次 CLI billing 上下文校验失败', 503); }
-    if (!generated) throw new BridgeError('native_identity', '无法取得同次 CLI billing 上下文', 503);
-    billing = billing.replace(/((?:x-anthropic-billing-header:|;)\s*cc_entrypoint=)[^;\r\n]+/, '$1' + generated.fields.cc_entrypoint);
-    if (native.fields.cch === undefined) billing = billing.trimEnd() + (billing.trimEnd().endsWith(';') ? ' ' : '; ') + 'cch=00000;';
+    if (!generated || generated.fields.cc_entrypoint !== 'cli') throw new BridgeError('native_identity', '无法取得同次 CLI billing 上下文', 503);
+    generatedCch = generated.fields.cch !== undefined;
+    if (policy === 'local_base_url') billing = billing.replace(/((?:x-anthropic-billing-header:|;)\s*cc_entrypoint=)[^;\r\n]+/, '$1' + generated.fields.cc_entrypoint);
   }
-  blocks[native.billingIndex]!.text = billing.replace(/(x-anthropic-billing-header:\s*|;\s*)cch=[0-9a-f]{5}(?=\s*(?:;|$))/, '$1cch=00000');
+  if (generatedCch === false) {
+    billing = billing.replace(/((?:x-anthropic-billing-header:|;)\s*)cch=[0-9a-f]{5}\s*;?/, '$1');
+  } else {
+    if (native.fields.cch === undefined) billing = billing.trimEnd() + (billing.trimEnd().endsWith(';') ? ' ' : '; ') + 'cch=00000;';
+    billing = billing.replace(/(x-anthropic-billing-header:\s*|;\s*)cch=[0-9a-f]{5}(?=\s*(?:;|$))/, '$1cch=00000');
+  }
+  blocks[native.billingIndex]!.text = billing;
   return result;
 }

@@ -5,6 +5,7 @@ import { prepareInput } from './header-policy';
 import type { Engine } from './engine';
 import { LogStore } from './log-store';
 import { RequestTrace, type FinalCaptureSample } from './trace';
+import { selectUpstreamModel } from '../shared/upstream';
 
 /** 串行服务的请求预算和日志设置。 */
 interface ServiceOptions {
@@ -13,6 +14,7 @@ interface ServiceOptions {
   timeoutMs: number;
   secrets?: Record<string, unknown>;
   nativeIngressPolicy?: NativeIngressPolicy;
+  modelOverride?: string;
   finalCapture?: (requestId: string) => FinalCaptureSample | null;
 }
 
@@ -99,7 +101,7 @@ export class BridgeService {
     let prepared: PreparedInput;
     try {
       if (this.closing) throw new BridgeError('service_closing', '服务正在关闭，不再接收作业', 503);
-      prepared = prepareInput(parseInput(raw, headers, this.options.nativeIngressPolicy));
+      prepared = selectUpstreamModel(prepareInput(parseInput(raw, headers, this.options.nativeIngressPolicy)), this.options.modelOverride);
       if (this.recentIds.has(prepared.input.request_id) || this.store.exists(prepared.input.request_id)) throw new BridgeError('duplicate_request', 'request_id 已使用，不能覆盖已有日志', 409);
     } catch (error) {
       const trace = new RequestTrace(null, raw, headers, this.store, { ...this.options, ingressText, engine: this.engine.name, binarySha256: this.engine.binarySha256 });
@@ -136,7 +138,9 @@ export class BridgeService {
           // TLS 实收先于池响应；提前保存可避免响应的敏感标志值影响此前请求的预览。
           if (event.type === 'response_headers' && this.options.finalCapture) trace.finalCapture(() => this.options.finalCapture!(trace.row.id));
           trace.event(event);
-          if (event.type === 'response_headers') {
+          if (event.type === 'final_capture_ready') {
+            if (this.options.finalCapture) trace.finalCapture(() => this.options.finalCapture!(trace.row.id));
+          } else if (event.type === 'response_headers') {
             if (gotHeaders) throw new BridgeError('runtime_protocol', '运行时重复返回响应头', 502);
             gotHeaders = true;
             const outgoing = responseHeaders(event.headers);

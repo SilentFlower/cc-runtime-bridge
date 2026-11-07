@@ -25,6 +25,14 @@ test('旧日志保持可读，关联字段来源与空值必须一致', () => {
   expect(() => decodeLogList({ rows: [{ ...value.request, agentLaunches: { state: 'complete', links: [{}] } }], total: 1 })).toThrow('启动证据');
 });
 
+test('模型选择字段保持旧记录兼容，未知来源和有效模型冲突拒绝', () => {
+  const value = fixture();
+  value.context!.modelSelection = { requested: 'incoming', effective: value.request.model, source: 'startup_override' };
+  expect(decodeLogDetail(value).context?.modelSelection?.requested).toBe('incoming');
+  expect(() => decodeLogDetail({ ...value, context: { ...value.context, modelSelection: { ...value.context!.modelSelection, source: 'request' } } })).toThrow('模型选择证据');
+  expect(() => decodeLogDetail({ ...value, context: { ...value.context, modelSelection: { ...value.context!.modelSelection, effective: 'wrong' } } })).toThrow('模型选择证据');
+});
+
 test('分类用途须与auxiliary和auto_mode一致，私有作业不能只贴识别标签', () => {
   const value = fixture(), classification = { purpose: 'auto_permission_classifier' as const, source: 'native_profile' as const, profile: 'cc293-auto-mode-xml-s1' as const };
   value.context = { ...value.context!, inputFormat: 'claude_code', requestClass: 'auxiliary', querySource: 'auto_mode', classification };

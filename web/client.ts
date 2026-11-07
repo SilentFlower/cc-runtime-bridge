@@ -103,9 +103,11 @@ async function loadHealth(signal?: AbortSignal): Promise<void> {
   const label = get('engine-badge'); label.textContent = demo ? '演示模式 · 未调用上游' : '官方 Claude Code 2.1.293';
   label.className = 'badge ' + (demo ? 'warn' : '');
   get('log-mode').textContent = String(health.logMode);
-  get('capture-hint').textContent = health.nativeFinalCapture ? '最终采样已验证' : '最终出站值未采集';
-  const warning = get('health-warning'); warning.hidden = !health.captureError;
-  warning.textContent = health.captureError ? String(health.captureError) + '；部分记录可能缺失，请勿据此判断上游请求是否成功。' : '';
+  const verifierFailed = isObject(health.tlsVerifier) && health.tlsVerifier.state === 'failed';
+  get('capture-hint').textContent = verifierFailed ? '最终 TLS 验证器不可用' : health.tlsCapture === 'verify' ? '最终 TLS 写出验证已开启（固定画像）' : health.nativeFinalCapture ? '独立 TLS 接收采样已开启' : '最终出站值未采集';
+  const issue = health.captureError ?? (verifierFailed ? 'TLS 辅助程序失败，需要重启实例' : null);
+  const warning = get('health-warning'); warning.hidden = !issue;
+  warning.textContent = issue ? String(issue) + '；部分记录可能缺失，请勿据此判断上游请求是否成功。' : '';
 }
 
 async function openDetail(id: string, refresh = false): Promise<void> {
@@ -133,6 +135,9 @@ function summary(value: RequestDetail): void {
   const grid = element('div', undefined, 'detail-grid');
   grid.append(field('接入路径', value.context?.inputFormat === 'claude_code' ? '原生 CC 正文接入' : value.context?.inputFormat === 'api' ? '普通 API 原生组装' : value.context ? '旧记录未注明' : '未解析'));
   const association = value.agentAssociation;
+  const modelSelection = value.context?.modelSelection;
+  const missingModel = value.context ? '旧记录未注明' : '未解析';
+  grid.append(field('入站模型', modelSelection?.requested ?? missingModel), field('前置选择模型', modelSelection?.effective ?? row.model), field('模型选择来源', modelSelection ? modelSelection.source === 'startup_override' ? '本机启动配置' : '调用方请求' : missingModel));
   grid.append(field('状态', STATES[row.state] ?? row.state), field('HTTP 状态', row.httpStatus), field('模型', row.model), field('请求类别', CLASSES[row.requestClass] ?? row.requestClass), field('引擎', row.engine), field('上下文来源', value.context?.source === 'client' ? '调用方上下文' : value.context ? '桥接器默认' : '未解析'), field('开始时间', date(row.createdAt)), field('完成时间', date(row.finishedAt)), field('会话 ID', row.sessionId), field('Prompt ID', row.promptId), field('Agent ID', row.agentId), field('父 Agent ID', association?.parentAgentId ?? row.parentAgentId), field('二进制 SHA256', row.binarySha256, true));
   if (value.context?.inputFormat === 'claude_code') grid.append(field('请求用途', value.context.classification ? PURPOSES[value.context.classification.purpose] : '未识别特殊用途'));
   if (value.context?.classification) grid.append(field('归类来源', '固定 293 原生构造证据'));

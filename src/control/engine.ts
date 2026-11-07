@@ -6,6 +6,8 @@ import { decodeWorkerFrame, runtimeEvent } from '../shared/protocol';
 import { BridgeError, errorText } from '../shared/errors';
 import { PROFILE_293, runtimeFileStamp, verifyRuntime, verifyExecutionImage, type RuntimeIdentity, type VerifiedRuntime } from '../runtime/profile';
 import { readCachePolicy, readTelemetryPolicy, type CachePolicy, type TelemetryPolicy, type TelemetryState, type TelemetryHandshake } from '../shared/runtime-policy';
+import { readNativeBaseUrl } from '../shared/upstream';
+import type { FinalCaptureSample } from './trace';
 
 /** 运行时启动配置，均来自控制配置，不从调用方请求头读取。 */
 export interface EngineConfig {
@@ -17,6 +19,7 @@ export interface EngineConfig {
   oauthToken?: string;
   proxyUrl?: string;
   caFile?: string;
+  baseUrl?: string;
   preloadPath: string;
   cwd: string;
   /** 显式请求总预算，0 表示交由前置取消或关闭信号控制。 */
@@ -31,6 +34,13 @@ export interface Engine {
   readonly binarySha256: string | null;
   readonly workerPid: number | null;
   readonly telemetryState?: TelemetryState;
+  readonly tlsVerifierIdentity?: { readonly profile: string; readonly sha256: string; readonly target: string; readonly recipe: number };
+  readonly tlsVerifierState?: 'ready' | 'failed' | 'closed';
+  /** 取得并清除控制侧独立观测，缺失不以准备值补写。
+   * @param requestId 当前请求标识。
+   * @return 最后写出样本或空。
+   */
+  takeFinalCapture?(requestId: string): FinalCaptureSample | null;
   /** 执行单轮请求并等待事件消费者。
    * @param prepared 已验证请求。
    * @param signal 取消信号。
@@ -93,7 +103,7 @@ export class NativeEngine implements Engine {
   /** 绑定不可按请求变更的账号及运行环境。
    * @param config 显式控制配置。
    */
-  constructor(config: EngineConfig) { this.config = Object.freeze({ ...config, cachePolicy: readCachePolicy(config.cachePolicy), telemetryPolicy: readTelemetryPolicy(config.telemetryPolicy) }); }
+  constructor(config: EngineConfig) { this.config = Object.freeze({ ...config, baseUrl: readNativeBaseUrl(config.baseUrl), cachePolicy: readCachePolicy(config.cachePolicy), telemetryPolicy: readTelemetryPolicy(config.telemetryPolicy) }); }
 
   /** 读取 worker 的实际遥测初始化状态，不表示上传成功。
    * @return 当前物理进程状态；读取不会创建进程。
@@ -121,6 +131,7 @@ export class NativeEngine implements Engine {
     const verified = await verifyRuntime(this.config.binaryPath);
     try {
       if (verified.identity.kind === 'original') await readFile(this.config.preloadPath);
+      if (verified.identity.kind !== 'original' && this.config.baseUrl !== undefined) throw new BridgeError('native_configuration', '旧精简运行时尚未验证显式上游配置，请使用固定官方原版', 503);
       this.identity = verified.identity;
       this.stamp = verified.stamp;
     } finally { await verified.handle.close(); }
@@ -236,8 +247,9 @@ export class NativeEngine implements Engine {
       if (verified.identity.kind === 'original') env.BUN_OPTIONS = '--preload ' + resolve(config.preloadPath);
       if (config.apiKey) env.ANTHROPIC_API_KEY = config.apiKey;
       if (config.oauthToken) env.CLAUDE_CODE_OAUTH_TOKEN = config.oauthToken;
-      if (config.proxyUrl) env.HTTPS_PROXY = config.proxyUrl;
+      if (config.proxyUrl) { env.HTTP_PROXY = config.proxyUrl; env.HTTPS_PROXY = config.proxyUrl; }
       if (config.caFile) env.NODE_EXTRA_CA_CERTS = config.caFile;
+      if (config.baseUrl !== undefined) env.ANTHROPIC_BASE_URL = config.baseUrl;
       // 通过已核验 FD 启动确切 inode，避免校验后路径原子替换导致执行另一文件。
       const child = Bun.spawn(['/proc/' + process.pid + '/fd/' + verified.handle.fd, '--version'], { cwd: config.cwd, env, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
       const worker: WorkerProcess = { id, child, verified, ready: completion(), stopped: completion(), loop: Promise.resolve(), initialized: false, failed: false, current: null };

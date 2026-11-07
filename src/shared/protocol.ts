@@ -2,6 +2,7 @@ import type { HeaderPair, RuntimeEvent, RuntimeJob, RuntimePayload, WorkerComman
 import { BridgeError, isObject } from './errors';
 import { isCachePolicyDecision, isTelemetryHandshake } from './runtime-policy';
 import { isNativeClassificationContext } from './request-attribution';
+import { isModelSelection } from './upstream';
 
 function headerPairs(value: unknown): value is HeaderPair[] {
   return Array.isArray(value) && value.every(x => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string');
@@ -26,6 +27,7 @@ export function validateRuntimeEvent(value: unknown, requestId: string): Runtime
   let valid = false;
   switch (value.type) {
     case 'ready': valid = typeof value.version === 'string'; break;
+    case 'final_capture_ready': valid = value.attempt === 1; break;
     case 'cc_prepared': valid = value.attempt === 1 && typeof value.body === 'string' && headerPairs(value.headers) && Number.isSafeInteger(value.body_bytes) && Number(value.body_bytes) >= 0 && typeof value.body_sha256 === 'string' && /^[a-f0-9]{64}$/.test(value.body_sha256) && (value.cache_policy === undefined || isCachePolicyDecision(value.cache_policy)); break;
     case 'response_headers': valid = value.attempt === 1 && Number.isInteger(value.status) && Number(value.status) >= 200 && Number(value.status) <= 599 && headerPairs(value.headers); break;
     case 'response_chunk': valid = value.attempt === 1 && typeof value.data_b64 === 'string' && value.data_b64.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value.data_b64); break;
@@ -47,6 +49,7 @@ export function decodeRuntimeJob(value: unknown): RuntimeJob {
   if (isObject(prepared.input) && prepared.input.inputFormat !== undefined && !['api', 'claude_code'].includes(String(prepared.input.inputFormat))) throw new BridgeError('runtime_protocol', '运行时接入类型不合法', 502);
   if (!isObject(prepared.input) || prepared.input.request_id !== value.request_id || !isObject(prepared.input.body) || !Array.isArray(prepared.input.body.messages) || !isObject(prepared.context) || typeof prepared.context.sessionId !== 'string' || typeof prepared.context.promptId !== 'string' || !headerPairs(prepared.headers)) throw new BridgeError('runtime_protocol', '运行时作业缺少上下文');
   if (prepared.context.classification !== undefined && (prepared.input.inputFormat !== 'claude_code' || !isNativeClassificationContext(prepared.context))) throw new BridgeError('runtime_protocol', '运行时分类证据不匹配');
+  if (prepared.context.modelSelection !== undefined && (!isModelSelection(prepared.context.modelSelection) || prepared.context.modelSelection.effective !== prepared.input.body.model)) throw new BridgeError('runtime_protocol', '运行时模型选择证据不匹配');
   return value as unknown as RuntimeJob;
 }
 
@@ -95,7 +98,7 @@ export function decodeWorkerFrame(line: string, workerId: string): WorkerFrame {
     if (['schema_version', 'request_id', 'worker_id'].some(key => key in payload)) throw new BridgeError('runtime_protocol', '请求载荷不能覆盖协议归属', 502);
     // 同一 JSONL 已经解析；直接校验对象，避免完整 CLI 正文再次编码和解析。
     validateRuntimeEvent({ ...payload, schema_version: 1, request_id: value.request_id }, value.request_id);
-    if (payload.type === 'ready') throw new BridgeError('runtime_protocol', '请求事件不能替代工作进程握手', 502);
+    if (payload.type === 'ready' || payload.type === 'final_capture_ready') throw new BridgeError('runtime_protocol', '工作进程不能声明控制侧握手或最终采集', 502);
     return value as unknown as WorkerFrame;
   }
   throw new BridgeError('runtime_protocol', '工作进程帧格式错误', 502);

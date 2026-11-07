@@ -28,6 +28,21 @@ function post(base: string, value: unknown): Promise<Response> {
 const request = { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '本地集成测试' }], stream: true };
 
 describe('控制、持久日志与查询', () => {
+  test('前置模型覆盖贯通提交、原始入站及日志选择证据', async () => {
+    const { app: running, base } = await app(undefined, { CCRB_MODEL_OVERRIDE: 'fixture-routed-model' });
+    const original = { request_id: 'model-selection', body: request };
+    const response = await post(base, original);
+    await response.text(); await running.store.flush();
+    expect(response.status).toBe(200);
+    const detail = (await running.store.detail('model-selection'))!;
+    expect(detail.request.model).toBe('fixture-routed-model');
+    expect(detail.context?.modelSelection).toEqual({ requested: request.model, effective: 'fixture-routed-model', source: 'startup_override' });
+    const ingress = detail.captures.find(item => item.stage === 'ingress')!;
+    expect(JSON.parse(ingress.text!).body.model).toBe(request.model);
+    expect(JSON.parse(detail.captures.find(item => item.stage === 'cc_prepared')!.text!).model).toBe('fixture-routed-model');
+    expect(original.body.model).toBe(request.model);
+  });
+
   test.each(['debug','summary','off'] as const)('独立最终采集遵守 %s，秘密先注册且原始哈希不变', async mode => {
     const secret = 'final-capture-pool-canary', raw = JSON.stringify({ echo: secret, text: '采集正文'.repeat(800) });
     let reads = 0;
@@ -54,6 +69,20 @@ describe('控制、持久日志与查询', () => {
       expect(value.request.state).toBe('success'); expect(value.captures.find(item => item.stage === 'wire_final')!.status).toBe(fail ? 'failed' : 'unavailable');
       expect(JSON.stringify(value)).not.toContain('private-error-canary');
     }
+  });
+
+  test('最后写出预览在秘密中途截断时省略边界，整体计数和哈希仍按观测保存', async () => {
+    const secret = 'tls-write-prefix-secret-canary-981';
+    const body = JSON.stringify({ text: 'x'.repeat(1000) + secret + '尾部'.repeat(300) });
+    const prefix = body.slice(0, body.indexOf(secret) + 12);
+    const sha256 = createHash('sha256').update(body).digest('hex');
+    const { app: running, base } = await app(undefined, { CCRB_CAPTURE_BYTES: '1024' }, { finalCapture: () => ({ body: prefix, headers: [['x-api-key', secret]], httpVersion: '1.1', capturedAt: new Date().toISOString(), verified: true, source: 'native_tls_verifier', observedBytes: Buffer.byteLength(body), sha256, complete: true, flushed: true, note: '最后本地写出观测夹具' }) });
+    const response = await post(base, { request_id: 'tls-prefix-boundary', body: request }); await response.text(); await running.store.flush();
+    const captured = (await running.store.detail('tls-prefix-boundary'))!.captures.find(value => value.stage === 'wire_final')!;
+    expect(captured.source).toBe('native_tls_verifier'); expect(captured.status).toBe('truncated');
+    expect(captured.observedBytes).toBe(Buffer.byteLength(body)); expect(captured.sha256).toBe(sha256);
+    expect(captured.text).not.toContain(secret.slice(0, 12));
+    expect(captured.headers).toContainEqual(['x-api-key', '[REDACTED]']);
   });
 
   test('完整链路保留扩展头决策、原文和独立哈希，查询不再执行模型', async () => {

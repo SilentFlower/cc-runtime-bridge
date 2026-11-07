@@ -121,6 +121,19 @@ HTTP 状态、合法端到端响应头及响应逻辑字节原样返回。conten
 
 ## 配置
 
+### 上游、根模型与按需验证
+
+- `CCRB_NATIVE_BASE_URL` 为可选 HTTP(S) 绝对地址，不含凭据、查询串、片段或空白；不设置时不传 `ANTHROPIC_BASE_URL`。保留原生 SDK 对路径前缀的语义，不自动删除或增加 `/v1`。
+- `CCRB_MODEL_OVERRIDE` 只覆盖根 `body.model`，在原生构造前生效，历史及工具内部同名字段保持。入站原文保留原模型，`context.modelSelection` 记录 requested、effective 和 request/startup_override 来源；历史记录缺字段时显示未注明。
+- `CCRB_NATIVE_INGRESS_POLICY=strict|local_base_url` 与上游及验证开关独立；本地原版 CC 客户端的自定义 Base URL 请求需显式选择后者。内部也使用自定义目标时，CCH 是否存在服从同次内部 CC 的原生分支，不强行补回。
+- `CCRB_TLS_CAPTURE=off|verify` 默认 off。off 时原版 CC 直接发送，wire_final 为 unavailable。verify 只支持 Linux x64 固定官方原版 293、HTTPS Messages/HTTP1.1、遥测 off、直连或 HTTP CONNECT 代理；旧精简文件、HTTP 目标、HTTPS/SOCKS 代理、开启遥测等未验证组合在启动时拒绝。
+
+verify 的辅助程序将原版 CC 已生成的请求行、有序头及正文原字节写入固定画像 TLS 通道，不重组业务、不计算最终 CCH、不替换账号。日志 source=`native_tls_verifier`，representation=`http_entity_from_final_tls_write`；哈希和 observedBytes 属于实际接受的实体字节，预览截断不缩小整体计数。note 保存连接/worker 代次、HTTP 总字节哈希和刷出状态。该样本是最后 TLS 本地写出明文，不是加密网络帧，也不证明上游已收到或执行。旧池 source=`local_pool_node_tls_receiver` 仍表示其真实接收位置。
+
+`/api/health` 增加 tlsCapture、tlsVerifier（独立画像、SHA256、target、recipe、state）及 upstream 的安全选择摘要；不返回真实上游地址或凭据。nativeFinalCapture 表示配置能力，不表示每次请求已采集成功。辅助程序失效会显示 failed，停止后续发送，不切换发送器或自动重放。配置按实例冻结，业务请求不能控制目标、凭据、代理或采集策略。
+
+3xx 响应按原状态返回并记为 http_error，不自动跟随；4xx/5xx 及 SSE 错误仍按已有合同处理。
+
 ### 可选缓存策略
 
 `CCRB_CACHE_POLICY=preserve` 为默认值，保持当前布局。显式设为 `sub2api` 并重启服务后，对没有调用方消息断点的请求选取尾部可缓存块；消息至少四条时，再选倒数第二条 user 消息的末尾可缓存块。已有 system/tools 标记保留，总预算最多四个，预算不足时尾部优先。普通 API 的 SDK 自动消息标记仅在调用方未声明消息标记时由此策略替换。
@@ -149,7 +162,11 @@ Bun 读取本机 .env；该文件已被 Git 忽略。参考仓库 .env.example�
 | CCRB_CLAUDE_BINARY | 官方固定 293 程序绝对路径，原生模式必需 |
 | CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR | 专用 HOME 与配置目录，原生模式必需 |
 | CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN | 显式原生凭据；也可由专用配置提供 |
-| CCRB_PROXY_URL、CCRB_CA_FILE | 原生进程 HTTPS 代理与额外 CA 文件 |
+| CCRB_NATIVE_BASE_URL | 可选 HTTP(S) 目标，不设置时保留原生默认 |
+| CCRB_MODEL_OVERRIDE | 可选根模型选择，不设置时保留调用方模型 |
+| CCRB_NATIVE_INGRESS_POLICY | strict；本地原版 CC 自定义端点接入时显式 local_base_url |
+| CCRB_TLS_CAPTURE | off；verify 需要独立构建及授信的 TLS 辅助程序 |
+| CCRB_PROXY_URL、CCRB_CA_FILE | 原生进程 HTTP/HTTPS 代理与额外 CA 文件 |
 | CCRB_WORKDIR | 默认专用 HOME |
 | CCRB_HOST、CCRB_PORT | 127.0.0.1、8787；仅允许回环监听 |
 | CCRB_DATA_DIR | data |

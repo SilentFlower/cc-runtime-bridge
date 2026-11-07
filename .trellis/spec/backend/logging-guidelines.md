@@ -20,7 +20,7 @@
 
 - CaptureStage 固定为 ingress、header_policy、cc_prepared、wire_final、upstream_response；每段绑定 attempt、capturedAt、source、representation、status、observedBytes、storedBytes、sha256、text、headers、note。
 - ingress 使用 HTTP 原始 UTF-8 正文；不能 JSON 重序列化后声称是原文。哈希使用原始观测字节，预览先脱敏、再按完整 UTF-8 字符限长。
-- cc_prepared 是 JS 原生传输前参数，CCH 可能为 00000。普通启动的 wire_final 仍为 unavailable；显式本地常驻池实例按下文独立合同采集，不能重算补写或把中间值改标签充当最终值。
+- cc_prepared 是 JS 原生传输前参数，CCH 可能为 00000。默认 off 的 wire_final 为 unavailable；按需 TLS 验证和显式本地常驻池实例分别遵循下文来源合同，不能重算补写或把中间值改标签充当最终值。
 - context.inputFormat 可选 api / claude_code，只由输入解析写入，沿既有 context_json 持久化，不增数据库列或回填旧记录。普通 API 中间段来源为 claude_code_293_cli_prepared，原生为 claude_code_293_native_ingress_prepared；默认 preserve 的原生说明只改账号身份及 CCH 占位。显式 sub2api 实际应用时说明增加消息缓存断点处理；运行时可选 cache_policy 诊断经共享协议校验后投影到已有 capture.note，记录应用/保留/跳过及原因和位置。历史缺失字段保持可读，不把这些诊断称为真实缓存命中。demo 始终保持 demo_fixture，不能因输入是原生形状就标成实际原生发送。
 - 响应 representation=response_logical_bytes。原生 fetch 可能已解压，不称为线上压缩帧。
 - 模式 off 不新增记录；summary 保存摘要、关联、阶段状态而不保存原文和头值；debug 保存有界脱敏原文。既有历史不会因 off 删除。
@@ -65,11 +65,61 @@
 - 同一原生套件对原版与轻量产物验证 binarySha256 真实；多轮复用、取消与流中退出后的日志归属和采集状态独立，初始化不制造虚假作业。
 - 新原生样本导入前后核对既有详情投影哈希不变；独立 Node TLS rawHeaders 与实体正文可作有序原始头证据，Bun 接收的规范化头不能冒充 rawHeaders。生产最终采集能力不因离线补采而改变。
 
+## Scenario: 原生模型选择与最后 TLS 本地写出采集
+
+### 1. Scope / Trigger
+
+- 前置模型选择和验证器观测贯通服务、私有管道、RequestTrace、持久化与只读页；保留既有五阶段，不增加数据库列或回填旧记录。
+- 相关类型在 src/shared/{contracts,tls-verifier-protocol}.ts、src/control/trace.ts；运行目标与传输策略由 runtime-contract.md 所有。
+
+### 2. Signatures
+
+- RequestContext.modelSelection?: { requested: string; effective: string; source: 'request' | 'startup_override' }；isModelSelection(value: unknown): value is ModelSelection。
+- FinalCaptureSample 保留 body、headers、httpVersion、capturedAt、verified、note；新来源可附 source='native_tls_verifier'、observedBytes、sha256: string | null、complete、flushed、status='failed'。
+- decodeTlsVerifierFrame(line: string, instanceId: string, previewLimit: number): TlsVerifierEvent；RequestTrace.finalCapture(read: () => FinalCaptureSample | null): void。
+- GET /api/health 增加 tlsCapture、tlsVerifier 和 upstream；日志详情继续返回 RequestDetail。
+
+### 3. Contracts
+
+- 原始入站模型保留在 ingress；前置有效模型写入 RequestRow.model，选择证据沿 context_json 保存。共享解码器核对 effective 与行/作业根模型相同；历史缺字段保持缺省，不从当前配置补写。
+- 私有封套固定 schema_version=1、instance_id；command_id 单调，指令为 init/begin/expected/finish/shutdown。ready 核对辅助 PID 和画像；capture 绑定 request_id、worker_id、worker_pid、connection_id 和单调 sequence。重复、跨归属或非法完整性关系不得写到下一请求。
+- capture 来自最后上游 TLS 写入器实际接受的明文；body_bytes/body_sha256 覆盖实体已接受范围，http_bytes/http_sha256 覆盖请求行、头和实体。complete 表示全范围已接受，flushed 单独表示刷出成功，verified 再核对同次准备值及原生 CCH 槽位；待发送缓冲区不能整体算作已写出。
+- wire_final 的新 source='native_tls_verifier'、representation='http_entity_from_final_tls_write'；note 记录 worker/连接、整体 HTTP 字节及哈希、刷出和固定原因。它不等于加密网络帧、第一跳接收，也不证明上游接收或执行。
+- body_preview_b64 有启动侧预览上限，增量整体计数/哈希不截断。先注册实际发送头中的秘密，再脱敏保存正文和有序头；不完整前缀省略秘密边界，UTF-8/格式化后的预览不用于重算原观测哈希。summary/off 不保存原文，采集截断独立于模型终态。
+- 默认 off 未取得样本时为 unavailable，不用准备值补写。部分写出或刷出失败为 incomplete；完整但核验不符为 failed。私有通道缺证显示 failed、sha256=null 和范围未知说明，不能把未知零值当成已确认没有发送。采集失败不触发模型重放。
+- final_capture_ready 只通知已存入本请求的独立样本，允许流结束前刷新日志；completed/错误收口再次检查时不得覆盖已保存证据。旧池省略新来源字段时，仍保持 local_pool_node_tls_receiver/http_entity_body_after_native_transport 的接收语义。
+- 健康 nativeFinalCapture 表示配置能力，不表示每次采集成功。tlsVerifier 包含 profile、sha256、target、recipe、state；upstream 只公开 endpoint 选择来源、根模型覆盖和 ingressPolicy，不返回真实端点或凭据。辅助程序失效单独显示 failed，不能仅以日志数据库健康认定验证器可用。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 日志行为 |
+| --- | --- |
+| 旧记录无 modelSelection | 可读，显示历史未注明或入口未解析 |
+| 选择来源未知或 effective 与实际行/作业不符 | 解码失败，不猜测有效模型 |
+| 完整写出且已刷出、预览小于整体 | truncated，整体计数/哈希保持 |
+| 仅写出部分或刷出失败 | incomplete，保留实际范围及失败原因 |
+| 完整实体核验失败 | failed/captureError，不修改已返回模型字节或重放 |
+| 验证器未开启、无样本或通道失效 | 分别显示 unavailable、缺口说明或 failed，不从第一跳补写 |
+| CCH 合法空白或正文含内部旧标记 | 正常采集；不能误报失败或拒绝业务 |
+
+### 5. Scenarios and Examples
+
+- 正常：调用方 model=A，启动覆盖为 B；入站仍保存 A，行及 modelSelection.effective 为 B，source=startup_override。
+- 边界：8 MiB 原生正文完整写出，预览只保存 16 KiB；wire_final 为 truncated，observedBytes 和 SHA256 仍对应完整实际写出实体。
+- 错误用法：用采集器第一跳样本或模型完成状态推断上游实收。正确处理：保留不同来源，并独立展示本地完整性、刷出和模型终态。
+
+### 6. Tests Required
+
+- tests/unit/{tls-verifier,log-api,upstream}.test.ts：帧归属/完整性、模型选择和历史字段兼容。
+- tests/integration/control.test.ts：原始/有效模型分别持久化、缺证不重放、秘密中途截断不泄露而整体哈希保持。
+- tests/native/tls-verifier.test.ts：对独立 OpenSSL 实收核对实体及整体 HTTP 哈希；长流提前可见、完整/截断/部分/失败、取消后重建、错误 PID 和实例隔离；CHK-001/CHK-002 均核对 captureError=null。
+- tests/browser/logs.spec.ts：模型选择来源、最后写出位置和验证器 failed 健康状态可见，所有刷新零额外推理。
+
 ## Scenario: 测试专用 TLS 最终采集与池 Messages 验证
 
 ### 1. Scope / Trigger
 
-- scripts/test-pool.ts 在测试链路中采集 CC 原生最终出站，再向明确的 Messages 池转发；报告字段 ccFinal 不扩展生产 CaptureStage，生产 nativeFinalCapture 仍为 false。
+- scripts/test-pool.ts 在测试链路中采集 CC 原生最终出站，再向明确的 Messages 池转发；报告字段 ccFinal 不扩展生产 CaptureStage，也不自动开启内置验证器的 nativeFinalCapture 能力。
 - 复用已接纳的官方/精简二进制、Engine、RequestTrace 和 Redactor，不修改原生运行时、CC 目标、生产 EngineConfig 或数据库；池响应不能作为 Anthropic 鉴权或缓存命中证明。
 
 ### 2. Signatures

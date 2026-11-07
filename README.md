@@ -48,6 +48,14 @@ bun run start
 
 ### 用自己的 Claude Code 联调
 
+普通服务现可直接在启动侧设置 `CCRB_NATIVE_BASE_URL`、`CCRB_MODEL_OVERRIDE`；不设置时保留内部 CC 的默认端点和调用方根模型。使用自己的原版 293 客户端接入时，再设置 `CCRB_NATIVE_INGRESS_POLICY=local_base_url`。凭据仍通过服务端的 `CCRB_NATIVE_API_KEY` 或专用账号配置提供，不由客户端指定。
+
+`CCRB_TLS_CAPTURE=off` 为默认值，官方 CC 直接对外发送，不创建验证器。需要核对实际出站时，先运行 `bun run build:tls-verifier`，再配置 `CCRB_TLS_CAPTURE=verify` 并重启。验证模式用独立 Rust 辅助程序透传原版 CC 的 HTTP 原字节，在最后 TLS 写入处采集；该 TLS 实现采用固定 293 画像，和官方实现分别标识。健康接口显示画像、辅助程序哈希及状态，日志区分完整、截断、失败和未采集。
+
+目前 verify 支持 Linux x64、固定官方原版 2.1.293、HTTPS Messages/HTTP1.1、直连或 HTTP CONNECT 代理，并要求关闭遥测；缺失或不匹配的辅助程序会明确失败。完整公开握手、HTTP 和连接行为以独立回环对照为准，不承诺随机密钥、时延或全部服务器实现相同。构建及验证说明见[运行时说明](docs/runtime.md#按需最后出站验证当前源码)。关闭验证即可恢复原版直连。
+
+下面保留原有显式池联调工具，其 Node 接收位置与新验证模式的最后写出位置不同：
+
 本地池模式提供常驻 API 和日志页，接收固定 2.1.293 客户端使用自定义 Base URL 发出的请求。链路为本地接口、隔离原生运行时、TLS 采集器、兼容 Messages 的池；模型在采集器第二段映射为 deepseek-flash。
 
 ```bash

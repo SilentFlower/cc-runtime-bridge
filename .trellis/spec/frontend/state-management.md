@@ -13,7 +13,7 @@
 - decodeLogDetail(value: unknown): RequestDetail。
 - loadList(): Promise<void>；openDetail(id: string, refresh = false): Promise<void>。
 - GET /api/logs 使用 requestId、model、state、requestClass、sessionId、since、until、limit、offset。
-- GET /api/logs/:id 读取快照；GET /api/health 返回 engine、logMode、captureError、nativeFinalCapture。
+- GET /api/logs/:id 读取快照；GET /api/health 返回 engine、logMode、captureError、nativeFinalCapture，以及 tlsCapture、tlsVerifier、upstream 的安全状态摘要。
 
 ### 3. Contracts
 
@@ -23,8 +23,11 @@
 - 开启自动刷新后每 3 秒刷新列表；详情显式刷新，打开新 ID 重置到 summary/ingress，同 ID 刷新保留页签。
 - 详情四页签为概览、头部处理、性能、原始数据；阶段名称与采集状态由持久接口驱动。
 - 概览用 context.inputFormat 显示“原生 CC 正文接入”或“普通 API 原生组装”；有历史上下文但缺字段时显示“旧记录未注明”，context=null 的入口失败显示“未解析”。原生 cc_prepared 标签为“原生改写（中间值）”，普通 API 与旧记录仍为“CC 组装（中间值）”；两者都不能代替最终出站。
+- 概览按 context.modelSelection 显示“入站模型”“前置选择模型”“模型选择来源”，来源为“本机启动配置”或“调用方请求”；历史缺证显示“旧记录未注明”，context=null 显示“未解析”。不得用当前配置替换历史发生时证据。
 - null 性能字段显示未观测，不写 0；请求 state 与捕获 status 不相互替代。
 - demo/fixture 必须明显标记演示与未调用上游。wire_final 不可用时显示未采集，不能以中间原文填充。
+- tlsCapture=verify 时提示“最终 TLS 写出验证已开启（固定画像）”；tlsVerifier.state=failed 时显示“最终 TLS 验证器不可用”并提示需要重启实例。旧池能力提示为“独立 TLS 接收采样已开启”，关闭时为“最终出站值未采集”。nativeFinalCapture 是能力标记，不能显示成每次采样已成功。
+- wire_final 的 native_tls_verifier 来源和 http_entity_from_final_tls_write 表示直接展示；完整/截断/失败状态由持久记录驱动，并显示最后本地写出不是上游实收证明。全页模型、状态及原文仍只按安全文本渲染。
 - 文本、模型名、原文全部通过 textContent 渲染；不得通过 innerHTML 解释输入。复制只使用已经脱敏的接口文本。
 - 同会话按钮用发生时的 sessionId 查询；父 agentId 与 agentId 保留快照，不依赖活跃进程对象。
 - context.classification 按 purpose 显示“自动权限分类”“会话标题生成”或“会话压缩”，并显示固定 293 原生构造来源；类别与 querySource 的唯一映射和 profile 校验由 backend/runtime-contract.md 所有，页面复用共享解码器。其他原生请求显示“未识别特殊用途”，不把默认主类别当作已识别的特殊用途。
@@ -61,3 +64,4 @@
 - 改动异步读取或销毁流程时，核对 AbortController 与结果归属，关闭或换 ID 后旧响应不能覆盖页面。
 - bun run typecheck 与 bun run build；浏览器验收使用独立目录、显式 demo 和无外网空间。
 - tests/browser/logs.spec.ts 另覆盖迟到证据刷新、来源与原始上下文区分、证据跳转、分类用途、旧记录缺字段及 390 像素展示；tests/unit/log-api.test.ts 覆盖新字段空值/来源和分类协议一致性。
+- tests/browser/logs.spec.ts 另覆盖前置模型、最后写出来源与验证器失效提示；手机 XSS 模型会在三处作为文本显示，不得创建节点。只读状态刷新不得提交 /api/requests。

@@ -8,6 +8,8 @@ import { LogStore } from './log-store';
 import { BridgeService } from './service';
 import { readCachePolicy, readTelemetryPolicy } from '../shared/runtime-policy';
 import type { FinalCaptureSample } from './trace';
+import { readModelOverride, readNativeBaseUrl, readNativeIngressPolicy, readTlsCaptureMode, type TlsCaptureMode } from '../shared/upstream';
+import { TlsVerifierEngine } from './tls-verifier';
 
 /** 本地手工池实例的计数，不含地址凭据；budget/remaining 为 null 表示不限次数。 */
 export interface LocalPoolStatus { runId: string; model: string; live: boolean; budget: number | null; reserved: number; remaining: number | null }
@@ -32,6 +34,9 @@ export interface ServerConfig {
   retainDays: number;
   debugRetainDays: number;
   engine: EngineConfig;
+  modelOverride?: string;
+  nativeIngressPolicy?: NativeIngressPolicy;
+  tlsCapture?: TlsCaptureMode;
 }
 
 /** 已启动的控制服务及有序释放入口。 */
@@ -70,9 +75,13 @@ export function readConfig(env = process.env, demo = false): ServerConfig {
     maxLogBytes: numberSetting(env.CCRB_LOG_BYTES, 512 * 1024 * 1024, 1024, 2 * 1024 * 1024 * 1024),
     retainDays: numberSetting(env.CCRB_RETAIN_DAYS, 7, 1, 90),
     debugRetainDays: numberSetting(env.CCRB_DEBUG_RETAIN_DAYS, 3, 1, 90),
+    modelOverride: readModelOverride(env.CCRB_MODEL_OVERRIDE),
+    nativeIngressPolicy: readNativeIngressPolicy(env.CCRB_NATIVE_INGRESS_POLICY),
+    tlsCapture: readTlsCaptureMode(env.CCRB_TLS_CAPTURE),
     engine: {
       mode, binaryPath: env.CCRB_CLAUDE_BINARY, home: env.CCRB_CLAUDE_HOME, configDir: env.CCRB_CLAUDE_CONFIG_DIR,
       apiKey: env.CCRB_NATIVE_API_KEY, oauthToken: env.CCRB_NATIVE_OAUTH_TOKEN, proxyUrl: env.CCRB_PROXY_URL, caFile: env.CCRB_CA_FILE,
+      baseUrl: readNativeBaseUrl(env.CCRB_NATIVE_BASE_URL),
       preloadPath: resolve('dist/preload.mjs'), cwd: resolve(env.CCRB_WORKDIR ?? env.CCRB_CLAUDE_HOME ?? '.'),
       timeoutMs: numberSetting(env.CCRB_TIMEOUT_MS, 0, 0, 0x7fffffff),
       cachePolicy: readCachePolicy(env.CCRB_CACHE_POLICY),
@@ -112,11 +121,15 @@ function secured(response: Response): Response {
  * @return 已启动服务。
  */
 export async function startServer(config: ServerConfig, injectedEngine?: Engine, startup: ServerStartupOptions = {}): Promise<RunningServer> {
-  const engine = injectedEngine ?? await createEngine(config.engine);
-  await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
+  if (config.tlsCapture === 'verify' && (injectedEngine || startup.finalCapture)) throw new BridgeError('tls_verifier_configuration', 'TLS verify 不能与注入引擎或旧池采集器混用', 503);
+  const engine = config.tlsCapture === 'verify' ? await TlsVerifierEngine.create(config.engine, config.maxBodyBytes) : injectedEngine ?? await createEngine(config.engine);
+  try { await mkdir(config.dataDir, { recursive: true, mode: 0o700 }); }
+  catch (error) { await engine.close(); throw error; }
   const store = new LogStore({ dbPath: join(config.dataDir, 'logs.sqlite'), bodyDir: join(config.dataDir, 'bodies'), retainDays: config.retainDays, debugRetainDays: Math.min(config.debugRetainDays, config.retainDays), maxBytes: config.maxLogBytes });
-  await store.open();
-  const service = new BridgeService(engine, store, { mode: config.logMode, maxBodyBytes: config.maxBodyBytes, timeoutMs: config.engine.timeoutMs, nativeIngressPolicy: startup.nativeIngressPolicy, finalCapture: startup.finalCapture, secrets: { api_key: config.engine.apiKey, token: config.engine.oauthToken, proxy_url: config.engine.proxyUrl, ...startup.secrets } });
+  try { await store.open(); }
+  catch (error) { await engine.close(); await store.close(); throw error; }
+  const finalCapture = startup.finalCapture ?? (engine.takeFinalCapture ? engine.takeFinalCapture.bind(engine) : undefined);
+  const service = new BridgeService(engine, store, { mode: config.logMode, maxBodyBytes: config.maxBodyBytes, timeoutMs: config.engine.timeoutMs, modelOverride: config.modelOverride, nativeIngressPolicy: startup.nativeIngressPolicy ?? config.nativeIngressPolicy, finalCapture, secrets: { api_key: config.engine.apiKey, token: config.engine.oauthToken, proxy_url: config.engine.proxyUrl, ...startup.secrets } });
   let server: Bun.Server<undefined>;
   try {
     server = Bun.serve({
@@ -127,7 +140,7 @@ export async function startServer(config: ServerConfig, injectedEngine?: Engine,
           if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) return secured(Response.json({ error: '仅允许本地 Host' }, { status: 403 }));
           const origin = request.headers.get('origin');
           if (origin && origin !== url.origin) return secured(Response.json({ error: '不接受跨来源请求' }, { status: 403 }));
-          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: !!startup.finalCapture, ...(startup.localPoolStatus ? { localPool: startup.localPoolStatus() } : {}), runtimePolicy: { cachePolicy: config.engine.cachePolicy ?? 'preserve', telemetry: config.engine.telemetryPolicy ?? 'off', telemetryState: engine.telemetryState ?? 'unavailable' } }));
+          if (request.method === 'GET' && url.pathname === '/api/health') return secured(Response.json({ engine: engine.name, logMode: config.logMode, captureError: store.error, nativeFinalCapture: !!finalCapture, tlsCapture: config.tlsCapture ?? 'off', tlsVerifier: engine.tlsVerifierIdentity ? { ...engine.tlsVerifierIdentity, state: engine.tlsVerifierState ?? 'unavailable' } : null, upstream: { endpoint: config.engine.baseUrl ? 'startup_override' : 'native_default', model: config.modelOverride ?? null, ingressPolicy: startup.nativeIngressPolicy ?? config.nativeIngressPolicy ?? 'strict' }, ...(startup.localPoolStatus ? { localPool: startup.localPoolStatus() } : {}), runtimePolicy: { cachePolicy: config.engine.cachePolicy ?? 'preserve', telemetry: config.engine.telemetryPolicy ?? 'off', telemetryState: engine.telemetryState ?? 'unavailable' } }));
           if (request.method === 'GET' && url.pathname === '/api/logs') return secured(Response.json(store.list(filters(url))));
           if (request.method === 'GET' && url.pathname.startsWith('/api/logs/')) {
             const id = decodeURIComponent(url.pathname.slice('/api/logs/'.length));
@@ -156,6 +169,7 @@ export async function startServer(config: ServerConfig, injectedEngine?: Engine,
       },
     });
   } catch (error) {
+    await engine.close();
     await store.close();
     throw error;
   }

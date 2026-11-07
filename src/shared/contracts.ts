@@ -92,8 +92,16 @@ export interface BridgeInput {
   nativeIngressPolicy?: NativeIngressPolicy;
 }
 
+/** 发生时的根模型选择，不等同于未经采集的上游响应模型。 */
+export interface ModelSelection {
+  requested: string;
+  effective: string;
+  source: 'request' | 'startup_override';
+}
+
 /** 已解析的调用上下文，各表示都以此为同一来源。 */
 export interface RequestContext {
+  modelSelection?: ModelSelection;
   classification?: NativeClassification;
   inputFormat?: 'api' | 'claude_code';
   requestClass: RequestClass;
@@ -194,6 +202,7 @@ export interface LogFilters {
 /** 控制进程与固定运行时之间的消息。 */
 export type RuntimePayload =
   | { type: 'ready'; version: string }
+  | { type: 'final_capture_ready'; attempt: 1 }
   | { type: 'cc_prepared'; attempt: number; headers: HeaderPair[]; body: string; body_bytes: number; body_sha256: string; cache_policy?: CachePolicyDecision }
   | { type: 'response_headers'; attempt: number; status: number; headers: HeaderPair[] }
   | { type: 'response_chunk'; attempt: number; data_b64: string }

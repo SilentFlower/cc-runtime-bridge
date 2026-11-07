@@ -5,6 +5,7 @@ coverage/
 test-results/
 playwright-report/
 *.tsbuildinfo
+/native/tls-verifier/target/
 
 # 运行数据、凭据及本机配置
 /data/

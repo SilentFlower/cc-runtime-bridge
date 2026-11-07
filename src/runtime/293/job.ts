@@ -298,6 +298,8 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
       if (cache.body !== generated.body) init.body = JSON.stringify(cache.body);
       if (typeof init.body !== 'string') throw new Error('原生 SDK 发送正文不是字符串');
       init.headers = headers;
+      // 单次发送合同要求由调用方处理重定向；原生 fetch 的自动跟随会产生未归属的第二次请求。
+      init.redirect = 'manual';
       const outgoing = [...headers.entries()] as HeaderPair[];
       redactor.register(outgoing);
       // 正文和头仅走私有管道；控制层先注册秘密，再统一脱敏持久化，避免重复扫描完整正文。
@@ -336,7 +338,7 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
         await emit({ type: 'response_chunk', attempt: 1, data_b64: Buffer.from(next.value).toString('base64') });
       }
     }
-    finalState = status >= 400 ? 'http_error' : signal.aborted ? 'canceled' : 'success';
+    finalState = status >= 300 ? 'http_error' : signal.aborted ? 'canceled' : 'success';
   } finally {
     // 失败或取消时主动释放响应，空闲确认必须晚于流与 SDK 的收口。
     if (reader) {

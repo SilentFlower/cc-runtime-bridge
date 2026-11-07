@@ -139,8 +139,42 @@ bun scripts/benchmark-runtime.ts \
 
 接收端先以原始 TLS 探针核对头名大小写、顺序及重复字段，再保存实际 HTTP 实体正文；CCH 独立复算只作核验，不参与发送生成。日志标明 offline_tls_receiver，保留 cc_prepared 中间值及历史 SDK 记录。完整证据见 [原生入站验收记录](../.trellis/tasks/11-06-native-cc-ingress/research/acceptance.md)，旧工具规则及 PTY 研究见 [上一轮验收](../.trellis/tasks/11-05-cli-alignment/research/acceptance.md)。
 
-生产自动 wire_final 采集仍未实现，页面全局能力状态继续为 false；本机样本不能改变该状态。原始采样、默认提示词、专有源码和二进制保留在被忽略的 artifacts/、runtime/ 目录，不提交 Git。
+上述历史产物没有自动 wire_final 采集，不能因导入本机样本改变能力状态。当前源码的按需验证能力见下节；原始采样、默认提示词、专有源码和二进制仍保留在被忽略的 artifacts/、runtime/ 目录，不提交 Git。
 
 原版使用 dist/preload.mjs，候选使用内嵌入口。需要原版时显式指定固定官方文件并重建服务，启动失败不自动切换运行模式。回退旧 SDK 方案时应同时恢复旧代码和旧产物，不仅回退文件或替换入口标签，也不重放失败作业。
 
 本地池 Base URL 联调增加了原生入站兼容合同，目前只接纳固定原版配合最新 dist/preload.mjs。上表轻量产物保留其原有内嵌代码与身份；仅更新项目源码不会更新该文件，本轮不改二进制或接纳表。未来轻量产物需要重新构建并验证新合同后，才能用于该模式。
+
+## 按需最后出站验证（当前源码）
+
+默认 `CCRB_TLS_CAPTURE=off`，保留官方原版直接发送。可选 `CCRB_NATIVE_BASE_URL`、`CCRB_MODEL_OVERRIDE` 在进入 CC 前生效；缺省不覆盖。本轮不重建旧精简产物，它们未获得显式上游配置或验证能力。
+
+verify 链路为原版 CC → 实例私有 TLS 接收器 → HTTP 原字节 → 固定画像 TLS 上游。业务、账号身份和 CCH 仍由原版生成；独立辅助程序仅提供传输、最后写出观测及受限代理，不是官方 TLS 实现。对齐范围是已测试组合的完整公开握手、HTTP 字节及连接行为，随机数、实际公钥、绝对时延和实现细节不作为一致承诺。
+
+独立源码在 `native/tls-verifier`，许可及 craftls 快照来源在 `native/vendor/craftls`；Cargo.lock 固定版本与注册表校验值，生产不访问外部 cc2api 目录。固定目标为 x86_64-unknown-linux-gnu，登记构建使用 rustc 1.96.0 (ac68faa20 2026-05-25)、release、thin LTO 和路径映射。当前产物约 3.8 MB，依赖平台系统库；不纳入旧精简 CC 的单文件体积声明。
+
+```bash
+bun run build
+bun run build:tls-verifier
+# 在本机 .env 中配置后重启：
+# CCRB_TLS_CAPTURE=verify
+# CCRB_TELEMETRY=off
+bun run start
+```
+
+辅助程序在 `dist/tls-verifier`，清单在同名 `.manifest.json`。独立执行体 SHA256 登记于 `src/runtime/tls-verifier-profile.ts`，启动通过已核验文件描述符执行；构建不会自动修改授信清单。其他编译器或依赖导致新哈希时，需要重新验收并登记，不能只改版本字符串。关闭模式不依赖该产物、OpenSSL、私有 CA 或监听器。
+
+开启时生成仅本实例信任的私有 CA 和正常叶证书，不改系统证书库。只接纳冻结目标的认证 CONNECT，并以 Linux TCP 表和 worker 的实际 socket 文件描述符验证 PID；随后核对当轮头、正文长度及仅用于校验的 CCH 槽位。最后写出记录绑定实例、worker 代次、请求、连接和单调序号；取消或退休会关闭本代连接后收口，旧帧不能填入下一请求。原生进程继续驱动复用、关闭和响应解析，辅助程序不建立 HTTP 池，不新增请求重试、跟随重定向或默认总时限。
+
+独立回环验收命令：
+
+```bash
+cargo fmt --manifest-path native/tls-verifier/Cargo.toml --check
+cargo clippy --manifest-path native/tls-verifier/Cargo.toml --locked -- -D warnings
+cargo test --manifest-path native/tls-verifier/Cargo.toml --locked
+CCRB_TLS_REPORT=artifacts/tls-verifier/report.json bun run test:tls
+```
+
+`test:tls` 构建后进入仅有 lo 的新网络空间，使用实际固定原版及合成凭据。独立 OpenSSL 服务端逐字段对照 TLS1.2、TLS1.3、HRR、关闭重连及恢复策略，并核对最后写出整体 HTTP 哈希、有序头、正文、CCH、2/8 MiB 原生正文、36 秒流、取消、错误证书、部分写出、进程失效和双客户端各三个子代理。普通 API 的超大消息可能在原版 CLI 构造阶段被拒绝；该结果与完整原生正文的透传验收分开，不能称为 TLS 丢失。
+
+采集原始范围与预览上限分开；日志 mode=summary/off 时不保存正文。`native_tls_verifier` 表示最后 TLS 本地接受/刷出的明文证据，不能当作上游执行证明。旧显式池工具继续保留 `local_pool_node_tls_receiver` 的接收来源，不升级为最后一跳写出。关闭 verify、删除端点及模型覆盖并重启，可分别恢复官方直接路径和原生默认选择。

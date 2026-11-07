@@ -13,6 +13,24 @@ function fixture(): MessageBody {
 }
 
 describe('固定 293 原生入站合同', () => {
+  test('内部自定义目标省略 CCH 时，不由入站兼容补丁重新增加', () => {
+    const generated = fixture();
+    (generated.system as { text: string }[])[0]!.text = (generated.system as { text: string }[])[0]!.text.replace('cch=12345;', '');
+    for (const policy of ['strict', 'local_base_url'] as const) {
+      const body = fixture(), before = structuredClone(body);
+      if (policy === 'local_base_url') (body.system as { text: string }[])[0]!.text = (body.system as { text: string }[])[0]!.text.replace('cch=12345;', '').replace('cc_entrypoint=cli', 'cc_entrypoint=sdk-cli');
+      const inputBefore = structuredClone(body);
+      const result = prepareNativeBody(body, generated.metadata, policy, generated.system);
+      const parsed = readNativeInput(result, 'local_base_url');
+      expect(parsed?.fields.cch).toBeUndefined();
+      expect(parsed?.fields.cc_entrypoint).toBe('cli');
+      expect(parsed?.fields.cc_prompt_id).toBe(prompt);
+      expect(result.messages).toEqual(before.messages);
+      expect((result.system as unknown[]).slice(1)).toEqual((before.system as unknown[]).slice(1));
+      expect(body).toEqual(inputBefore);
+    }
+  });
+
   test('本地 Base URL 兼容只能由启动侧打开，原始入站保持且策略沿内部合同传递', () => {
     for (const entry of ['cli', 'sdk-cli']) {
       const body = fixture(), billing = body.system as { text: string }[];

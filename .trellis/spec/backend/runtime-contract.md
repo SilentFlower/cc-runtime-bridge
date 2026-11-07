@@ -25,7 +25,7 @@
 - 固定官方 2.1.293 来源，SHA256 为 8968405e26db478af44eabc4635ab5ca557057b702a54460a59c13e1b253e978。创建引擎与每次加载新进程校验完整分发文件；暖复用检查真实路径、dev/inode、大小及纳秒 mtime/ctime。通过已核验 FD 启动，避免路径替换后执行另一文件。官方程序与提取源码不提交。
 - 轻量入口仅接纳固定登记的外层及执行体身份，外部 manifest 不授信。当前基底为原版 Bun 1.4.3；原生代码保留，ICU 仅按固定 C.UTF-8 环境保留 root/en、完整字符/规范化数据和全部分词规则/字典。它是桥接专用程序，不能宣称具备通用 CLI 的全部 Intl locale 定制。
 - BCJ2/LZMA2 与静态 C SDK 加载器单文件分发；载荷 SHA256 自校验后写入封存 memfd 并 fexecve，同 PID 执行，控制层再核对 /proc/<pid>/exe。运行不依赖原版、提取目录或构建工具；磁盘、内存文件与 RSS 分列，不把内存展开当作内存节省。
-- 原生模式显式提供 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR；可提供 CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN、CCRB_PROXY_URL、CCRB_CA_FILE。子进程使用环境白名单。
+- 原生模式显式提供 CCRB_CLAUDE_BINARY、CCRB_CLAUDE_HOME、CCRB_CLAUDE_CONFIG_DIR；可提供 CCRB_NATIVE_API_KEY、CCRB_NATIVE_OAUTH_TOKEN、CCRB_PROXY_URL、CCRB_CA_FILE、CCRB_NATIVE_BASE_URL。子进程使用环境白名单；显式代理同时写入 HTTP_PROXY/HTTPS_PROXY，不继承宿主代理或账号。
 - 启动工作进程与配对性能脚本统一设置 CLAUDE_CODE_ENTRYPOINT=cli，由原生代码生成 User-Agent 的 cli 入口段及 billing 的 cc_entrypoint=cli；requestClass、agentKind 和父子身份仍独立按真实上下文生成。切换入口须重建进程，历史 sdk-cli 日志保留原采样值，不能仅替换日志或正文中的标签。
 - 普通 API 以固定 293 交互 CLI 主请求为参考，主来源为 repl_main_thread、业务用户消息采用 human；-p 的 SDK 行为仅作差异证据。原生 pie、VA/Kz/LT/Uz 及 OM 生成工具、system、提醒和默认模型参数，不手写身份句或用录制请求模板替代；工具结果及六类上下文保持实际来源。完整原生正文走后文的保真分支。
 - 两条路径的 tools 省略与 [] 均无工具，非空列表完整采用调用方定义，不加入 CC 内置、延迟、搜索或占位工具。普通 API 的原生 system 和提醒按实际列表生成，CLI 参考须使用对应工具选择；system 省略时使用 CLI 默认正文，显式值按 --system-prompt 替换，空文本/数组同样属于显式替换。普通 API 的显式消息、工具/thinking 和模型参数在发送前核对；工具数组即使省略也核对空列表，不能无损表达时拒绝，不静默删字段。原生业务正文不借用种子的字段政策。
@@ -36,11 +36,11 @@
 - 普通 API 只支持 docs/api.md 登记的正文键。内部 Re/Kc 负责消息实体；原生规范化后的显式消息、工具、thinking 等必须保留，不可表达时拒绝。原生入站的扩展正文及必要改写另见后文合同。
 - OM 的 deps.callModel 仅进入一次 K_t；其 fetchOverride 取得同一官方 SDK 的正文、头及发送上下文，在显式字段核验后由 Ree 唯一发送。stream 仅按调用方明确值映射；SDK 不取得 Response，桥接独占原始逻辑响应，读取收口后立即取消原生解析。调用次数守卫禁止模型重试，不创建第二个 SDK，不替换全局 fetch；本地工具、代理循环及自动辅助压缩禁用，显式 compaction 保留。
 - 只在精简构建复用固定摘要的六个纯正文格式化函数 KLo、XLo、QLo、nNo、sNo、pNo。每次仍求值原生条件与外层钩子，每个工厂仅保留最近一次原始条件及字符串；UTF-8 键和值每项 ≤64 KiB、六项 ≤384 KiB，不代表堆或 RSS 上限。失败和超限不入缓存；整份提示词、权限/工具选择、会话段落表、memory 读取及请求正文不跨作业缓存。
-- HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
+- HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error；final_capture_ready(attempt=1) 仅由控制侧独立采集器产生，工作进程不得伪造。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
 - 私有 stdin/stdout 使用 schema_version=2、worker_id；request_start 携带 request_id/prepared，request_cancel 携带匹配 request_id，worker_shutdown 关闭进程。输出为 worker_ready(version,pid)、request_event(request_id,payload)、worker_idle(request_id)。payload 禁止覆盖 schema_version、worker_id、request_id。
 - 握手前还可返回 worker_error(code=native_configuration,status=503,error)，不带 request_id 或额外字段。error 只公开受控 BridgeError 配置说明，先脱敏且 ≤2048 UTF-8 B，未知异常用通用中文消息；入口等待帧写入完成后退出。错进程归属、握手后错误帧或畸形字段按 runtime_protocol/502 隔离，失败作业不重放。
 - 每个物理进程只有一个持续读取器。唯一终态与匹配 worker_idle 缺一不可；释放响应并等待 SDK 收口后才发 idle。重复握手、错代次/错请求、双终态、终态后事件、缺 idle 或畸形帧均隔离进程；读取回调和输出闭包绑定旧代次，不得归入下一作业。取消、异常或状态不明时退役，下一轮重建，不重放当前请求；取消采用 1500 ms 强制终止宽限，空闲关闭优先 shutdown，1500 ms 后仍未退出则强制终止。
-- cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。最终 TLS 接收样本必须标明真实来源，生产 wire_final 仍不可用，不以 cc_prepared 冒充最终值。
+- cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。默认 off 的 wire_final 不可用；启动侧可按下文开启独立验证，来源必须对应实际采集位置，不以 cc_prepared 冒充最终值。
 - Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。其余合法端到端扩展默认保留，不允许笼统删除 x-claude-code-*。
 - 透传头与 SDK 默认头重名时，先聚合调用方完整的同名有序值，再覆盖该默认值；不能在默认值后再次 append。Accept 和 anthropic-dangerous-direct-browser-access 不因 SDK 已有相同默认值而重复，调用方显式不同值和合法多值仍保持；beta/version 及运行时所属字段沿各自专用规则处理。
 - 上下文为类别、agentKind、agentId、parentAgentId、agentType、sessionId、promptId、workflowRunId 的同一来源。promptId 必须为 UUID。
@@ -97,6 +97,55 @@
 - 完整必需部署文件总量 ≤27933052 B。保留总启动到首轮、就绪后首轮及暖复用实测，初始化与解包计入启动；控制面、额外空间、RSS、页缓存和本地合成上游边界分别记录。2026-11-05 用户已接受当前延迟，vm2api 相对速度不再是当前准入；scripts/benchmark-runtime.ts 仍保留固定标杆、五轮六作业和旧 1.10 诊断规则，原 passed/退出状态不修改。
 - tests/unit/{redaction,startup-failure,header-policy,profile,engine,worker-protocol}.test.ts：秘密及截断边界不泄露，调用方凭据不转发，拒绝未知身份；初始化错误保留受控原因且等待写完，取消、错帧和迟到输出隔离，不重放或遗留进程。tests/unit/{static-prompts,static-text}.test.ts 核对缓存条件变化、失败不入缓存及 UTF-8 预算；原生套件另核对模型/工具交替恢复后无串值。
 - 原生验证仅使用专用 HOME、合成凭据和 unshare 网络命名空间；不能因测试失败切换真实账号。
+
+## Scenario: 前置上游选择与按需 TLS 验证
+
+### 1. Scope / Trigger
+
+- 启动配置、原生发送和控制侧观测跨层联动；权威实现为 src/shared/upstream.ts、src/control/tls-verifier.ts 与 native/tls-verifier。
+- 官方来源身份继续由 source-profile.ts 所有，辅助程序独立登记于 tls-verifier-profile.ts；不能用辅助程序哈希冒充官方 CC，也不以旧精简产物自动取得新能力。
+
+### 2. Signatures
+
+- EngineConfig.baseUrl?: string；ServerConfig.modelOverride?: string、nativeIngressPolicy?: NativeIngressPolicy、tlsCapture?: 'off' | 'verify'。
+- readNativeBaseUrl(value: string | undefined): string | undefined；selectUpstreamModel(prepared: PreparedInput, override?: string): PreparedInput。
+- TlsVerifierEngine.create(config: EngineConfig, previewLimit: number): Promise<TlsVerifierEngine>；Engine.takeFinalCapture?(requestId: string): FinalCaptureSample | null。
+- expectedTlsWrite(event: Extract<RuntimeEvent, { type: 'cc_prepared' }>): TlsExpected，字段为 request_id、body_bytes、body_sha256、cch_offset: number | null、headers。
+- bun run build:tls-verifier 独立构建 dist/tls-verifier 及来源清单；bun run test:tls 在仅回环网络验证实际原版和独立上游。
+
+### 3. Contracts
+
+- CCRB_NATIVE_BASE_URL 可选，不设置时不传 ANTHROPIC_BASE_URL；只接受无凭据、query、fragment 或空白的 HTTP(S) 绝对地址，保留 SDK 路径前缀语义。旧精简运行时尚未验证该配置时明确拒绝。
+- CCRB_MODEL_OVERRIDE 只在前置覆盖根 model，原始入站保留；历史消息、工具内部同名字段及分类证据保持。CCRB_NATIVE_INGRESS_POLICY 默认 strict，local_base_url 仅由启动侧开启，与上游和验证开关独立。
+- CCRB_TLS_CAPTURE 默认 off：官方 CC 直接对外，不创建辅助进程、监听或私有 CA。verify 仅覆盖 Linux x64、固定官方原版 293、HTTPS Messages/HTTP1.1、遥测 off、直连或 HTTP CONNECT 上游代理；不支持组合明确拒绝，不改用 Node 或隐式直连。
+- verify 的 TLS 实现为独立固定画像，CC 仍唯一生成业务、账号上下文及最终 CCH。内部自定义目标是否产生 CCH，取决于同次内部 CC；prepareNativeBody 只按实际生成上下文准备或省略占位，不强行补回。
+- 本地认证 CONNECT 同时核对冻结目标及实际 worker PID 的 TCP/socket FD 所有权；一条原生连接对应一条上游连接。上游 CONNECT 沿用原生字节、头顺序和连接特征，只删除本地代理凭据或替换为冻结的上游代理凭据。Messages 请求行、头和正文不经二次 HTTP/JSON 组装。
+- 作业在实际 ready 后绑定代次，取得 cc_prepared 校验依据后才写上游；不新增 HTTP 池、请求重试、模型回退或默认总时限。取消/退休先收口本代连接，保留原生复用、重连与半关闭语义；3xx 原状态返回并记 http_error，不自动跟随。
+- CCH 槽位定位接受现有 billing 合同的前导空白、尾部空格/制表符、首/末字段；只在观测副本中改变一个已知 ASCII 字符，比较序列化首个差异后换算 UTF-8 偏移。业务可包含任意同名标记或 CCH 示例文本，不能以固定哨兵冲突拒绝；无 CCH 时 offset=null。该过程不改发送正文，也不生成最终 CCH。
+- 辅助程序按固定依赖锁、第三方快照及许可独立构建，生产不引用外部 cc2api 工作目录或缓存 rlib。构建记录不自动授信；核验独立 SHA256 后经打开的 FD 执行。产物采用原子更换路径，不能原地截断已运行进程映像。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 非法端点、模型或枚举 | 启动 native_configuration/503，无业务发送 |
+| verify + HTTP、旧精简、遥测 on 或未支持代理 | tls_verifier_configuration/503，不兜底发送 |
+| 辅助程序缺失、哈希不符或失效 | 明确 unavailable/identity/failed；不切换发送器或重放 |
+| 实例、代次、请求、序号或帧结构不符 | 私有协议失败并隔离，不归到下一作业 |
+| 正文含内部旧标记、billing 带合法空白 | 正常发送及核验，不能误报 502 或 integrity_mismatch |
+| CCH 缺省 | 校验实际实体哈希，不猜槽位或补 CCH |
+
+### 5. Scenarios and Examples
+
+- 正常：仅配置根模型，CC 使用原生端点生成对应请求；端点、模型都未设置时保持原生选择。verify 开启后由最后 TLS 写入处取得证据。
+- 边界：正文讨论 `__ccrb_cch_observation_slot__`，或合法 billing 写为 `cch=12345 \t;`，业务及采集均应完成；日志预览可截断而整体哈希继续完整。
+- 错误用法：把第一跳 TLS 实收、JS 组装值或模拟 TLS 实现称作官方最终网络实收。正确处理：分别登记来源、实现身份及最后本地写出范围。
+
+### 6. Tests Required
+
+- tests/unit/{upstream,tls-verifier,native-input}.test.ts：默认与非法配置、根模型选择、任意业务标记、合法 billing 空白、UTF-8/转义前缀及唯一槽位；原对象不变。
+- tests/native/tls-verifier.test.ts：普通/原生输入覆盖组合、最后 HTTP/实体哈希、完整公开 ClientHello、TLS1.2/1.3/HRR、证书、认证代理 CONNECT、复用/重连、2/8 MiB、长流/取消/错误、PID 及双实际客户端各三个子代理。CHK-001/CHK-002 场景逐项核对 off/verify、单次发送与 captureError=null。
+- Cargo fmt、clippy、locked build/test：真实 ML-KEM+X25519 交换和无效输入、CCH 跨写入边界、写入中断仅计成功前缀及 CONNECT 凭据选择。
 
 ## Scenario: 固定 293 原生正文接入与构造失败收口
 
@@ -347,7 +396,7 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 
 - local_base_url 接纳固定 2.1.293.<三位十六进制>、cc_entrypoint=cli|sdk-cli；CCH 可以缺失，存在时必须恰好一个独立五位十六进制字段。扩展值内伪装 cch= 同样按歧义拒绝。
 - 其他 billing、metadata、tools、thinking、上下文与本机控制字段规则不变。原始 HTTP 入站仍按原表示保存，不在日志前改写后声称是原文。
-- 兼容分支读取同次 SDK 实际生成、经严格验证的 CLI billing，形成发送入口并补原生 CCH 占位；账号归属仍取同次 metadata。业务正文、缓存位置、会话、轮次及父子扩展保留，最终 CCH 由原生传输生成。
+- 兼容分支读取同次 SDK 实际生成、经验证的 CLI billing，形成发送入口；仅在同次上下文实际生成 CCH 时准备原生占位，自定义目标省略时不补回。账号归属仍取同次 metadata。业务正文、缓存位置、会话、轮次及父子扩展保留，最终 CCH 由原生传输生成。
 - 本地模式只接纳已登记原版与当前 dist/preload.mjs。已发布轻量文件内嵌旧代码，源码更新不能使其取得新合同；重新构建并独立验证前不得混用。旧轻量严格路径继续使用原产物。
 - 常驻入口及 TLS 映射的启动与预算规则由 logging-guidelines.md 的本地常驻池场景所有，不增加可由请求控制的运行时目标配置。
 
