@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"核对固定来源、前置配置、归因、单次发送和传输边界"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"核对最终观测来源、完整性、持久化与脱敏"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"核对发生时模型、采集状态及历史空值展示"}
+{"file":".trellis/tasks/11-07-native-upstream-capture/research/findings.md","reason":"对照独立上游和完整公开握手证据"}

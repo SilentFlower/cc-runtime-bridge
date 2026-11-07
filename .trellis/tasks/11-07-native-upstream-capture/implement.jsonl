@@ -1,0 +1,4 @@
+{"file":".trellis/spec/backend/runtime-contract.md","reason":"固定官方运行时、头部归属、单次发送与取消合同"}
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"真实来源、完整性、脱敏及旧日志兼容"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"只读健康状态、模型选择和最终采集展示"}
+{"file":".trellis/tasks/11-07-native-upstream-capture/research/findings.md","reason":"原版实际出站接口、画像及原字节实验结论"}
