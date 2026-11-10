@@ -1,0 +1,3 @@
+{"file":"/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/service-architecture.md","reason":"原生池预算、固定二进制校验与组装后采集的实现约束。"}
+{"file":"/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/settings-database.md","reason":"按账号配置、诊断状态和管理读取合同。"}
+{"file":"/root/project/vibecoding-bench/.trellis/spec/vibecoding-bench/backend/account-runtime-v3.md","reason":"角色资源、评审交接、身份与凭据归属及部署验收约束。"}

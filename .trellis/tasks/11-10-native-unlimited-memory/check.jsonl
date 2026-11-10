@@ -1,0 +1,3 @@
+{"file":"/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/service-architecture.md","reason":"复核原生无限预算、身份归属、组装后采集及失败隔离合同。"}
+{"file":"/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/settings-database.md","reason":"复核诊断状态兼容、管理读取鉴权及采集私有持久化。"}
+{"file":"/root/project/vibecoding-bench/.trellis/spec/vibecoding-bench/backend/account-runtime-v3.md","reason":"复核账号无限内存、角色资源、凭据单一所有权与生产保护验收。"}
