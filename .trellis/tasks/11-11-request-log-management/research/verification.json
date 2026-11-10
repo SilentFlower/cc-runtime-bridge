@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "scope": "日志模式、七天清理、详情弹窗与原生预热/会话池联合验证",
+  "status": "通过",
+  "frontend": {
+    "build_exit_code": 0,
+    "browser": {
+      "passed": true,
+      "cases": [
+        "立即弹窗及加载",
+        "Escape与焦点返回",
+        "筛选分页保持",
+        "详情迟到归属",
+        "快照迟到归属",
+        "长正文滚动与文本转义",
+        "模式保存与失败恢复",
+        "列表详情独立控制",
+        "卸载取消",
+        "无尝试请求的根时间及最终结果摘要"
+      ],
+      "errors": []
+    }
+  },
+  "typescript_exit_code": 0,
+  "real_binary": {
+    "finite": {
+      "exit_code": 0,
+      "synthetic_requests": 19
+    },
+    "unlimited": {
+      "exit_code": 0,
+      "synthetic_requests": 16
+    }
+  },
+  "real_upstream_requests": 0,
+  "assertions": [
+    "排队中的info请求在切换debug后仍完整内容零落盘",
+    "debug脱敏及历史读取沿用原有归属",
+    "模式切换复用暖PID",
+    "数据库只读年龄过滤与真实在途许可",
+    "快照七天边界、只读过期、软链接、错账号、原子替换与停止保护",
+    "启动无流量清理、独立线程、512项游标及失败恢复"
+  ],
+  "sources_sha256": {
+    "/root/project/vibecoding-bench/cc2api::src/handler/router.rs": "affd550448f81f70fd47602a168ed5dbd7f5dcbcbb0394ab8f6a0e8963b527ad",
+    "/root/project/vibecoding-bench/cc2api::src/main.rs": "370671df9c7467d7b426f59508e24ffa98ce0d61ff65b3542e31cdd1565c3ea1",
+    "/root/project/vibecoding-bench/cc2api::src/model/request_diagnostics.rs": "3081752378867fb8551eca3cb35a8e57c7827de0bfe2c4924ebdfa100621bf10",
+    "/root/project/vibecoding-bench/cc2api::src/service/account.rs": "1a3a62730793d5958284c67c901bf2b7d7477ba55f3a4585fe5b88603f2ba82a",
+    "/root/project/vibecoding-bench/cc2api::src/service/credential_ownership.rs": "35a9957585a9996ed5121eaddc8bf0caef36609f3f0eb5bbbaeee62f238ed6d8",
+    "/root/project/vibecoding-bench/cc2api::src/service/diagnostics.rs": "be57cca4d218a5478a53d74e424880ec29942b820dcd0d121bd31175f3e63ec8",
+    "/root/project/vibecoding-bench/cc2api::src/service/gateway.rs": "cb5c913b59787cf6c0a6c7d3837364faa1ae8fc21bd270f505c0d7f6930d256e",
+    "/root/project/vibecoding-bench/cc2api::src/service/mod.rs": "c2831a11adfb2090753a0f9485938bdada70b7508c6d7a882b35cd37186c8f3f",
+    "/root/project/vibecoding-bench/cc2api::src/service/native_capture.rs": "871ca6fc924d30b6e3447ba6b5d40c7563bf55319cb414a48df7e77ba8f44262",
+    "/root/project/vibecoding-bench/cc2api::src/service/native_contract.rs": "ae29d8f70a9472ac5d65f126c3e575020731b42c5b33ecb3e38f0f40784148b8",
+    "/root/project/vibecoding-bench/cc2api::src/service/native_runtime.rs": "bc5bc9eec328f5e1e6a7f186bae0ee98218ccefef351a2bb779506011476ed0b",
+    "/root/project/vibecoding-bench/cc2api::src/service/native_runtime_unsupported.rs": "650e133b25bcd09b4e24534d163ed865777307aaebf48539b7eb55ef8fca58fa",
+    "/root/project/vibecoding-bench/cc2api::src/service/runtime_bridge.rs": "cc583e0b64884b37aa00146aba0ec30bd63e3449bdab5d6d8f8543fa666813b2",
+    "/root/project/vibecoding-bench/cc2api::src/service/runtime_lease.rs": "ad06126f9bb0e51a536836582c6387e28a007a984ccb922c8f01febef295f751",
+    "/root/project/vibecoding-bench/cc2api::src/service/runtime_transport.rs": "e43c649fcf94fc89881125cfb35c4375b2997257d9f4093b33fdca251929c0de",
+    "/root/project/vibecoding-bench/cc2api::src/store/db.rs": "092b5738058f705b9bd9238481766f89c59af8e4dc113e612476932bfc622295",
+    "/root/project/vibecoding-bench/cc2api::src/store/diagnostics_store.rs": "5bb829dbd6465ec39fea7205db1e65fe165dedae76271fd59fddaee54961f69d",
+    "/root/project/vibecoding-bench/cc2api::src/store/settings_store.rs": "15c4431a18d22c984c0addf2b99de89c0054ab80ccc76b9415373d75072c4c8d",
+    "/root/project/vibecoding-bench/cc2api::web/src/api.ts": "8c6229bc677f2e182f6a327f20227169e97487465b5ab736e20735f78808af9a",
+    "/root/project/vibecoding-bench/cc2api::web/src/components/RequestDiagnostics.vue": "aa8b2a033719b501299420626a91c230985ad4b4f873581b37baf3efd215c7ab",
+    "/root/project/vibecoding-bench/cc2api::src/service/native_prewarm.rs": "d4a50028a128020887352a6eb78fc90b9fe8f9848197912dbb1f27d427e6ba68",
+    "/root/project/vibecoding-bench::orchestrator/account_runtime.py": "af85622149092ad996cb50d9adad84d3cf706441f5081e013ad28947472703a6",
+    "/root/project/vibecoding-bench::orchestrator/main.py": "0868338b76e367f721fe48e6ef87e7342658069e0c35395a47835d007c79a13e",
+    "/root/project/vibecoding-bench::orchestrator/native_capture.py": "ed3add0a7626f111fee59d60aba62fa92dfeb8233ff84f5b4d4ff506a55c84a0",
+    "/root/project/vibecoding-bench::orchestrator/test_account_runtime.py": "58a9b51a67a5a9fba312c76e261398a908e6979ffe07008d3de72db34185bc06",
+    "/root/project/vibecoding-bench::orchestrator/test_native_capture.py": "964c848fa5e797b77087dc72a8071a6903aab5448c4608771e1513310aa954fc",
+    "/root/project/cc-runtime-bridge::scripts/testing/cc2api-native.ts": "8285668a88d8dc802054a99e08d8d0d9923f4c5a52b40e83a5dcc17d3e984b01"
+  },
+  "cargo": {
+    "command": "cargo test --locked -- --test-threads=4",
+    "passed": 851,
+    "ignored": 8,
+    "exit_code": 0
+  },
+  "format_exit_code": 0,
+  "python": {
+    "command": "../.venv/bin/python -m unittest test_native_capture test_account_runtime",
+    "passed": 93,
+    "exit_code": 0
+  },
+  "check_repairs": {
+    "CHK-001": "根请求摘要与无尝试结果已验证",
+    "DOC-001": "开工前状态已按实际流程同步"
+  },
+  "post_deploy_verification": "联合镜像及部署门禁后核对11-5实际info/debug、预热复用和7天回收；真实推理由用户业务触发。",
+  "postgres": {
+    "isolated_network": true,
+    "temporary_database": true,
+    "version": "16",
+    "command": "cargo test --locked --lib postgres_diagnostics_storage_contract -- --ignored --nocapture",
+    "passed": 1,
+    "ignored": 0,
+    "exit_code": 0,
+    "cleanup": "completed"
+  },
+  "delivery": {
+    "joint_cc2api_commit": "1171f8f57ee5ecbf61448b645a4be193aeb0b193",
+    "joint_bench_commit": "5f941cff8e384efb588a821143ac688068c5682a",
+    "recovery_tests_passed": 5,
+    "shared_business_commits": true
+  }
+}

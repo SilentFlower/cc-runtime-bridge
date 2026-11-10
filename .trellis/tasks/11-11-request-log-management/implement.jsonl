@@ -1,0 +1,5 @@
+{"file": "/root/project/vibecoding-bench/.trellis/spec/cc2api/frontend/frontend-guidelines.md", "reason": "现有弹窗、管理 API client、设置值与异步读取规范。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/settings-database.md", "reason": "请求诊断、私有快照及保留/鉴权合同。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/testing-quality.md", "reason": "Rust/前端验证和敏感数据边界。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/vibecoding-bench/backend/account-runtime-v3.md", "reason": "持久环境目录归属、休眠状态与后台生命周期保护。"}
+{"file": ".trellis/tasks/11-11-request-log-management/research/findings.md", "reason": "当前页面、诊断写入器和快照轮转的实际实现证据。"}

@@ -1,0 +1,406 @@
+{
+  "id": "request-log-management",
+  "name": "request-log-management",
+  "title": "请求记录弹窗、日志模式与按天清理",
+  "description": "请求详情改为弹窗；info 仅保存摘要，debug 保存脱敏请求头和正文；摘要与快照按保留天数自动清理，并保留容量保护。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-11",
+  "completedAt": null,
+  "closeout": {
+    "status": "pending",
+    "closedAt": null,
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "用户已确认默认 info、统一保留 7 天；与原生预热/提速/会话池任务分别验收并完成联合回归。",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-10T17:15:31Z",
+      "contextKey": "codex_01a1c3d6-d264-7c52-a029-a893566d4e6e",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "f612b0d5519288f0eed87f336c3d680f94024d53",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/brief.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/prd.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/task.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/brief.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/design.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/implement.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/prd.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/task.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/brief.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/check.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/design.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/prd.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/research/cold-start-evidence.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/research/findings.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/research/performance-comparison.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-11-native-worker-prewarm/task.json"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "f612b0d5519288f0eed87f336c3d680f94024d53",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/brief.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/prd.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/task.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/brief.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/design.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/implement.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/prd.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/task.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/brief.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/check.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/design.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/prd.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/cold-start-evidence.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/findings.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/performance-comparison.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/task.json"
+              }
+            ],
+            "worktreeDiffSha256": "f6a877d2825aeab16e7d18512dee37f4e0f035604ba714af912500739bd6913c",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "dd047fd24c7629f1357f71b5d256c7f8450f6000218edb62f8d2da878747cf0c"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/brief.md",
+                "sha256": "f91010f624b8219874b18d77c1db419641c6397262bf6e8a23bb62ef074c0919"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/prd.md",
+                "sha256": "3b623cdc9a4418b7641c101f0d51961b8a77a5865d24cae4c58874e95090f38f"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/task.json",
+                "sha256": "fa992b2d1a66f28aa33c4f0095361fb062d22108f1eda486a0ad6da6821f284f"
+              },
+              {
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md",
+                "sha256": "2ad622dc7a1bc67f63c1b1305937676cc12cae7e1c79c1165cead1e53bccc301"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md",
+                "sha256": "2200d2f4b384e5bffaf41e8e81234980d14fdba9146ed7d897f7b090b940f51a"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md",
+                "sha256": "2c2f40a01afd29c051a3d919b98ff993c5586fe33d77aeb22acd8c7e91fa42b7"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md",
+                "sha256": "b80bf89e930cd70dfb12cb330ff4307810a97b3bd36a61c78ddf5e5e3e266270"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md",
+                "sha256": "dea31ddda1071091ba66d6c90bd9201da35bc8e8bcde4dc9c5040f3976fdd0b4"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json",
+                "sha256": "175f273b86ddc3423f5b3b8c63a529a945a3378b75f81e459f617be3c2bbc841"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json",
+                "sha256": "5460f3c5b373b25978b38a2aa8aa4c48262383cb8a6aa754e2e17efc15509cce"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/brief.md",
+                "sha256": "ff2441c7d4485c89dcae33d3a64e45feffffe6ff79d07f7d13ba7abc83f410d3"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/check.jsonl",
+                "sha256": "04cbdd89ed789d798beedea96f30f84d9ee21944bbb6dc47a52a17981b64211f"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/design.md",
+                "sha256": "67e5368ca4a17da1669afcb02b1f0e0bfb25a6e9bf6a231a2289f5e873195374"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.jsonl",
+                "sha256": "04cbdd89ed789d798beedea96f30f84d9ee21944bbb6dc47a52a17981b64211f"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/implement.md",
+                "sha256": "a02502b2626fc10ce37f40a6bd156e7facc3decbe7c4867174b937bb1cc2c408"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/prd.md",
+                "sha256": "a25143cfe88797c22d513f083590c50ca989dceaaddb9e0a1a5db5e6d6504b51"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/cold-start-evidence.json",
+                "sha256": "67a13db83a6e86fcdf251063440e03fd0f756b44925ab461a2125b05fbab1bd7"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/findings.md",
+                "sha256": "3a28d284c3a7c2a46031dea5c42a660393490304ea0844dbc008e0767876102e"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/research/performance-comparison.json",
+                "sha256": "611884908c7e47e7ed84bd149447cfc21a00a11bdcd70156d795fa8245662b8f"
+              },
+              {
+                "path": ".trellis/tasks/11-11-native-worker-prewarm/task.json",
+                "sha256": "b1ea985b29a394b866813f053e86bf4f1983053b8af9bb4ef5a0425be6b0491c"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "3f760a75a1617af95cb583d6d3349ed34a4475e3fb3a4d096ce489e3dcb282fc"
+          }
+        ],
+        "fingerprint": "a2d20be6dadff78a5a99d2f9b974abe219cc250619d55f40fcc09924b5c1bb24"
+      }
+    }
+  },
+  "progress": {
+    "updatedAt": "2026-11-10T19:02:33Z",
+    "completedSteps": [],
+    "partialStep": "auto-loop blocked: repo-commit-repository-not-in-run",
+    "nextStep": "auto-loop 已阻断；确认后运行 python3 ./.trellis/scripts/auto_loop.py retry-blocked --run-id auto-20261110172928 --task .trellis/tasks/11-11-request-log-management",
+    "notes": "run_id=auto-20261110172928; task=.trellis/tasks/11-11-request-log-management; status=completed_with_blocked; reason=repo-commit-repository-not-in-run; summary=实现、full重检及规范同步完成。当前33个候选路径已按三仓核对：cc2api15、bench8、主仓10；13条共享路径需在首任务恢复精确提交后重算新差异。三仓分支/HEAD保持基线、索引为空、无冲突/集成状态，363条原历史保护文件摘要保持。冻结run仍仅登记主仓，无法提交完整逐仓机器回执，Git写入前停止。恢复计划.trellis/.runtime/request-logs-commit-plan.json；验证为Rust851+独立PG1、Python93、浏览器10、有限19/无限16合成请求。"
+  }
+}
