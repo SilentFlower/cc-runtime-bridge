@@ -122,7 +122,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """单次合成业务请求，不访问外部。:return: None。"""
-        chosen = self.headers.get('x-fixture-mode', 'json')
+        with LOCK:
+            chosen = self.server.response_mode
         raw_body = self.rfile.read(min(65536, int(self.headers['content-length'])) if chosen == 'partial' else int(self.headers['content-length']))
         body = {} if chosen == 'partial' else json.loads(raw_body)
         raw = bytes(self.rfile.raw)
@@ -233,6 +234,7 @@ class Server(ThreadingHTTPServer):
 def start_server(mode):
     """启动指定 TLS 版本，独立记录 ClientHello。:param mode: 模式。:return: 上游端口。"""
     server = Server(('127.0.0.1', 0), Handler)
+    server.response_mode = 'json'
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(ROOT / 'leaf.pem', ROOT / 'leaf.key')
     context.set_alpn_protocols(['http/1.1'])
@@ -301,6 +303,14 @@ for line in sys.stdin:
         threading.Thread(target=proxy.serve_forever, daemon=True).start()
         SERVERS.append(proxy)
         result = {'port': port, 'proxyPort': proxy.server_address[1], 'caFile': str(ROOT / 'ca.pem')}
+    elif command['type'] == 'response_mode':
+        servers = [server for server in SERVERS if isinstance(server, Server) and server.server_port == command['port']]
+        if len(servers) != 1 or not isinstance(command['mode'], str):
+            raise ValueError('响应模式指令未绑定已启动的上游')
+        # 测试控制保持在私有管道，生产请求头白名单无需承载夹具开关。
+        with LOCK:
+            servers[0].response_mode = command['mode']
+        result = {'type': 'response_mode', 'port': command['port'], 'mode': command['mode']}
     elif command['type'] == 'report':
         with LOCK:
             result = {'calls': list(CALLS), 'hellos': list(HELLOS), 'targets': list(TARGETS), 'connectHeads': list(CONNECT_HEADS)}

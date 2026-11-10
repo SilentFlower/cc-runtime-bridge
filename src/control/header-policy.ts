@@ -8,6 +8,10 @@ import { classificationContext } from '../shared/request-attribution';
 const CONNECTION_HEADERS = new Set(['connection', 'keep-alive', 'proxy-connection', 'proxy-authenticate', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
 const CREDENTIAL_HEADERS = new Set(['authorization', 'x-api-key', 'proxy-authorization', 'cookie']);
 const RUNTIME_HEADERS = new Set(['host', 'content-length', 'content-encoding', 'content-type', 'accept-encoding', 'user-agent', 'x-app', 'x-client-request-id']);
+const PROTOCOL_HEADERS = new Set([
+  'accept', 'accept-language', 'cache-control', 'anthropic-version', 'anthropic-beta', 'anthropic-dangerous-direct-browser-access',
+  'x-claude-code-prev-tool-durations', 'x-claude-code-compaction', 'x-claude-code-context-compacted',
+]);
 const CONTEXT_HEADERS: Record<string, keyof ContextInput> = {
   'x-claude-code-request-class': 'requestClass',
   'x-claude-code-session-id': 'sessionId',
@@ -19,7 +23,7 @@ const CONTEXT_HEADERS: Record<string, keyof ContextInput> = {
 const MERGEABLE = new Set(['anthropic-beta', 'accept', 'accept-language', 'cache-control']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** 应用连接级黑名单、运行时归属和原生调用上下文。
+/** 应用调用方协议白名单、运行时归属和原生调用上下文。
  * @param input 共享入口已经验证的输入。
  * @return 含处理决策的原生作业。
  */
@@ -40,10 +44,12 @@ export function prepareInput(input: BridgeInput): PreparedInput {
     if (CONNECTION_HEADERS.has(lower) || connectionNames.has(lower)) { decision('drop', '连接级字段，不属于上游请求'); continue; }
     if (CREDENTIAL_HEADERS.has(lower)) { decision('drop', '调用方凭据不作为上游凭据'); continue; }
     if (RUNTIME_HEADERS.has(lower) || lower.startsWith('x-stainless-')) { decision('runtime', '由真实运行时及最终正文生成'); continue; }
+    const field = Object.hasOwn(CONTEXT_HEADERS, lower) ? CONTEXT_HEADERS[lower] : undefined;
+    // 先删除未登记字段的全部实例，避免客户端附加头或原型属性被误当成协议上下文。
+    if (!field && !PROTOCOL_HEADERS.has(lower)) { decision('drop', '调用方请求头未登记到协议白名单'); continue; }
     const previous = seen.get(lower);
     if (previous !== undefined && !MERGEABLE.has(lower)) throw new BridgeError('duplicate_header', '无法无损表达重复请求头：' + name);
     seen.set(lower, value);
-    const field = CONTEXT_HEADERS[lower];
     if (field) {
       if (!value.trim() || value.length > 512) throw new BridgeError('invalid_context', '上下文请求头不合法：' + name);
       if (context[field] !== undefined && context[field] !== value) throw new BridgeError('context_conflict', '上下文与请求头冲突：' + name);
@@ -53,7 +59,7 @@ export function prepareInput(input: BridgeInput): PreparedInput {
       continue;
     }
     forwarded.push([name, value]);
-    decision(lower === 'anthropic-beta' || lower === 'anthropic-version' ? 'runtime' : 'keep', lower === 'anthropic-beta' || lower === 'anthropic-version' ? '按原生能力校验并合并，不静默删除' : '合法端到端扩展，默认保留');
+    decision(lower === 'anthropic-beta' || lower === 'anthropic-version' ? 'runtime' : 'keep', lower === 'anthropic-beta' || lower === 'anthropic-version' ? '按原生能力校验并合并，不静默删除' : '已登记的协议请求头');
   }
   const classification = input.inputFormat === 'claude_code' ? readNativeClassification(input.body) : undefined;
   const classified = classification ? classificationContext(classification) : undefined;

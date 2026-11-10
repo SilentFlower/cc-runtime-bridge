@@ -16,7 +16,9 @@ import { prepareInput } from '../../src/control/header-policy';
 interface Endpoint { port: number; proxyPort: number; caFile: string }
 interface Call { index: number; file: string; connection: number; rawBytes: number; rawSha256: string; bodyBytes: number; bodySha256: string; tls: string; alpn: string; resumed: boolean; responseBytes?: number; responseSha256?: string }
 interface Report { calls: Call[]; hellos: { connection: number; fields: unknown }[]; targets: string[]; connectHeads: { target: string; headers: string[]; authorizationSha256: string | null }[] }
-type FixtureFrame = Endpoint | Report;
+/** 私有夹具对已启动 TLS 上游响应模式的确认。 */
+interface ResponseMode { type: 'response_mode'; port: number; mode: string }
+type FixtureFrame = Endpoint | Report | ResponseMode;
 const native = process.env.CCRB_NATIVE_ISOLATED === '1' && process.env.CCRB_TLS_VERIFIER_TEST === '1' ? describe : describe.skip;
 const binary = process.env.CCRB_TEST_CLAUDE_BINARY ?? '/root/.nvm/versions/node/v22.23.4/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe';
 
@@ -25,6 +27,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
   let fixture: PrivateProcess<FixtureFrame>;
   let serial = 0;
   const apps: RunningServer[] = [];
+  const targets = new Map<RunningServer, Endpoint>();
   const evidence: Record<string, unknown>[] = [];
 
   beforeAll(async () => {
@@ -45,7 +48,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
   async function endpoint(mode = 'tls13'): Promise<Endpoint> {
     await fixture.send({ type: 'start', mode });
     const value = await fixture.next();
-    if (!('port' in value)) throw new Error('夹具端点帧错误');
+    if (!('proxyPort' in value)) throw new Error('夹具端点帧错误');
     return value;
   }
 
@@ -58,7 +61,16 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
 
   async function close(running: RunningServer): Promise<void> {
     apps.splice(apps.indexOf(running), 1);
+    targets.delete(running);
     await running.close();
+  }
+
+  async function responseMode(running: RunningServer, mode: string): Promise<void> {
+    const target = targets.get(running);
+    if (!target) throw new Error('响应模式缺少已绑定的上游');
+    await fixture.send({ type: 'response_mode', port: target.port, mode });
+    const value = await fixture.next();
+    if (!('type' in value) || value.type !== 'response_mode' || value.port !== target.port || value.mode !== mode) throw new Error('夹具响应模式确认帧错误');
   }
 
   function nativeBody(): Record<string, unknown> {
@@ -73,6 +85,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     const config = readConfig({ CCRB_PORT: '0', CCRB_DATA_DIR: join(directory, 'data'), CCRB_CLAUDE_BINARY: binary, CCRB_CLAUDE_HOME: join(directory, 'home'), CCRB_CLAUDE_CONFIG_DIR: join(directory, 'config'), CCRB_WORKDIR: directory, CCRB_NATIVE_API_KEY: 'tls-synthetic-key-' + serial, CCRB_CA_FILE: target.caFile, CCRB_PROXY_URL: 'http://127.0.0.1:' + target.proxyPort, CCRB_TLS_CAPTURE: verify ? 'verify' : 'off', CCRB_TIMEOUT_MS: '0', ...extra });
     const running = await startServer(config);
     apps.push(running);
+    targets.set(running, target);
     return running;
   }
 
@@ -87,6 +100,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
   }
 
   async function send(running: RunningServer, mode = 'json', body: Record<string, unknown> = {}, context: Record<string, unknown> = {}) {
+    await responseMode(running, mode);
     const response = await fetch('http://127.0.0.1:' + running.server.port + '/api/requests', { method: 'POST', redirect: 'manual', body: JSON.stringify({ body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '真实原版离线 TLS 验证：中文😀、引号"与换行\n' }], max_tokens: 64, stream: false, ...body }, headers: [['x-fixture-mode', mode], ['accept-language', 'zh-CN'], ['accept-language', 'en-US;q=0.8']], context }), headers: { 'content-type': 'application/json' } });
     const raw = await response.text();
     const record = await detail(running, response.headers.get('x-ccrb-request-id')!);
@@ -105,6 +119,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     expect(final.note).toContain('刷出=true');
     expect(final.headers.find(([name]) => name.toLowerCase() === 'x-api-key')?.[1]).toBe('[REDACTED]');
     expect(final.headers.find(([name]) => name.toLowerCase() === 'accept-language')?.[1]).toBe('zh-CN, en-US;q=0.8');
+    expect(final.headers.some(([name]) => name.toLowerCase() === 'x-fixture-mode')).toBe(false);
   }
 
   test('透明中继的单次发送与最后写出完整记录', async () => {
@@ -354,6 +369,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     const target = await endpoint();
     const running = await app(target);
     const before = (await inspect()).calls.length;
+    await responseMode(running, 'long');
     const start = performance.now();
     const response = await fetch('http://127.0.0.1:' + running.server.port + '/api/requests', { method: 'POST', body: JSON.stringify({ body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '长流验证' }], stream: true }, headers: [['x-fixture-mode', 'long']] }) });
     expect(response.status).toBe(200);
@@ -388,6 +404,7 @@ native('可选最终 TLS 写出：实际原版与独立 OpenSSL 对照', () => {
     const target = await endpoint();
     const running = await app(target);
     const before = (await inspect()).calls.length;
+    await responseMode(running, 'cancel');
     const cancel = new AbortController();
     const response = await fetch('http://127.0.0.1:' + running.server.port + '/api/requests', { method: 'POST', signal: cancel.signal, body: JSON.stringify({ body: { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '取消验证' }], stream: true }, headers: [['x-fixture-mode', 'cancel']] }) });
     const reader = response.body!.getReader();

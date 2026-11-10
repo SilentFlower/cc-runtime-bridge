@@ -42,7 +42,7 @@
 - 握手前还可返回 worker_error(code=native_configuration,status=503,error)，不带 request_id 或额外字段。error 只公开受控 BridgeError 配置说明，先脱敏且 ≤2048 UTF-8 B，未知异常用通用中文消息；入口等待帧写入完成后退出。错进程归属、握手后错误帧或畸形字段按 runtime_protocol/502 隔离，失败作业不重放。
 - 每个物理进程只有一个持续读取器。唯一终态与匹配 worker_idle 缺一不可；释放响应并等待 SDK 收口后才发 idle。重复握手、错代次/错请求、双终态、终态后事件、缺 idle 或畸形帧均隔离进程；读取回调和输出闭包绑定旧代次，不得归入下一作业。取消、异常或状态不明时退役，下一轮重建，不重放当前请求；取消采用 1500 ms 强制终止宽限，空闲关闭优先 shutdown，1500 ms 后仍未退出则强制终止。
 - cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。默认 off 的 wire_final 不可用；启动侧可按下文开启独立验证，来源必须对应实际采集位置，不以 cc_prepared 冒充最终值。
-- Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。其余合法端到端扩展默认保留，不允许笼统删除 x-claude-code-*。
+- Connection 声明字段和连接级字段删除；调用方凭据不作为上游凭据；版本、传输、X-Stainless-*、X-Client-Request-Id 等由运行时生成。调用方字段按下文精确协议白名单准入，名单外附加头逐项记录删除原因。
 - 透传头与 SDK 默认头重名时，先聚合调用方完整的同名有序值，再覆盖该默认值；不能在默认值后再次 append。Accept 和 anthropic-dangerous-direct-browser-access 不因 SDK 已有相同默认值而重复，调用方显式不同值和合法多值仍保持；beta/version 及运行时所属字段沿各自专用规则处理。
 - 上下文为类别、agentKind、agentId、parentAgentId、agentType、sessionId、promptId、workflowRunId 的同一来源。promptId 必须为 UUID。
 - 普通 API 的有效 promptId 归到最近一条不含任何 tool_result 的 user 实体，由官方轮次选择器生成 billing 与请求头；工具结果及混合结果不冒充新的 human。显式 ID 可由调用方跨工具往返复用，省略仍按请求生成，不用 sessionId 代替，也不共享上一原生根。没有可归属用户轮次时在构造前返回 unsupported_parameter/422，零发送。
@@ -492,3 +492,55 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/local-pool/session-purpose.test.ts：实际默认/显式中文交互标题、会话恢复、手动和长上下文自动压缩；字符串布局、完整前后缀、预算独立性、显式类别冲突、压缩子身份保留、原始内存与 TLS SHA/CCH、日志解码及每入站单次发送。
 - tests/unit/request-attribution.test.ts、tests/unit/log-api.test.ts：关键词/单字段反例、普通 auxiliary、HTTP 禁注入、日志和私有协议一致性；实际 CLI 验收只在合成凭据、独立 HOME 和无外网空间执行。
 - tests/browser/logs.spec.ts：三个用途及固定来源标签正确，历史缺字段仍可读。双实际交互客户端各 3 个子代理的隔离验收另核对文本块布局、两个 session 的父子证据、恢复和两种压缩以及最终 SHA/CCH，不能用单次 HTTP 200 代替完整流程。
+
+## Scenario: 调用方请求头精确白名单
+
+### 1. Scope / Trigger
+
+- 普通 API 与原生 Claude Code 共用 `prepareInput` 边界，清理代理、CDN、new-api 及客户端附加头。依据为 vm2api 的字段归属、固定 293 定义与本项目历史分阶段采样。
+- 白名单约束调用方带入原生构造的字段。运行时自行生成的请求头、上游响应和测试池第二段转发分别遵守原合同。
+
+### 2. Signatures
+
+- `parseInput(raw: unknown, incomingHeaders: HeaderPair[] = [], nativeIngressPolicy: NativeIngressPolicy = 'strict'): BridgeInput`。
+- `prepareInput(input: BridgeInput): PreparedInput`；`HeaderPair = [string, string]`，有序数组保留同名输入。
+- `HeaderDecision` 为 `{ name: string; action: 'keep' | 'drop' | 'runtime' | 'context'; reason: string }`。
+- `POST /v1/messages` 与 `POST /api/requests` 均经上述边界；显式信封 `headers` 替代 HTTP 头作为策略输入，原始 HTTP 入站独立采集。
+
+### 3. Contracts
+
+- 九个精确协议字段为 `accept`、`accept-language`、`cache-control`、`anthropic-version`、`anthropic-beta`、`anthropic-dangerous-direct-browser-access`、`x-claude-code-prev-tool-durations`、`x-claude-code-compaction`、`x-claude-code-context-compacted`。
+- 六个上下文字段为 `x-claude-code-request-class`、`x-claude-code-session-id`、`x-claude-code-prompt-id`、`x-claude-code-agent-id`、`x-claude-code-parent-agent-id`、`x-claude-code-agent-type`，继续提取为同一来源上下文。查表只接受对象自身登记键，`constructor`、`__proto__` 等名字按未登记字段处理。
+- 名称匹配忽略大小写。先验证全部格式并解析 Connection，再处理连接、凭据及运行时归属；其余未登记字段在重复检查前逐项 `drop`，固定原因为“调用方请求头未登记到协议白名单”。原始输入保持原表示。
+- 仅 `accept`、`accept-language`、`cache-control`、`anthropic-beta` 沿已有规则接受有序多值。其他已登记单值重复明确失败。协议字段聚合完整调用方值后覆盖 SDK 同名默认值；版本及 beta 沿专用分支。
+- `anthropic-version` 必须等于同次原生版本；普通 API beta 只能请求同次已生成能力，完整原生入站保留其原分支的 beta。三个可选工具耗时/压缩字段按完整单值透传。
+- `anthropic-*`、`x-claude-code-*` 前缀不整体放行。新增调用方扩展须显式登记并提供版本依据与验证；请求不能指定白名单或旁路开关。
+- 入站、`header_policy`、`cc_prepared`、`wire_final` 继续分阶段记录并脱敏，日志模式及历史 schema 保持原合同。
+- TLS 测试夹具模式经私有 stdin/JSONL 的 `{type:'response_mode',port,mode}` 设置到唯一已启动上游并确认同字段，默认 `json`。每个请求开始时固定模式。测试头 `x-fixture-mode` 按未登记字段删除。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 结果 |
+| --- | --- |
+| 合法未知头、代理/CDN 头及大小写重复项 | 全部逐项删除，记录固定原因 |
+| 未登记头包含非法格式 | `invalid_header/400`，先校验再过滤 |
+| 已登记单值字段重复 | `duplicate_header/400` |
+| 已登记上下文与显式 context 冲突 | `context_conflict/400` |
+| 已登记上下文为空或超长 | `invalid_context/400` |
+| 普通 API 额外 beta 或版本不符 | `unsupported_parameter/422`，发送前拒绝 |
+| Connection 声明某个已登记字段 | 按连接级原因删除 |
+
+### 5. Scenarios and Examples
+
+- 正常：`headers: [['Accept-Language','zh-CN'],['accept-language','en-US;q=0.8']]`，实收为 `zh-CN, en-US;q=0.8`，完整覆盖同名默认值。
+- 边界：`X-Forwarded-For` 与 `x-forwarded-for` 同时输入，各有删除决定，业务继续发送一次。`constructor` 保持普通未知头语义。
+- 错误用法：把历史响应中的 `x-new-api-version` 或任意 `x-claude-code-*` 当作调用方协议准入依据。正确做法：按来源阶段和固定版本定义登记精确字段。
+- 错误用法：为测试响应模式在生产白名单登记 `x-fixture-mode`。正确做法：发送前通过夹具私有控制通道设置并确认模式。
+
+### 6. Tests Required
+
+- `tests/unit/header-policy.test.ts`：全部协议字段、大小写、多值顺序、未知及原型属性名、名单外重复、格式错误与名单内冲突。
+- `tests/integration/control.test.ts`：HTTP/信封共享过滤，原始入站与删除原因可见，`cc_prepared` 排除未知字段，日志秘密继续脱敏。
+- `tests/native/native.test.ts`：普通/原生输入的独立 TLS 实收排除代理/CDN/new-api/客户端字段，三个可选协议字段及多值保持，CCH、正文和单次发送正确。
+- `tests/native/tls-verifier.test.ts`：夹具私有模式实际驱动错误、长流、取消、部分读取及重建；最终采集排除测试头，双实际 CLI 各三个子代理保持隔离。
+- `bun run typecheck`、单元及控制集成须通过。`test:native`、`test:tls` 使用固定原版 293、合成凭据和无外网环境。

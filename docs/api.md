@@ -13,7 +13,7 @@ POST /v1/messages 接收 JSON Messages 正文。POST /api/requests 还支持下�
         "stream": true,
         "messages": [{"role": "user", "content": "查询状态"}]
       },
-      "headers": [["x-future-feature", "preserved"]],
+      "headers": [["accept-language", "zh-CN"]],
       "context": {
         "requestClass": "subagent",
         "sessionId": "11111111-1111-4111-8111-111111111111",
@@ -26,7 +26,7 @@ POST /v1/messages 接收 JSON Messages 正文。POST /api/requests 还支持下�
 
 request_id 可省略，使用 1–128 位字母、数字、连字符、下划线。重复标识返回 409，不覆盖旧日志。schema_version 只支持 1。HTTP 入口接收未压缩 JSON，不另设 2 MiB 或排队 16 项的业务门槛；正文大小、准入和调用预算交给前置服务。日志预览上限独立于完整转发。
 
-信封 headers 是有序二元字符串数组，提供后替代外层 HTTP 头作为业务转发输入；日志仍会保存实际入站 HTTP 头。没有信封 headers 时使用 HTTP 头。鉴权、传输字段、Connection 动态字段及原生上下文按 [头部策略](header-policy.md) 处理。
+信封 headers 是有序二元字符串数组，提供后替代外层 HTTP 头作为业务转发输入；日志仍会保存实际入站 HTTP 头。没有信封 headers 时使用 HTTP 头。两类输入共用精确协议白名单，名单外的代理、CDN、客户端私有及未知协议头逐项删除并记录原因。鉴权、传输字段、Connection 动态字段及原生上下文按 [头部策略](header-policy.md) 处理。
 
 ## 原生 CC 正文
 
@@ -68,7 +68,7 @@ TLS 接收端实收并独立核验后，第二段仅将根 model 映射为 deeps
 
 普通主请求使用固定 293 交互终端 CLI 的原生身份、提示词、权限、环境和技能等提醒，工具仅来自调用方显式列表；默认正文及提醒根据实际工具集生成。业务 system 替换默认正文，身份及 billing 仍由原生链路装配。原生补充消息逐项关联，不能以忽略全部 system-reminder 代替业务保留校验。自定义工具 schema 是桥接的结构化接口能力，不表示终端 --tools 接受任意 schema。
 
-普通 API 的显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未知合法端到端请求头采用默认保留策略。完整原生 billing 由上一节的独立分支处理。
+普通 API 的显式 system cache_control、top_p、metadata、stop_sequences 和未登记正文/消息字段当前不支持，返回明确错误。未知 JSON 字段采用拒绝策略；未登记请求头采用删除并记录原因的白名单策略。完整原生 billing 由上一节的独立分支处理。
 
 省略模型可选参数时，采用 CLI 根据当前模型与配置计算的 thinking、effort 和输出预算；不再固定关闭 thinking。普通 API 的显式 {"type":"disabled"} 被原生省略时由桥接补齐，额外字段及原生已有不同值不能套用这项适配。显式 enabled thinking 若被模型原生规则转换成 adaptive，也会因无法原样表达而返回 422。完整原生 CC 正文仍保持原值；最终发送该字段不保证自定义池遵守关闭，响应原样返回。
 

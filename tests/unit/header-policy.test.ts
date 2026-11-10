@@ -1,21 +1,45 @@
 import { describe, expect, test } from 'bun:test';
+import type { HeaderPair } from '../../src/shared/contracts';
 import { parseInput } from '../../src/shared/input';
 import { prepareInput } from '../../src/control/header-policy';
 import { Redactor } from '../../src/control/redaction';
 
 const body = { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: 'hello' }], stream: true };
 
-describe('扩展、凭据与调用语义', () => {
-  test('未来头默认保留，同时删除动态连接字段和全部调用方凭据', () => {
+describe('协议白名单、凭据与调用语义', () => {
+  test('登记头保留，未知头、动态连接字段及调用方凭据按归属删除', () => {
     const input = parseInput({ body, headers: [
-      ['X-Future-Feature', 'preserve-me'], ['Connection', 'X-Local-Hop'], ['connection', 'x-other-hop'],
+      ['Accept', 'application/json'], ['X-Future-Feature', 'remove'], ['Connection', 'X-Local-Hop'], ['connection', 'x-other-hop'],
       ['X-Local-Hop', 'remove'], ['x-other-hop', 'remove'], ['Authorization', 'Bearer client-secret'],
       ['X-Api-Key', 'client-key'], ['Host', 'evil.invalid'], ['X-Stainless-Runtime', 'fake'], ['x-client-request-id', 'forged'],
     ] });
     const result = prepareInput(input);
-    expect(result.headers).toEqual([['X-Future-Feature', 'preserve-me']]);
+    expect(result.headers).toEqual([['Accept', 'application/json']]);
+    expect(result.decisions).toContainEqual({ name: 'X-Future-Feature', action: 'drop', reason: '调用方请求头未登记到协议白名单' });
     expect(result.decisions.filter(x => x.action === 'drop').map(x => x.name)).toContain('X-Local-Hop');
     expect(input.headers.find(x => x[0] === 'Authorization')?.[1]).toBe('Bearer client-secret');
+  });
+
+  test('代理、CDN、客户端私有及未登记协议字段的大小写与重复项统一过滤', () => {
+    const names = ['Forwarded', 'X-Forwarded-For', 'x-FORWARDED-for', 'X-Forwarded-Proto', 'X-Forwarded-Host', 'X-Real-IP', 'Via', 'X-Amz-Cf-Id', 'CloudFront-Viewer-Country', 'CF-Connecting-IP', 'New-Api-User', 'X-Oneapi-Request-Id', 'Traceparent', 'Tracestate', 'X-Future-Feature', 'x-claude-code-future', 'anthropic-future', 'constructor', '__proto__'];
+    const input = parseInput({ body, headers: names.map(name => [name, 'synthetic']) });
+    const result = prepareInput(input);
+    expect(result.headers).toEqual([]);
+    expect(result.decisions).toEqual(names.map(name => ({ name, action: 'drop', reason: '调用方请求头未登记到协议白名单' })));
+    expect(result.context.source).toBe('bridge-default');
+    expect(input.headers.map(([name]) => name)).toEqual(names);
+  });
+
+  test('已登记协议头保留完整值，合法多值保持输入顺序', () => {
+    const headers: HeaderPair[] = [
+      ['Accept', 'application/json'], ['accept', 'text/event-stream'], ['Accept-Language', 'zh-CN'], ['accept-language', 'en-US;q=0.8'],
+      ['Cache-Control', 'no-cache'], ['cache-control', 'no-store'], ['anthropic-version', '2023-06-01'],
+      ['anthropic-beta', 'first-beta'], ['Anthropic-Beta', 'second-beta'], ['anthropic-dangerous-direct-browser-access', 'true'],
+      ['x-claude-code-prev-tool-durations', 'Read=12'], ['x-claude-code-compaction', 'true'], ['x-claude-code-context-compacted', 'true'],
+    ];
+    const result = prepareInput(parseInput({ body, headers }));
+    expect(result.headers).toEqual(headers);
+    expect(result.decisions.filter(value => value.action === 'keep')).toHaveLength(10);
   });
 
   test('子代理头进入关联上下文，不会统一变为 main', () => {
@@ -51,14 +75,15 @@ describe('扩展、凭据与调用语义', () => {
     { context: { requestClass: 'subagent', agentKind: 'main', agentId: 'child' } },
     { headers: [['x-claude-code-request-class', 'subagent']] },
     { context: { sessionId: 'one' }, headers: [['x-claude-code-session-id', 'two']] },
-    { headers: [['x-unknown', 'first'], ['X-Unknown', 'second']] },
+    { headers: [['anthropic-version', '2023-06-01'], ['Anthropic-Version', '2023-06-01']] },
+    { headers: [['x-claude-code-compaction', 'true'], ['X-Claude-Code-Compaction', 'false']] },
     { headers: [['x-name', 'bad\r\ninjection']] },
     { headers: [['x-claude-code-request-class', 'future-unknown']] },
   ])('冲突或无法保真的输入明确拒绝 %#', value => {
     expect(() => prepareInput(parseInput({ body, ...value }))).toThrow();
   });
 
-  test('未知显式正文参数不会因头部采用黑名单而被默默丢掉', () => {
+  test('未知显式正文参数继续明确拒绝', () => {
     expect(() => parseInput({ ...body, top_p: 0.7 })).toThrow('top_p');
   });
 

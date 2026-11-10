@@ -1,21 +1,23 @@
 # 请求头策略
 
-本文件描述首版实现合同，对应 src/control/header-policy.ts 和 src/runtime/293/preload.ts。
+本文件描述调用方请求头准入合同，对应 src/control/header-policy.ts 和 src/runtime/293/preload.ts。
 
 ## 原则
 
-普通端到端扩展头默认保留。过滤依据明确的删除规则和字段归属，不能因为某个头未登记就静默丢弃，也不能笼统删除 x-claude-code-*。
+调用方请求头采用精确协议白名单，匹配忽略大小写。名单外的代理、CDN、网关或客户端私有头以及未知协议扩展逐项删除，并记录字段名、动作和原因；新增协议字段须显式登记。
 
-转发黑名单与日志脱敏规则独立：允许转发不代表允许把秘密值写进日志。
+白名单约束调用方可带入原生构造的字段。运行时自行生成的鉴权、身份和传输头遵循其实际归属。HTTP 入站头与内部信封头使用相同策略，原始入站记录保持独立。
+
+请求头转发策略与日志脱敏规则独立：允许转发不代表允许把秘密值写进日志。
 
 ## 处理顺序
 
 1. 验证头名与头值格式，保留有序多值输入。
 2. 解析 Connection 的全部值，删除其中声明的字段，再删除 Connection 本身。
 3. 删除固定连接级字段和调用方鉴权字段。
-4. 提取调用语义，验证单值字段冲突或不支持的上下文。
-5. 将上下文交给官方构造流程，由运行时生成其拥有的字段。
-6. 合并其余扩展头，逐项记录保留、删除、重建或冲突的原因。
+4. 精确识别上下文及已登记协议字段；其余字段逐项删除，包含同名重复项。
+5. 验证已登记单值字段的重复、冲突及不支持的上下文，将上下文交给官方构造流程。
+6. 由运行时生成其拥有的字段，按原有同名覆盖及多值顺序合并已准入协议头。
 
 ## 字段归属
 
@@ -30,9 +32,16 @@
 | x-claude-code-agent-id、x-claude-code-parent-agent-id、x-claude-code-agent-type | 保留调用关联语义 |
 | x-claude-code-session-id、x-claude-code-prompt-id | 与内部会话、metadata、billing 一起对齐 |
 | anthropic-beta、anthropic-version | 交由版本适配器处理，不支持的组合明确报错 |
-| 其余合法端到端头 | 默认保留 |
+| Accept、Accept-Language、Cache-Control | 保留完整值和合法多值顺序，覆盖 SDK 同名默认值 |
+| anthropic-dangerous-direct-browser-access | 保留调用方完整单值，覆盖 SDK 同名默认值 |
+| x-claude-code-prev-tool-durations、x-claude-code-compaction、x-claude-code-context-compacted | 固定 293 已定义的可选协议字段，保留完整单值 |
+| 其余调用方字段 | 删除，原因是未登记到协议白名单 |
 
 匹配大小写无关，删除覆盖同名头的全部实例。多值按字段语义处理；冲突的单值上下文或原生接口无法正确表达的重复字段应明确报错，不能静默取最后一个值。
+
+直接进入现有合并或版本适配分支的白名单为上述九个协议字段。六个上下文字段按专用分支处理。字段按精确名称登记，`anthropic-*`、`x-claude-code-*` 等前缀不作为整体放行规则。
+
+`Forwarded`、`X-Forwarded-*`、`X-Real-IP`、`Via`、`X-Amz-Cf-*`、`CloudFront-*`、客户端追踪及自定义头均不属于该准入集合。请求头格式仍先校验，非法格式保持明确失败。上游响应头沿既有响应合同处理。
 
 扩展头不能指定任意目标 origin、代理、凭据来源或运行时控制配置。
 
@@ -48,11 +57,11 @@
 
 子代理须提供 agentId，workflow 还须提供 workflowRunId。promptId 必须为 UUID；不提供时由桥接器生成。独立 root agentId 通过 context.agentKind=main 明示。main 与显式子代理上下文冲突时返回错误，不能猜测调用身份。
 
-anthropic-version 必须与原生值一致；anthropic-beta 只能要求本次原生构造已经生成的能力。未知端到端头仍会保留，但额外 beta 无法由当前原生参数表达时返回 422，不附加未验证能力。
+anthropic-version 必须与原生值一致。普通 API 的 anthropic-beta 只能要求本次原生构造已经生成的能力，无法表达的额外 beta 返回 422。已识别的原生 CC 入站按其原有分支保留入站 beta。
 
 ## 正文与最终发送
 
-请求头黑名单不决定哪些 JSON 字段可以丢弃。正文逐字段适配，无法支持的显式参数明确报告。
+请求头白名单不决定哪些 JSON 字段可以丢弃。正文逐字段适配，无法支持的显式参数明确报告。
 
 293 的 JS 参数可能仍含 cch=00000，原生链路会继续处理。此前的参数不能冒充最终正文，实际长度与编码由最终发送链路决定。
 

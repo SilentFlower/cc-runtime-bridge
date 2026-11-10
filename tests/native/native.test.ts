@@ -235,7 +235,7 @@ native('官方 293 的无外网回环链路', () => {
     expect(result.raw).toBe(expectedResponse);
     expect(requests.length - count).toBe(1);
     const request = requests.at(-1)!; const headers = new Headers(request.headers);
-    expect(headers.get('x-future-feature')).toBe('preserved');
+    expect(headers.has('x-future-feature')).toBe(false);
     expect(headers.get('x-api-key')).toBe(upstreamSecret);
     expect(headers.get('x-client-request-id')).not.toContain('forged');
     expect(headers.get('x-client-request-id')).not.toContain(',');
@@ -765,18 +765,24 @@ native('官方 293 的无外网回环链路', () => {
   }
   const nativeTool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
   const nativeHistory = [{ role: 'user', content: '查询状态' }, { role: 'assistant', content: [{ type: 'thinking', thinking: '已有推理', signature: 'synthetic-native-signature' }, { type: 'tool_use', id: 'toolu_native_history', name: 'lookup_status', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_native_history', content: 'ready' }] }];
-  test.each(['api', 'claude_code'] as const)('透传头覆盖 SDK 默认值且合法多值按序保留：%s', async format => {
+  test.each(['api', 'claude_code'] as const)('协议白名单过滤客户端附加头，合法多值覆盖 SDK 默认值：%s', async format => {
     mode = 'normal';
     const body = format === 'claude_code' ? nativeBody() : { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '离线头部合并验证' }], stream: false };
     for (const [accept, browserAccess] of [['application/json', 'true'], ['application/json;q=0.9', 'false']] as const) {
       const count = requests.length;
-      const result = await send(body, {}, [['Accept', accept], ['anthropic-dangerous-direct-browser-access', browserAccess], ['Accept-Language', 'zh-CN'], ['accept-language', 'en-US;q=0.8'], ['x-future-feature', 'header-merge-preserved']]);
+      const dropped: HeaderPair[] = [['X-Forwarded-For', '198.51.100.10'], ['x-forwarded-for', '198.51.100.11'], ['X-Real-IP', '198.51.100.10'], ['Via', 'synthetic-proxy'], ['X-Amz-Cf-Id', 'synthetic-cdn'], ['CloudFront-Viewer-Country', 'CN'], ['New-Api-User', 'synthetic-user'], ['X-Oneapi-Request-Id', 'synthetic-request'], ['Traceparent', 'synthetic-trace'], ['x-claude-code-future', 'synthetic'], ['x-future-feature', 'synthetic']];
+      const optional: HeaderPair[] = [['x-claude-code-prev-tool-durations', 'Read=12'], ['x-claude-code-compaction', 'true'], ['x-claude-code-context-compacted', 'true']];
+      const result = await send(body, {}, [['Accept', accept], ['anthropic-dangerous-direct-browser-access', browserAccess], ['Accept-Language', 'zh-CN'], ['accept-language', 'en-US;q=0.8'], ...optional, ...dropped]);
       expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
       const wire = requests.at(-1)!, headers = new Headers(wire.headers);
       expect(headers.get('accept')).toBe(accept);
       expect(headers.get('anthropic-dangerous-direct-browser-access')).toBe(browserAccess);
       expect(headers.get('accept-language')).toBe('zh-CN, en-US;q=0.8');
-      expect(headers.get('x-future-feature')).toBe('header-merge-preserved');
+      for (const [name] of dropped) expect(headers.has(name)).toBe(false);
+      for (const [name, value] of optional) expect(headers.get(name)).toBe(value);
+      await app.store.flush();
+      const detail = (await app.store.detail(result.id))!;
+      for (const [name] of dropped) expect(detail.decisions).toContainEqual({ name, action: 'drop', reason: '调用方请求头未登记到协议白名单' });
       assertCch(wire.raw);
     }
   });
@@ -800,7 +806,7 @@ native('官方 293 的无外网回环链路', () => {
     (normalized.system as { text: string }[])[0]!.text = (body.system as { text: string }[])[0]!.text;
     expect(normalized).toEqual(before); expect(body).toEqual(before);
     const headers = new Headers(wire.headers);
-    expect(headers.get('x-future-feature')).toBe('native-preserved');
+    expect(headers.has('x-future-feature')).toBe(false);
     expect(headers.get('anthropic-beta')).toBe('mid-conversation-system-2026-04-07');
     expect(headers.get('x-claude-code-request-class')).toBe('main');
     assertCch(wire.raw);

@@ -85,7 +85,7 @@ describe('控制、持久日志与查询', () => {
     expect(captured.headers).toContainEqual(['x-api-key', '[REDACTED]']);
   });
 
-  test('完整链路保留扩展头决策、原文和独立哈希，查询不再执行模型', async () => {
+  test('完整链路记录白名单过滤、原文和独立哈希，查询不再执行模型', async () => {
     const { app: running, base, root } = await app();
     const response = await post(base, { request_id: 'control-request', body: request, headers: [['x-future-header', 'kept'], ['Authorization', 'Bearer client-secret-canary']] });
     const text = await response.text();
@@ -94,7 +94,9 @@ describe('控制、持久日志与查询', () => {
     await running.store.flush();
     const detail = await fetch(base + '/api/logs/control-request').then(r => r.json());
     expect(detail.request.state).toBe('success');
-    expect(detail.decisions).toContainEqual({ name: 'x-future-header', action: 'keep', reason: '合法端到端扩展，默认保留' });
+    expect(detail.decisions).toContainEqual({ name: 'x-future-header', action: 'drop', reason: '调用方请求头未登记到协议白名单' });
+    expect(detail.captures.find((c: { stage: string }) => c.stage === 'ingress').text).toContain('x-future-header');
+    expect(detail.captures.find((c: { stage: string }) => c.stage === 'cc_prepared').headers.some(([name]: [string, string]) => name === 'x-future-header')).toBe(false);
     expect(detail.captures.find((c: { stage: string }) => c.stage === 'wire_final').status).toBe('unavailable');
     expect(detail.captures.find((c: { stage: string }) => c.stage === 'upstream_response').sha256).toBe(createHash('sha256').update(text).digest('hex'));
     expect(JSON.stringify(detail)).not.toContain('client-secret-canary');
@@ -104,6 +106,24 @@ describe('控制、持久日志与查询', () => {
     const duplicate = await post(base, { request_id: 'control-request', body: request });
     expect(duplicate.status).toBe(409);
     await duplicate.text();
+  });
+
+  test('HTTP 请求头与显式信封均按协议白名单处理', async () => {
+    const { app: running, base } = await app();
+    const headers: [string, string][] = [['accept', 'application/json'], ['x-forwarded-for', '198.51.100.10'], ['new-api-user', 'synthetic-user'], ['x-claude-code-future', 'synthetic']];
+    for (const envelope of [false, true]) {
+      const response = await fetch(base + (envelope ? '/api/requests' : '/v1/messages'), { method: 'POST', headers: { 'content-type': 'application/json', ...Object.fromEntries(headers) }, body: JSON.stringify(envelope ? { body: request, headers } : request) });
+      expect(response.status).toBe(200);
+      await response.text(); await running.store.flush();
+      const detail = (await running.store.detail(response.headers.get('x-ccrb-request-id')!))!;
+      const outgoing = new Headers(detail.captures.find(value => value.stage === 'cc_prepared')!.headers);
+      expect(outgoing.get('accept')).toBe('application/json');
+      for (const [name] of headers.slice(1)) {
+        expect(outgoing.has(name)).toBe(false);
+        expect(detail.decisions).toContainEqual({ name, action: 'drop', reason: '调用方请求头未登记到协议白名单' });
+      }
+      expect(detail.captures.find(value => value.stage === 'ingress')!.headers).toContainEqual(['x-forwarded-for', '198.51.100.10']);
+    }
   });
 
   test('非法来源保留拒绝记录，不伪造 main 上下文', async () => {

@@ -25,7 +25,7 @@ bun run start --demo
 ```bash
 curl --no-buffer http://127.0.0.1:8787/api/requests \
   -H 'Content-Type: application/json' \
-  -d '{"request_id":"demo-001","headers":[["x-future-feature","preserved"]],"body":{"model":"claude-sonnet-4-6","max_tokens":64,"stream":true,"messages":[{"role":"user","content":"查看本地日志"}]}}'
+  -d '{"request_id":"demo-001","headers":[["accept-language","zh-CN"]],"body":{"model":"claude-sonnet-4-6","max_tokens":64,"stream":true,"messages":[{"role":"user","content":"查看本地日志"}]}}'
 ```
 
 ## 连接运行时
