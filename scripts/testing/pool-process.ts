@@ -15,9 +15,9 @@ export class PrivateProcess<T> {
   readonly child: Bun.Subprocess<'pipe', 'pipe', 'pipe'>;
   private iterator: AsyncGenerator<T>;
   private diagnostics: Promise<void>;
-  /** 以严格环境启动并绑定唯一解码器。 @param command 程序与非秘密参数。 @param env 白名单环境。 @param decode 私有帧校验。 */
-  constructor(command: string[], env: Record<string, string>, decode: (line: string) => T) {
-    this.child = Bun.spawn(command, { env, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
+  /** 以严格环境启动并绑定唯一解码器。 @param command 程序与非秘密参数。 @param env 白名单环境。 @param decode 私有帧校验。 @param cwd 显式私有工作目录。 */
+  constructor(command: string[], env: Record<string, string>, decode: (line: string) => T, cwd?: string) {
+    this.child = Bun.spawn(command, { cwd, env, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
     const errors = this.child.stderr;
     this.diagnostics = (async () => { const reader = errors.getReader(); try { while (!(await reader.read()).done) {} } finally { reader.releaseLock(); } })().catch(() => {});
     const stream = this.child.stdout;

@@ -8,6 +8,22 @@ import { applyCachePolicy } from '../../src/shared/cache-policy';
 const workerId = '11111111-1111-4111-8111-111111111111';
 const prepared = prepareInput(parseInput({ request_id: 'protocol-job', body: { model: 'fixture', messages: [{ role: 'user', content: '测试' }] } }));
 
+test('原始输入协商与请求归属严格匹配，业务格式留给作业校验', () => {
+  const input = { schema_version: 1, request_id: 'raw-job', body: null };
+  const command: WorkerCommand = { schema_version: 2, type: 'request_input', worker_id: workerId, request_id: 'raw-job', input };
+  expect(decodeWorkerCommand(command, workerId)).toEqual(command);
+  for (const invalid of [null, { ...input, request_id: 'other' }, { ...input, schema_version: 2 }]) expect(() => decodeWorkerCommand({ ...command, input: invalid }, workerId)).toThrow('归属');
+  const ready: WorkerFrame = { schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 1, raw_input_protocol: 1 };
+  expect(decodeWorkerFrame(JSON.stringify(ready), workerId)).toEqual(ready);
+  for (const raw_input_protocol of [0, 2, '1', true]) expect(() => decodeWorkerFrame(JSON.stringify({ ...ready, raw_input_protocol }), workerId)).toThrow();
+});
+
+test('头部策略事件只传实际动作，拒绝畸形决策和秘密值载荷', () => {
+  const frame: Extract<WorkerFrame, { type: 'request_event' }> = { schema_version: 2, worker_id: workerId, type: 'request_event', request_id: 'raw-job', payload: { type: 'header_policy', attempt: 1, decisions: [{ name: 'x-forwarded-for', action: 'drop', reason: '未登记' }] } };
+  expect(decodeWorkerFrame(JSON.stringify(frame), workerId)).toEqual(frame);
+  for (const decisions of [null, [{}], [{ name: 'x', action: 'unknown', reason: 'x' }], [{ name: 'x', action: 'keep', reason: 'x', value: 'synthetic-secret' }]]) expect(() => decodeWorkerFrame(JSON.stringify({ ...frame, payload: { ...frame.payload, decisions } }), workerId)).toThrow('格式');
+});
+
 test('缓存握手与诊断只能使用已知枚举及完整位置结构', () => {
   const ready: WorkerFrame = { schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 1, cache_policy: 'sub2api' };
   expect(decodeWorkerFrame(JSON.stringify(ready), workerId)).toEqual(ready);

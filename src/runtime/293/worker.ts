@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import type { RuntimePayload, WorkerFrame } from '../../shared/contracts';
+import type { PreparedInput, RuntimePayload, WorkerFrame } from '../../shared/contracts';
 import { decodeWorkerCommand } from '../../shared/protocol';
 import { BridgeError, errorText, isObject } from '../../shared/errors';
 import { Redactor } from '../../control/redaction';
@@ -14,6 +14,7 @@ import { generateNativeRequest, runNativeJob } from './job';
 import { initializeCli } from './cli';
 import { readCachePolicy, readTelemetryPolicy } from '../../shared/runtime-policy';
 import { createNativeTelemetry } from './telemetry';
+import { readNativeIngressPolicy } from '../../shared/upstream';
 
 const WORKER_ID = /^[a-f0-9-]{36}$/;
 
@@ -43,6 +44,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
   if (!workerId || !WORKER_ID.test(workerId)) throw new Error('缺少工作进程归属');
   const cachePolicy = readCachePolicy(process.env.CCRB_CACHE_POLICY);
   const telemetryPolicy = readTelemetryPolicy(process.env.CCRB_TELEMETRY);
+  const ingressPolicy = readNativeIngressPolicy(process.env.CCRB_NATIVE_INGRESS_POLICY);
   for (const [role, names] of Object.entries(NATIVE_EXPORTS_293)) {
     const module = bindings[role as keyof NativeBindings] as unknown as Record<string, unknown>;
     for (const name of names) {
@@ -100,6 +102,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
       if (current) throw new Error('常驻进程只允许串行作业');
       const abort = new AbortController();
       const redactor = new Redactor();
+      redactor.register(command.type === 'request_input' ? command.input : command.prepared.input);
       let active = true;
       let terminal = false;
       let retire = false;
@@ -108,32 +111,41 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
         if (payload.type === 'completed' || payload.type === 'error') terminal = true;
         await write({ type: 'request_event', schema_version: 2, worker_id: workerId, request_id: command.request_id, payload });
       };
-      // 相同 sessionId 也新建根；迟到异步回调仍绑定旧根，不会改写下一轮账本及请求日志。
-      const session = bindings.state.nEr({ host: base.host, id: command.prepared.context.sessionId, project: base.project });
-      const scope = { session, telemetry: true };
-      const finished = Promise.resolve().then(() => storage.run(scope, async () => {
+      let prepared: PreparedInput | undefined;
+      const finished = Promise.resolve().then(async () => {
         try {
-          bindings.state.t_(command.prepared.context.sessionId, 'resume');
-          await runNativeJob(command.prepared, bindings, abort.signal, redactor, emit, cachePolicy);
+          if (abort.signal.aborted) throw abort.signal.reason;
+          const job = command.type === 'request_input' ? prepareInput(parseInput(command.input, [], ingressPolicy)) : command.prepared;
+          prepared = job;
+          if (command.type === 'request_input') await emit({ type: 'header_policy', attempt: 1, decisions: job.decisions });
+          // 每轮都建立独立原生根，池内复用不能继承上一轮上下文或迟到事件。
+          const session = bindings.state.nEr({ host: base.host, id: job.context.sessionId, project: base.project });
+          const scope = { session, telemetry: true };
+          try {
+            await storage.run(scope, async () => {
+              bindings.state.t_(job.context.sessionId, 'resume');
+              await runNativeJob(job, bindings, abort.signal, redactor, emit, cachePolicy);
+            });
+          } finally { scope.telemetry = false; }
         } catch (error) {
-          retire = true;
+          // 输入校验失败尚未进入原生作业，保留已初始化进程供后续正确请求使用。
+          retire = prepared !== undefined;
           if (terminal) throw error;
           if (abort.signal.aborted) await emit({ type: 'completed', attempt: 1, state: 'canceled' });
           else await emit({ type: 'error', error: redactor.text(errorText(error)), ...(error instanceof BridgeError ? { code: error.code, status: error.status } : {}) });
         } finally {
           active = false;
-          scope.telemetry = false;
         }
         if (!terminal) throw new Error('本轮缺少终态');
         await write({ type: 'worker_idle', schema_version: 2, worker_id: workerId, request_id: command.request_id });
         current = null;
         if (retire || abort.signal.aborted || closing) stop();
-      })).catch(fatal);
+      }).catch(fatal);
       current = { id: command.request_id, abort, finished };
     } catch { fatal(); }
   });
   input.on('close', () => { if (!closing) stop(); });
-  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid, cache_policy: cachePolicy, telemetry: telemetryState });
+  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid, cache_policy: cachePolicy, telemetry: telemetryState, raw_input_protocol: 1 });
   await closed;
   await telemetry.close();
   storage.disable();

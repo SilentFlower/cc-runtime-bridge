@@ -38,7 +38,7 @@
 - OM 的 deps.callModel 仅进入一次 K_t；其 fetchOverride 取得同一官方 SDK 的正文、头及发送上下文，在显式字段核验后由 Ree 唯一发送。stream 仅按调用方明确值映射；SDK 不取得 Response，桥接独占原始逻辑响应，读取收口后立即取消原生解析。调用次数守卫禁止模型重试，不创建第二个 SDK，不替换全局 fetch；本地工具、代理循环及自动辅助压缩禁用，显式 compaction 保留。
 - 只在精简构建复用固定摘要的六个纯正文格式化函数 KLo、XLo、QLo、nNo、sNo、pNo。每次仍求值原生条件与外层钩子，每个工厂仅保留最近一次原始条件及字符串；UTF-8 键和值每项 ≤64 KiB、六项 ≤384 KiB，不代表堆或 RSS 上限。失败和超限不入缓存；整份提示词、权限/工具选择、会话段落表、memory 读取及请求正文不跨作业缓存。
 - HTTP 与 RuntimeEvent 保持 schema_version=1、request_id；事件包含 ready、cc_prepared、response_headers、response_chunk、completed、error；final_capture_ready(attempt=1) 仅由控制侧独立采集器产生，工作进程不得伪造。ready 表示本轮已绑定就绪进程，不代表每轮新建 PID。attempt=1，片段使用可逆 base64。
-- 私有 stdin/stdout 使用 schema_version=2、worker_id；request_start 携带 request_id/prepared，request_cancel 携带匹配 request_id，worker_shutdown 关闭进程。输出为 worker_ready(version,pid)、request_event(request_id,payload)、worker_idle(request_id)。payload 禁止覆盖 schema_version、worker_id、request_id。
+- 私有 stdin/stdout 使用 schema_version=2、worker_id；request_start 携带 request_id/prepared，可协商的 request_input 原始信封见下文；request_cancel 携带匹配 request_id，worker_shutdown 关闭进程。输出为 worker_ready(version,pid)、request_event(request_id,payload)、worker_idle(request_id)。payload 禁止覆盖 schema_version、worker_id、request_id。
 - 握手前还可返回 worker_error(code=native_configuration,status=503,error)，不带 request_id 或额外字段。error 只公开受控 BridgeError 配置说明，先脱敏且 ≤2048 UTF-8 B，未知异常用通用中文消息；入口等待帧写入完成后退出。错进程归属、握手后错误帧或畸形字段按 runtime_protocol/502 隔离，失败作业不重放。
 - 每个物理进程只有一个持续读取器。唯一终态与匹配 worker_idle 缺一不可；释放响应并等待 SDK 收口后才发 idle。重复握手、错代次/错请求、双终态、终态后事件、缺 idle 或畸形帧均隔离进程；读取回调和输出闭包绑定旧代次，不得归入下一作业。取消、异常或状态不明时退役，下一轮重建，不重放当前请求；取消采用 1500 ms 强制终止宽限，空闲关闭优先 shutdown，1500 ms 后仍未退出则强制终止。
 - cc_prepared 的正文、body_bytes、body_sha256 在 Ree 前固定，快照输出与唯一发送可并行，但两者成功后才交付响应事件；任一失败取消原生调用并释放未交付响应。原文和 headers 只在私有管道传递，控制层先注册秘密再脱敏持久化；stdout 不兼任普通日志。默认 off 的 wire_final 不可用；启动侧可按下文开启独立验证，来源必须对应实际采集位置，不以 cc_prepared 冒充最终值。
@@ -544,3 +544,44 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - `tests/native/native.test.ts`：普通/原生输入的独立 TLS 实收排除代理/CDN/new-api/客户端字段，三个可选协议字段及多值保持，CCH、正文和单次发送正确。
 - `tests/native/tls-verifier.test.ts`：夹具私有模式实际驱动错误、长流、取消、部分读取及重建；最终采集排除测试头，双实际 CLI 各三个子代理保持隔离。
 - `bun run typecheck`、单元及控制集成须通过。`test:native`、`test:tls` 使用固定原版 293、合成凭据和无外网环境。
+
+## Scenario: 独立二进制的原始输入消费者
+
+### 1. Scope / Trigger
+
+- cc2api 等外部消费者通过私有 JSONL 调用固定 293，请求构造及头部策略继续由本二进制所有。
+- 实现依据：`src/shared/{contracts,protocol}.ts`、`src/runtime/293/worker.ts`；实际消费者入口为 `scripts/testing/cc2api-native.ts`。
+
+### 2. Signatures
+
+- `worker_ready` 可包含 `raw_input_protocol: 1`；旧握手省略该字段表示缺少原始输入能力。
+- `request_input = {type:'request_input',schema_version:2,worker_id,request_id,input}`；`input` 为既有 schema 1 信封，包含 `schema_version,request_id,body,headers?,context?`。
+- 准备成功后输出 `request_event(payload={type:'header_policy',attempt:1,decisions})`；decision 仅包含 `name,action,reason`，action 为 `keep|drop|runtime|context`。
+
+### 3. Contracts
+
+- 外层与信封的 request_id 必须一致；消费者先验证 PID、固定版本及能力，再提交一次原始作业。调用方不能指定可执行文件、HOME、授权来源或代理。
+- worker 在本次作业内部执行 `parseInput`、`prepareInput` 和同一原生 job；保留普通 API/原生输入、白名单和每轮独立根的既有规则。header_policy 不携带头值，且属于准备阶段观察。
+- 业务输入错误返回受控 error 和匹配 idle，模型零发送，后续合法作业可复用该进程。私有帧损坏、错归属、执行异常及取消沿退役规则处理；终态和 idle 收齐后才复用。
+- 登记的 Linux x64 分发为 27387960 B，SHA256 `a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800`；实际执行体为 112839864 B，SHA256 `ea2cc610928260ca76054fc1818c7c83bb95efe183b06ce98e3d6be7dc31b9b1`。来源仍为本文件固定官方摘要，新增身份须双次构建和实际兼容验证。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 缺少 raw_input_protocol 或能力值不符 | 消费者准备失败，不提交作业 |
+| 外层与信封版本、request_id 或 worker_id 错误 | 私有协议拒绝，隔离对应进程 |
+| 业务正文、头部或上下文校验失败 | 受控错误和 idle，模型零发送 |
+| 合法原始输入 | header_policy 后进入原生准备、唯一发送与响应状态机 |
+
+### 5. Scenarios and Examples
+
+- 正常：schema 2 指令携带同 ID 的 schema 1 信封，二进制内部生成 SDK 请求；消费者只转交原始 JSON 与有序头。
+- 边界：非法头输入失败后，在同一 worker 发送合法输入，后续 TLS 实收与 CCH 仍独立正确。
+- 错误用法：把 worker_ready 缺省能力当作支持，或在 Rust 先做正文/CCH 改写。正确处理：校验能力并交给二进制唯一构造。
+
+### 6. Tests Required
+
+- `tests/unit/worker-protocol.test.ts`：原始信封归属、能力枚举与 header_policy 字段限制。
+- `tests/native/native.test.ts`：固定原版和新精简二进制的错误后复用、实际头部策略、独立 TLS/CCH 与单次发送。
+- `scripts/testing/{standalone-native.py,cc2api-native.ts}`：脱离源码和构建工具执行，实际 Rust 消费者覆盖 HTTP/SOCKS、3 普通/6 Haiku、凭据代次、取消及独立账号。

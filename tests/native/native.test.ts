@@ -2,11 +2,15 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { connect } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { readConfig, startServer, type RunningServer } from '../../src/control/server';
-import type { HeaderPair } from '../../src/shared/contracts';
+import type { HeaderPair, RuntimePayload } from '../../src/shared/contracts';
+import { decodeWorkerFrame } from '../../src/shared/protocol';
+import { verifyRuntime } from '../../src/runtime/profile';
+import { PrivateProcess } from '../../scripts/testing/pool-process';
 import { createEngine, type Engine } from '../../src/control/engine';
 import { prepareInput } from '../../src/control/header-policy';
 import { parseInput } from '../../src/shared/input';
@@ -194,6 +198,53 @@ native('官方 293 的无外网回环链路', () => {
     const expected = (Bun.hash.xxHash64(JSON.stringify(neutralize(decoded)), 0x4D659218E32A3268n) & 0xfffffn).toString(16).padStart(5, '0');
     expect(cch).toBe(expected);
   }
+
+  test('原始输入由同一进程校验和过滤，错误输入零发送后仍可复用', async () => {
+    mode = 'normal';
+    const workerId = randomUUID();
+    const verified = await verifyRuntime(config.engine.binaryPath!);
+    const env: Record<string, string> = {
+      HOME: config.engine.home!, CLAUDE_CONFIG_DIR: config.engine.configDir!, PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8',
+      CCRB_WORKER_ID: workerId, CCRB_TELEMETRY: 'off', CLAUDE_CODE_ENTRYPOINT: 'cli', DISABLE_AUTO_COMPACT: '1',
+      CLAUDE_CODE_GATEWAY_HINT_HEADERS: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
+      ANTHROPIC_API_KEY: upstreamSecret, HTTPS_PROXY: config.engine.proxyUrl!, HTTP_PROXY: config.engine.proxyUrl!, NODE_EXTRA_CA_CERTS: config.engine.caFile!,
+    };
+    if (verified.identity.kind === 'original') env.BUN_OPTIONS = '--preload ' + config.engine.preloadPath;
+    const worker = new PrivateProcess(['/proc/' + process.pid + '/fd/' + verified.handle.fd, '--version'], env, line => decodeWorkerFrame(line, workerId), config.engine.cwd);
+    const collect = async (id: string): Promise<RuntimePayload[]> => {
+      const events: RuntimePayload[] = [];
+      while (true) {
+        const frame = await worker.next();
+        if (frame.type === 'request_event' || frame.type === 'worker_idle') expect(frame.request_id).toBe(id);
+        if (frame.type === 'worker_idle') return events;
+        if (frame.type !== 'request_event') throw new Error('原始输入返回了非请求事件');
+        events.push(frame.payload);
+      }
+    };
+    try {
+      const ready = await worker.next();
+      expect(ready.type).toBe('worker_ready');
+      if (ready.type !== 'worker_ready') throw new Error('缺少工作进程握手');
+      expect(ready.raw_input_protocol).toBe(1);
+      expect(ready.pid).toBe(worker.child.pid);
+      const count = requests.length;
+      const body = { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '原始输入回环' }], stream: false };
+      await worker.send({ type: 'request_input', schema_version: 2, worker_id: workerId, request_id: 'raw-invalid', input: { schema_version: 1, request_id: 'raw-invalid', body, headers: [['x-unknown', 'bad\r\nheader']] } });
+      expect(await collect('raw-invalid')).toContainEqual(expect.objectContaining({ type: 'error', code: 'invalid_header' }));
+      expect(requests.length).toBe(count);
+      for (const id of ['raw-first', 'raw-second']) {
+        await worker.send({ type: 'request_input', schema_version: 2, worker_id: workerId, request_id: id, input: { schema_version: 1, request_id: id, body, headers: [['accept-language', 'zh-CN'], ['new-api-user', 'synthetic']] } });
+        const events = await collect(id);
+        expect(events[0]).toEqual(expect.objectContaining({ type: 'header_policy', decisions: expect.arrayContaining([{ name: 'new-api-user', action: 'drop', reason: '调用方请求头未登记到协议白名单' }]) }));
+        expect(events.at(-1)).toEqual(expect.objectContaining({ type: 'completed', state: 'success' }));
+        expect(new Headers(requests.at(-1)!.headers).has('new-api-user')).toBe(false);
+        assertCch(requests.at(-1)!.raw);
+      }
+      expect(requests.length - count).toBe(2);
+      await worker.send({ type: 'worker_shutdown', schema_version: 2, worker_id: workerId });
+      expect(await worker.child.exited).toBe(0);
+    } finally { await verified.handle.close(); await worker.close(); }
+  }, 30000);
 
   test('显式密钥已被专用 CLI 配置拒绝时保留 503 说明，重复请求不发送或改写决定', async () => {
     const dedicated = join(root, 'rejected-key');

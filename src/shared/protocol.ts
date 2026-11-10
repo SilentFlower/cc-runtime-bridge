@@ -27,6 +27,7 @@ export function validateRuntimeEvent(value: unknown, requestId: string): Runtime
   let valid = false;
   switch (value.type) {
     case 'ready': valid = typeof value.version === 'string'; break;
+    case 'header_policy': valid = value.attempt === 1 && Array.isArray(value.decisions) && value.decisions.every(item => isObject(item) && typeof item.name === 'string' && ['keep', 'drop', 'runtime', 'context'].includes(String(item.action)) && typeof item.reason === 'string' && Object.keys(item).every(key => ['name', 'action', 'reason'].includes(key))); break;
     case 'final_capture_ready': valid = value.attempt === 1; break;
     case 'cc_prepared': valid = value.attempt === 1 && typeof value.body === 'string' && headerPairs(value.headers) && Number.isSafeInteger(value.body_bytes) && Number(value.body_bytes) >= 0 && typeof value.body_sha256 === 'string' && /^[a-f0-9]{64}$/.test(value.body_sha256) && (value.cache_policy === undefined || isCachePolicyDecision(value.cache_policy)); break;
     case 'response_headers': valid = value.attempt === 1 && Number.isInteger(value.status) && Number(value.status) >= 200 && Number(value.status) <= 599 && headerPairs(value.headers); break;
@@ -72,6 +73,10 @@ export function decodeWorkerCommand(value: unknown, workerId: string): WorkerCom
   if (value.type === 'worker_shutdown') return value as unknown as WorkerCommand;
   if (typeof value.request_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.request_id)) throw new BridgeError('runtime_protocol', '工作进程缺少有效请求归属', 502);
   if (value.type === 'request_cancel') return value as unknown as WorkerCommand;
+  if (value.type === 'request_input') {
+    if (!isObject(value.input) || value.input.schema_version !== 1 || value.input.request_id !== value.request_id) throw new BridgeError('runtime_protocol', '原始输入与请求归属不匹配', 502);
+    return value as unknown as WorkerCommand;
+  }
   if (value.type !== 'request_start') throw new BridgeError('runtime_protocol', '未知工作进程指令', 502);
   // 复用同一 PreparedInput 边界，不允许包装协议绕过原有作业校验。
   decodeRuntimeJob({ ...value, schema_version: 1 });
@@ -90,7 +95,7 @@ export function decodeWorkerFrame(line: string, workerId: string): WorkerFrame {
     if (value.code !== 'native_configuration' || value.status !== 503 || typeof value.error !== 'string' || !value.error.trim() || Buffer.byteLength(value.error) > 2048 || Object.keys(value).some(key => !['type', 'schema_version', 'worker_id', 'code', 'status', 'error'].includes(key))) throw new BridgeError('runtime_protocol', '工作进程初始化错误帧格式错误', 502);
     return value as unknown as WorkerFrame;
   }
-  if (value.type === 'worker_ready' && typeof value.version === 'string' && Number.isSafeInteger(value.pid) && Number(value.pid) > 0 && (value.cache_policy === undefined || value.cache_policy === 'preserve' || value.cache_policy === 'sub2api') && (value.telemetry === undefined || isTelemetryHandshake(value.telemetry))) return value as unknown as WorkerFrame;
+  if (value.type === 'worker_ready' && typeof value.version === 'string' && Number.isSafeInteger(value.pid) && Number(value.pid) > 0 && (value.raw_input_protocol === undefined || value.raw_input_protocol === 1) && (value.cache_policy === undefined || value.cache_policy === 'preserve' || value.cache_policy === 'sub2api') && (value.telemetry === undefined || isTelemetryHandshake(value.telemetry))) return value as unknown as WorkerFrame;
   if (typeof value.request_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.request_id)) throw new BridgeError('runtime_protocol', '工作进程事件缺少有效请求归属', 502);
   if (value.type === 'worker_idle') return value as unknown as WorkerFrame;
   if (value.type === 'request_event' && isObject(value.payload)) {
