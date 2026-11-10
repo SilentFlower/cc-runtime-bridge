@@ -68,6 +68,8 @@ SOCKS5/SOCKS5h 兼容通过 sender 本地 CONNECT 隧道适配：限定 api.anth
 - origin、代理、二进制路径/哈希与资源配置来自 sender 启动侧；
 - 错账号、代次、过期及不支持路径在创建作业前失败。
 
+发布复验的CHK-001确认宿主墙钟会约每31秒回拨1.2秒，旧上限校验将合法请求误判为剩余120.509秒并返回准备503。私有接收边界允许最多5秒时钟偏差，剩余首响应预算仍钳制为120秒。`validate_request`返回一次冻结的Tokio `Instant`，legacy发送及原生启动/执行沿同一单调截止等待；原生池内部不重复按墙钟验期。已过期及超出偏差的信封继续拒绝，模型单次发送合同保持。
+
 当前原生 DTO 明确为 NativeSubmission：request（现有 PreparedRequest）、input（schema 1 原始信封）、bearer、device_id、account_uuid、organization_uuid、email、concurrency。SenderConfig.native 可选，包含 binary_path、work_root、memory_mib、max_workers。新能力端点为 /internal/native/status，实际 Messages 为 /internal/native/messages，沿原 bearer 服务鉴权。缺配置、能力或预算时明确准备失败。
 
 显式 V3_NATIVE_SENDER_MEMORY 按 256 MiB 共享映像/sender 基础加每个物理进程 192 MiB 的预算预检；最终以实际满并发峰值验收。标准并发 3 对应 6 个进程，预检最低为1408 MiB，实际验收配置为1536 MiB。物理进程数量由账号标准并发和有限 RAM 预算决定；原生 sender 的 PID 限额按基础 128 加每个物理进程 32 预留，legacy 保持 128。启动握手沿本次剩余期限有界等待。历史 legacy 布局仍为 128 MiB。账号后端和并发从网关 runtime config 获取，sender 布局改变在既有作业和 API 活动都为空时重建环境。配置事务会先停止角色；布局检查复用 _running_sender_active，对已停止且归属已核验的 sender 按零活动处理，对运行中 sender 读取真实活动，查询故障继续拒绝重建。构建侧按固定版本 URL 或显式本地候选获取同一个校验值，冻结到镜像源快照及联合清单。

@@ -34,7 +34,7 @@ Rust完整回归之后的平台守卫、诊断UUID与准备错误分类由最新
 - 已发布 https://github.com/SilentFlower/cc-runtime-bridge/releases/tag/v0.1.0-beta.2 ，包含实际Linux x64二进制、完整manifest和SHA256SUMS。发布标签固定e783aa519c86936ecb377402837256cffadde003，24项构建输入与该提交逐项匹配。
 - 三仓业务提交已推送：cc-runtime-bridge e783aa519c86936ecb377402837256cffadde003；cc2api fff3623b7c7b1d2ea070d26dc0024f5f4632daf6；bench 97f1d446e2d4de016bf63cf3beb1a9ce3b4b8ae7。用户精确确认同时覆盖bench历史Flower提交875e414，GC提交9624fe5经脚本审计通过。
 - 实际下载目录为artifacts/cc2api-binary-forwarder-20261110/published-v0.1.0-beta.2-3964bd75，二进制27387960 B及分发SHA与清单一致。bench默认公开附件URL下载及N3/1536 MiB配置入口通过，结果为published-bench-stage-f9c9ef68/result.json。
-- 正式附件的完整HTTP复验17次/峰值6通过，完整SOCKS旁路抓包复验同样17次/峰值6通过。首轮HTTP和SOCKS的Gateway用例均出现过准备503；其后多轮通过。原因仍待定位，稳定性验收保持待收口，任务保持in_progress。
+- 正式附件的完整HTTP复验17次/峰值6通过，完整SOCKS旁路抓包复验同样17次/峰值6通过。首轮HTTP和SOCKS的Gateway用例均出现过准备503；后续通过时钟采样和拒绝字段诊断定位，修复及验收见末节。
 
 ## 根仓原始证据摘要
 
@@ -68,10 +68,34 @@ SQLx0.7.4原始定义确认Any NULL按i32编码，PG预编译缓存仅以SQL文�
 
 最终Store回归：/tmp/cc2api-native-store-final.log 8通过；/tmp/cc2api-native-timestamps-final.log SQLite时间/配置集成16通过。上述PG补验使用独立容器与native2测试库，临时资源随后清理。
 
-## 发布附件复验与待定位问题
+## 发布附件复验与问题定位过程
 
-- consumer-published-http.log与consumer-published-socks-complete.log：池用例均通过；Gateway的gateway-error预期401，实际得到503及“原生请求准备失败”。错误由runtime_transport::submit_native消费私有before-send标记后映射，sender内部具体拒绝条件尚待定位。
+- consumer-published-http.log与consumer-published-socks-complete.log：池用例均通过；Gateway的gateway-error预期401，实际得到503及“原生请求准备失败”。错误由runtime_transport::submit_native消费私有before-send标记后映射，当时仅取得统一错误；本次后续诊断已定位墙钟回拨导致期限上限误拒绝。
 - consumer-published-http-complete.log：正常完整HTTP17次/峰值6通过。diagnostic-consumer/ordinary-observed.log：原始驱动、真实Cargo和旁路抓包的完整SOCKS17次/峰值6通过。
 - consumer-published-http-gateway-recheck.log：4次网关定向复验通过；三轮strace定向、完整HTTP strace与完整SOCKS GDB分别通过。diagnostic-consumer/repeat-cargo.log：实际Cargo消费者连续6轮网关复验通过。
 - 诊断采用gitignored源码副本和编译包装器，只在既有准备错误发生后打印调用栈；业务源码提交保持原内容。副本full-socks.log曾在agent项得到503，该次没有触发unavailable调用栈。早期pcap有末包缓冲缺口，后续改为immediate-mode，并补充独立nsenter旁路抓包。多轮通过不等于已定位或修复先前错误。
 - 所有模型请求均使用合成凭据及本地模拟TLS上游。真实Anthropic服务的鉴权、风控与模型推理属于独立验收。
+
+## CHK-001 修复与最终重检证据
+
+- 用户明确选择“修复全部”。180秒墙钟/单调时钟采样记录6次墙钟回拨，单次1175–1275毫秒。连续网关诊断实际捕捉`remaining_ms=120509`，UUID、账号、环境、代次、origin与目标检查均为true；sender随后返回binding/target mismatch并被网关映射为准备503。
+- 根因为绝对期限的120秒上限校验及原生池重复校验依赖墙钟。接收端现允许最多5秒时钟偏差，剩余预算钳制120秒并一次转换为Tokio单调截止，legacy发送及原生启动/执行共用该截止。过期、超过5秒偏差及归属/目标错误继续拒绝；已就绪进程到期时在投递业务指令前结束。平台备用实现同步签名。
+- 确定性回拨1275毫秒回归在修复前失败，修复后通过；覆盖5秒边界、超界、过期及临近到期的1秒剩余预算。实际二进制用例补充暖进程预算过期后的零业务投递检查。
+- `cargo test --locked`最终756单元、85默认集成通过；默认忽略项按原条件保留。`cargo fmt --package claude-code-gateway --check`及根仓`bun run typecheck`通过。临时拒绝诊断已整理完毕。
+- 正式下载二进制的HTTP/SOCKS完整复验各17次/峰值6通过，包含401一次及取消/凭据代次/账号隔离。相同SOCKS夹具随后连续6轮网关复验通过，每轮4次TLS提交。全部使用合成凭据与隔离模拟TLS上游。
+- 根仓驱动在子阶段断言前持久化可选报告。缺失合成二进制故障注入返回101，报告保留code=101与空实收列表，现场保留回归通过。
+- 本次修复发生在Rust消费者和测试驱动。正式beta.2分发SHA保持a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800。
+
+修复证据路径相对正式下载目录`artifacts/cc2api-binary-forwarder-20261110/published-v0.1.0-beta.2-3964bd75`：
+
+| 文件 | SHA256 |
+| --- | --- |
+| `repair-clock.json` | `30e6113e227c9277991a15807c27ad987497119b64cf3f5afffd27330252acbb` |
+| `repair-gateway-clock-repro.log` | `e3ece7aa68bb96c1fef05a0124cd0a8bab7a3417b591dd1822071c66a5e1c90e` |
+| `repair-clock-regression-before.log` | `fa3f4a247f33ebeeec61393692a9cbef709e8a17a2b74600ed04be955e5b5389` |
+| `repair-clock-regression-after.log` | `1c0b89a0822eaf2d25a9ba322e2a2e1efbd9875edb31cc879c95a7b9173556b4` |
+| `repair-cargo-final.log` | `6e587f1763e09977aab1d2a7a7a13b55611f95e357d1f22bcad12aeacf8a4878` |
+| `repair-final-http.json` | `cd31ebef8aa557d2de22f9ce4da59b3da90b2cda8611f5a9383285b000286a07` |
+| `repair-final-socks.json` | `c55566ea5b0543ef860d72ae5251ccc57782ceabba8000a48ee824c5f82d783d` |
+| `repair-gateway-recheck.log` | `80f2eabb8080c04574f41016179f9b00935bcd2887201e473d1425ae526d44f7` |
+| `repair-failure-evidence.json` | `1faaa839518798a295e1f910e69bf1c98fa5b57637e31f8c94f973017770d526` |
