@@ -32,7 +32,7 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
   const raw = await request.text(); verifyCch(raw);
   for (const name of ['cf-ray', 'new-api-user', 'x-unregistered']) assert.equal(request.headers.has(name), false);
   const body = JSON.parse(raw);
-  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[36]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-native|gateway-agent)$/.test(text));
+  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-native|gateway-agent)$/.test(text));
   assert.ok(label, '必须从真实用户文本取得场景标识');
   const metadata = JSON.parse(body.metadata.user_id);
   const bearer = request.headers.get('authorization')!;
@@ -68,7 +68,12 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
   if (label === 'http-error' || label === 'gateway-error') return Response.json({ error: { type: 'authentication_error', message: 'synthetic' } }, { status: 401 });
   return Response.json({ id: 'msg_fixture', type: 'message', role: 'assistant', model: body.model, content: [{ type: 'text', text: '离线消费者验证' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 2 } }, { headers: { 'x-v3-native-observation': 'synthetic-forged', 'x-v3-transport-error': 'before-send' } });
 } });
-const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) { if (new URL(request.url).pathname === '/identity') { gatewayIdentity = await request.json() as typeof gatewayIdentity; return Response.json({ ok: true }); } if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) return Response.json({ account_id: 1, environment_id: 'a'.repeat(32), generation: 1, endpoint: `http://${senderHost}:8091`, secret: 'synthetic-private-key'.repeat(3), release_id: 'native-offline' }); return Response.json({ messages, parallel_peak: parallelPeak }); } });
+const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) { if (new URL(request.url).pathname === '/identity') { gatewayIdentity = await request.json() as typeof gatewayIdentity; return Response.json({ ok: true }); } if (new URL(request.url).pathname.startsWith('/internal/v3/native-captures/')) {
+  assert.equal(request.headers.get('authorization'), 'Bearer ' + 'synthetic-private-management-key'.repeat(2));
+  const id = new URL(request.url).pathname.split('/').at(-1)!;
+  assert.match(id, /^[a-f0-9-]{36}$/);
+  return Response.json(JSON.parse(await readFile(join(root, 'captures', id + '.json'), 'utf8')));
+} if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) return Response.json({ account_id: 1, environment_id: 'a'.repeat(32), generation: 1, endpoint: `http://${senderHost}:8091`, secret: 'synthetic-private-key'.repeat(3), release_id: 'native-offline' }); return Response.json({ messages, parallel_peak: parallelPeak }); } });
 const proxy = createServer();
 proxy.on('connect', (request, socket, head) => {
   assert.equal(request.url, 'api.anthropic.com:443');
@@ -105,7 +110,7 @@ try {
   const phases = process.env.CCRB_TEST_GATEWAY_ONLY === '1' ? ['native_real_gateway'] : ['native_real_binary', 'native_real_gateway'];
   let code = 0;
   for (const phase of phases) {
-    const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
+    const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CAPTURE_DIR: join(root, 'captures'), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
     const timer = setInterval(() => { void sample(child.pid).then(value => { peakRssKiB = Math.max(peakRssKiB, value); }); }, 100);
     code = await child.exited; clearInterval(timer);
     // 失败时同样保存实收请求摘要，后续断言与夹具清理才有可核对的现场。
@@ -113,7 +118,7 @@ try {
     assert.equal(code, 0);
   }
   assert.equal(code, 0);
-  assert.equal(messages.length, phases.length === 2 ? 17 : 4);
+  assert.equal(messages.length, phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 14 : 17) : 4);
   if (phases.length === 2) assert.equal(messages.find(message => message.label === 'rotated')?.bearer, 'Bearer synthetic-bearer-b');
   console.log(JSON.stringify({ messages: messages.length, parallelPeak, processTreePeakRssKiB: peakRssKiB }));
 } finally { upstream.stop(true); control.stop(true); proxy.closeAllConnections(); proxy.close(); socks.close(); await rm(root, { recursive: true, force: true }); }
