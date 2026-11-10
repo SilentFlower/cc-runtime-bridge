@@ -108,10 +108,10 @@ try {
     const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
     const timer = setInterval(() => { void sample(child.pid).then(value => { peakRssKiB = Math.max(peakRssKiB, value); }); }, 100);
     code = await child.exited; clearInterval(timer);
+    // 失败时同样保存实收请求摘要，后续断言与夹具清理才有可核对的现场。
+    if (process.env.CCRB_TEST_REPORT) await writeFile(process.env.CCRB_TEST_REPORT, JSON.stringify({ code, binary: resolve(binary), messages, parallelPeak, processTreePeakRssKiB: peakRssKiB }, null, 2));
     assert.equal(code, 0);
   }
-  const report = { code, binary: resolve(binary), messages, parallelPeak, processTreePeakRssKiB: peakRssKiB };
-  if (process.env.CCRB_TEST_REPORT) await writeFile(process.env.CCRB_TEST_REPORT, JSON.stringify(report, null, 2));
   assert.equal(code, 0);
   assert.equal(messages.length, phases.length === 2 ? 17 : 4);
   if (phases.length === 2) assert.equal(messages.find(message => message.label === 'rotated')?.bearer, 'Bearer synthetic-bearer-b');
