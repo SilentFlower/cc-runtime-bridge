@@ -1,0 +1,36 @@
+{
+  "source": "目标账号已完成业务请求的脱敏只读时间摘要",
+  "timings": [
+    {
+      "ordinal": 1,
+      "ttft_ms": 16179,
+      "first_output_ms": 16330,
+      "duration_ms": 17244,
+      "capture_state": "saved",
+      "attempt_to_capture_ms": 13997,
+      "capture_to_response_headers_ms": 2182,
+      "original_body_bytes": 154882
+    },
+    {
+      "ordinal": 2,
+      "ttft_ms": 2757,
+      "first_output_ms": 2759,
+      "duration_ms": 4157,
+      "capture_state": "saved",
+      "attempt_to_capture_ms": 498,
+      "capture_to_response_headers_ms": 2259,
+      "original_body_bytes": 175545
+    },
+    {
+      "ordinal": 3,
+      "ttft_ms": 1457,
+      "first_output_ms": 10333,
+      "duration_ms": 10680,
+      "capture_state": "saved",
+      "attempt_to_capture_ms": 343,
+      "capture_to_response_headers_ms": 1114,
+      "original_body_bytes": 182030
+    }
+  ],
+  "inspection_model_requests_initiated": 0
+}

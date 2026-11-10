@@ -26,13 +26,15 @@ assert.equal(Bun.spawnSync(['mount', '--bind', join(root, 'hosts'), '/etc/hosts'
 const messages: { label: string; device: string; account: string; bearer: string }[] = [];
 let parallel = 0, parallelPeak = 0;
 let gatewayIdentity: { device_id: string; account_uuid: string } | undefined;
+let runningBindingReads = 0;
+let bindingGate: { skip: number; mode: string; entered: boolean; release?: () => void } | undefined;
 const groups = new Map<string, { count: number; release: () => void; promise: Promise<void> }>();
 const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.file(key), cert: Bun.file(ca) }, async fetch(request) {
   assert.equal(new URL(request.url).pathname, '/v1/messages');
   const raw = await request.text(); verifyCch(raw);
   for (const name of ['cf-ray', 'new-api-user', 'x-unregistered']) assert.equal(request.headers.has(name), false);
   const body = JSON.parse(raw);
-  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-native|gateway-agent)$/.test(text));
+  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-info|gateway-native|gateway-mapped-main|gateway-agent)$/.test(text));
   assert.ok(label, '必须从真实用户文本取得场景标识');
   const metadata = JSON.parse(body.metadata.user_id);
   const bearer = request.headers.get('authorization')!;
@@ -50,8 +52,10 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
   }
   if (label === 'gateway-agent') {
     assert.equal(request.headers.get('x-claude-code-agent-id'), 'child-fixture');
-    assert.equal(request.headers.get('x-claude-code-parent-agent-id'), 'parent-fixture');
-    assert.equal(metadata.session_id, '33333333-3333-4333-8333-333333333333');
+    assert.equal(request.headers.get('x-claude-code-parent-agent-id'), '33333333-3333-4333-8333-333333333333');
+    assert.equal(metadata.session_id, '22222222-2222-4222-8222-222222222222');
+    assert.equal(request.headers.get('x-claude-code-session-id'), metadata.session_id);
+    assert.equal(request.headers.get('x-claude-code-prompt-id'), '44444444-4444-4444-8444-444444444444');
     assert.ok(raw.includes('cc_is_subagent=true') && raw.includes('synthetic-history-signature') && raw.includes('toolu_history'));
     const message = { id: 'msg_tool', type: 'message', role: 'assistant', model: body.model, content: [], stop_reason: null, usage: { input_tokens: 10, output_tokens: 0 } };
     const events = [
@@ -64,16 +68,40 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
     ];
     return new Response(events.map(event => 'event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), { headers: { 'content-type': 'text/event-stream' } });
   }
+  if (label === 'gateway-mapped-main') {
+    assert.equal(metadata.session_id, '22222222-2222-4222-8222-222222222222');
+    assert.equal(request.headers.get('x-claude-code-session-id'), metadata.session_id);
+    assert.equal(request.headers.get('x-claude-code-prompt-id'), '55555555-5555-4555-8555-555555555555');
+    assert.ok(!raw.includes('cc_is_subagent=true'));
+  }
   if (label === 'slow') return new Response(new ReadableStream({ start(controller) { controller.enqueue(Buffer.from(': waiting\n\n')); } }), { headers: { 'content-type': 'text/event-stream' } });
   if (label === 'http-error' || label === 'gateway-error') return Response.json({ error: { type: 'authentication_error', message: 'synthetic' } }, { status: 401 });
   return Response.json({ id: 'msg_fixture', type: 'message', role: 'assistant', model: body.model, content: [{ type: 'text', text: '离线消费者验证' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 2 } }, { headers: { 'x-v3-native-observation': 'synthetic-forged', 'x-v3-transport-error': 'before-send' } });
 } });
-const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) { if (new URL(request.url).pathname === '/identity') { gatewayIdentity = await request.json() as typeof gatewayIdentity; return Response.json({ ok: true }); } if (new URL(request.url).pathname.startsWith('/internal/v3/native-captures/')) {
+const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
+  const url = new URL(request.url);
+  if (url.pathname === '/binding/arm') { const input = await request.json() as { skip: number; mode: string }; bindingGate = { ...input, entered: false }; return Response.json({ ok: true }); }
+  if (url.pathname === '/binding/release') { bindingGate?.release?.(); return Response.json({ ok: true }); }
+  if (url.pathname === '/identity') { gatewayIdentity = await request.json() as typeof gatewayIdentity; return Response.json({ ok: true }); } if (url.pathname.startsWith('/internal/v3/native-captures/')) {
   assert.equal(request.headers.get('authorization'), 'Bearer ' + 'synthetic-private-management-key'.repeat(2));
   const id = new URL(request.url).pathname.split('/').at(-1)!;
   assert.match(id, /^[a-f0-9-]{36}$/);
   return Response.json(JSON.parse(await readFile(join(root, 'captures', id + '.json'), 'utf8')));
-} if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) return Response.json({ account_id: 1, environment_id: 'a'.repeat(32), generation: 1, endpoint: `http://${senderHost}:8091`, secret: 'synthetic-private-key'.repeat(3), release_id: 'native-offline' }); return Response.json({ messages, parallel_peak: parallelPeak }); } });
+} if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) {
+  // 模拟调度器迟到就绪，首次后台只读解析失败后由启动补偿恢复。
+  if (new URL(request.url).searchParams.get('wake') === 'false' && ++runningBindingReads === 1) return Response.json({ error: 'synthetic-not-ready' }, { status: 503 });
+  let generation = 1;
+  if (url.searchParams.get('wake') === 'false' && bindingGate && !bindingGate.entered) {
+    if (bindingGate.skip > 0) bindingGate.skip--;
+    else {
+      const gate = bindingGate; gate.entered = true;
+      await new Promise<void>(done => { gate.release = done; });
+      if (gate.mode === 'fail') return Response.json({ error: 'synthetic-rebuild' }, { status: 503 });
+      generation = 2;
+    }
+  }
+  return Response.json({ account_id: 1, environment_id: 'a'.repeat(32), generation, endpoint: `http://${senderHost}:8091`, secret: 'synthetic-private-key'.repeat(3), release_id: 'native-offline' });
+} return Response.json({ messages, parallel_peak: parallelPeak, running_binding_reads: runningBindingReads, binding_waiting: bindingGate?.entered ?? false }); } });
 const proxy = createServer();
 proxy.on('connect', (request, socket, head) => {
   assert.equal(request.url, 'api.anthropic.com:443');
@@ -118,7 +146,8 @@ try {
     assert.equal(code, 0);
   }
   assert.equal(code, 0);
-  assert.equal(messages.length, phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 14 : 17) : 4);
+  assert.equal(messages.length, phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 16 : 19) : 6);
+  assert.ok(runningBindingReads >= 3, '启动补偿与凭据轮换均重新核对只读运行绑定');
   if (phases.length === 2) assert.equal(messages.find(message => message.label === 'rotated')?.bearer, 'Bearer synthetic-bearer-b');
   console.log(JSON.stringify({ messages: messages.length, parallelPeak, processTreePeakRssKiB: peakRssKiB }));
 } finally { upstream.stop(true); control.stop(true); proxy.closeAllConnections(); proxy.close(); socks.close(); await rm(root, { recursive: true, force: true }); }

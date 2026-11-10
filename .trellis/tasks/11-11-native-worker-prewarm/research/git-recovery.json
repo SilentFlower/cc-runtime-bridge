@@ -1,0 +1,19 @@
+{
+  "run_id": "auto-20261110172928",
+  "operation": "按开工前基线补登关联仓库后恢复本地联合提交",
+  "baseline_sha256": "7398533c5bd1102691608f9b92acc5554aac5f14718171854548d46067453ec8",
+  "registered_repositories": [
+    "/root/project/vibecoding-bench",
+    "/root/project/vibecoding-bench/cc2api"
+  ],
+  "original_protected_files": 363,
+  "recovery_tests": {
+    "command": "python3 -m unittest discover -s .trellis/scripts -p test_project_repositories.py",
+    "passed": 5
+  },
+  "joint_source_hashes_verified": 27,
+  "recovery_sources_sha256": {
+    ".trellis/scripts/project_repositories.py": "d8cc0e879d8ee3ed9ee12415e1e469da9856b8f709fe9d0fe65f1a72067fa7d1",
+    ".trellis/scripts/test_project_repositories.py": "9c898ccc36b3e4ee734b8f3ca342498cb8fa82623ed5805648ddec45fd1f9b81"
+  }
+}

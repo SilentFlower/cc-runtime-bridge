@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/runtime-contract.md", "reason": "固定二进制、worker_ready、零模型初始化和进程协议合同。"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "准备阶段与真实模型提交、日志和采集证据边界。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/service-architecture.md", "reason": "网关、凭据所有权及原生 sender 跨服务边界。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/cc2api/backend/testing-quality.md", "reason": "Rust 验证要求及真实凭据与正文保护。"}
+{"file": "/root/project/vibecoding-bench/.trellis/spec/vibecoding-bench/backend/account-runtime-v3.md", "reason": "原生共享映像、资源预算、环境锁和生命周期约束。"}
+{"file": ".trellis/tasks/11-11-native-worker-prewarm/research/findings.md", "reason": "实际加载入口、生命周期触发及零模型预热研究。"}
+{"file": ".trellis/tasks/11-11-native-worker-prewarm/research/performance-comparison.json", "reason": "四组固定身份的冷/暖和大正文性能对照，保留工作量、资源条件及原诊断结果。"}

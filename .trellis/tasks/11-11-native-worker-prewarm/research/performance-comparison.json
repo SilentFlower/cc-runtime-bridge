@@ -1,0 +1,199 @@
+{
+  "conditions": "各组同机交错、5 轮、每进程 6 次；仅回环网络与合成凭据，固定二进制 SHA；计时包含协议收口，不包含真实推理与完整产品控制面。",
+  "reports": [
+    {
+      "case": "small-runtime-comparison",
+      "label": "小型普通 API，宿主 CPU 条件",
+      "binary_sha256": "a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800",
+      "reference_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+      "historical_diagnostic_passed": false,
+      "summary": {
+        "compact": {
+          "startup_to_first_complete_ms": 2856.081156,
+          "ready_to_first_complete_ms": 28.540129999999863,
+          "warm_ms": 18.33165000000008,
+          "rss_after_bytes": 185446400,
+          "rss_peak_bytes": 185446400,
+          "generated_disk_bytes": 188
+        },
+        "reference": {
+          "startup_to_first_complete_ms": 2737.891339,
+          "ready_to_first_complete_ms": 78.14491199999975,
+          "warm_ms": 11.47063899999921,
+          "rss_after_bytes": 217567232,
+          "rss_peak_bytes": 243871744,
+          "generated_disk_bytes": 0
+        }
+      },
+      "ratios": {
+        "startup_to_first_complete_ms": 1.0431681912705741,
+        "ready_to_first_complete_ms": 0.3652205789162569,
+        "warm_ms": 1.5981367733742946
+      },
+      "local_model_requests": 60,
+      "real_model_requests": 0,
+      "workload": {
+        "compact": {
+          "outbound_bytes": 35413.0,
+          "tools": [
+            0
+          ]
+        },
+        "reference": {
+          "outbound_bytes": 6464.0,
+          "tools": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "case": "cpu025-runtime-comparison-netadmin",
+      "label": "小型普通 API，0.25 核容器",
+      "binary_sha256": "a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800",
+      "reference_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+      "historical_diagnostic_passed": false,
+      "summary": {
+        "compact": {
+          "startup_to_first_complete_ms": 12786.271282000002,
+          "ready_to_first_complete_ms": 194.91431799999555,
+          "warm_ms": 98.62987800000701,
+          "rss_after_bytes": 179937280,
+          "rss_peak_bytes": 179937280,
+          "generated_disk_bytes": 188
+        },
+        "reference": {
+          "startup_to_first_complete_ms": 11998.066777999993,
+          "ready_to_first_complete_ms": 692.5483710000008,
+          "warm_ms": 71.11242600000696,
+          "rss_after_bytes": 204840960,
+          "rss_peak_bytes": 226971648,
+          "generated_disk_bytes": 0
+        }
+      },
+      "ratios": {
+        "startup_to_first_complete_ms": 1.0656942921375703,
+        "ready_to_first_complete_ms": 0.28144506024691135,
+        "warm_ms": 1.386957013672932
+      },
+      "local_model_requests": 60,
+      "real_model_requests": 0,
+      "workload": {
+        "compact": {
+          "outbound_bytes": 35413.0,
+          "tools": [
+            0
+          ]
+        },
+        "reference": {
+          "outbound_bytes": 6464.0,
+          "tools": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "case": "large-native-runtime-comparison",
+      "label": "约 790 KB/13 条消息/57 工具原生正文，宿主 CPU 条件",
+      "binary_sha256": "a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800",
+      "reference_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+      "historical_diagnostic_passed": true,
+      "summary": {
+        "compact": {
+          "startup_to_first_complete_ms": 2954.699058000002,
+          "ready_to_first_complete_ms": 71.32034200000089,
+          "warm_ms": 45.02717399999983,
+          "warm_upstream_arrival_ms": 36.42402900000161,
+          "warm_prepared_ms": 44.63292000000001,
+          "rss_after_bytes": 216084480,
+          "rss_peak_bytes": 218058752,
+          "generated_disk_bytes": 188
+        },
+        "reference": {
+          "startup_to_first_complete_ms": 2834.899541999999,
+          "ready_to_first_complete_ms": 226.40918000000238,
+          "warm_ms": 97.78707700000086,
+          "warm_upstream_arrival_ms": 92.87705600000118,
+          "warm_prepared_ms": null,
+          "rss_after_bytes": 326524928,
+          "rss_peak_bytes": 332906496,
+          "generated_disk_bytes": 0
+        }
+      },
+      "ratios": {
+        "startup_to_first_complete_ms": 1.0422588223057403,
+        "ready_to_first_complete_ms": 0.3150064056589938,
+        "warm_ms": 0.46046139614132686
+      },
+      "local_model_requests": 60,
+      "real_model_requests": 0,
+      "workload": {
+        "compact": {
+          "outbound_bytes": 790277.0,
+          "tools": [
+            57
+          ]
+        },
+        "reference": {
+          "outbound_bytes": 790335.0,
+          "tools": [
+            57
+          ]
+        }
+      }
+    },
+    {
+      "case": "large-native-cpu025-comparison",
+      "label": "约 790 KB/13 条消息/57 工具原生正文，0.25 核容器",
+      "binary_sha256": "a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800",
+      "reference_sha256": "8484c4c58f4b7782a190f7cab7c8aa5d1f706ae26b2d2a5cafe81af070f0611b",
+      "historical_diagnostic_passed": true,
+      "summary": {
+        "compact": {
+          "startup_to_first_complete_ms": 12879.499699000007,
+          "ready_to_first_complete_ms": 392.0378150000033,
+          "warm_ms": 284.6001639999886,
+          "warm_upstream_arrival_ms": 195.98216899999534,
+          "warm_prepared_ms": 283.7772859999968,
+          "rss_after_bytes": 204554240,
+          "rss_peak_bytes": 216604672,
+          "generated_disk_bytes": 188
+        },
+        "reference": {
+          "startup_to_first_complete_ms": 12884.499716000006,
+          "ready_to_first_complete_ms": 1411.6357959999877,
+          "warm_ms": 590.0204720000002,
+          "warm_upstream_arrival_ms": 585.8474019999994,
+          "warm_prepared_ms": null,
+          "rss_after_bytes": 313962496,
+          "rss_peak_bytes": 320172032,
+          "generated_disk_bytes": 0
+        }
+      },
+      "ratios": {
+        "startup_to_first_complete_ms": 0.9996119354953464,
+        "ready_to_first_complete_ms": 0.2777188111203201,
+        "warm_ms": 0.4823564223717114
+      },
+      "local_model_requests": 60,
+      "real_model_requests": 0,
+      "workload": {
+        "compact": {
+          "outbound_bytes": 790277.0,
+          "tools": [
+            57
+          ]
+        },
+        "reference": {
+          "outbound_bytes": 790335.0,
+          "tools": [
+            57
+          ]
+        }
+      }
+    }
+  ],
+  "total_local_model_requests": 240,
+  "total_real_model_requests": 0
+}
