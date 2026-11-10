@@ -1,0 +1,14 @@
+{
+  "source": "artifacts/native-cc-ingress-20261106/source-inspect/chunk-g263vvvn.js",
+  "sha256": "76efda96f539b504094b8bf16620aaffed35f759f0714326d45e46b838eca9ab",
+  "declaredOptionalHeaders": [
+    "x-claude-code-prev-tool-durations",
+    "x-claude-code-compaction",
+    "x-claude-code-context-compacted"
+  ],
+  "constructionFunctions": [
+    "pon",
+    "mon"
+  ],
+  "note": "固定 293 的既有提取源码中声明并构造这些可选协议字段；本轮历史样本未出现这三个字段。"
+}

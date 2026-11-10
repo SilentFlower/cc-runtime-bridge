@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/11-10-ingress-proxy-cdn-headers/research/spec-excerpts.md", "reason": "固定 293、字段归属及日志采集合同的有来源摘录；避免整份大型规范被上下文注入截断"}
+{"file": "docs/header-policy.md", "reason": "既有字段归属与多值合同；本任务以用户确认的白名单替代未知头默认保留"}
+{"file": ".trellis/tasks/11-10-ingress-proxy-cdn-headers/research/findings.md", "reason": "vm2api、历史抓包与固定 293 字段依据，以及私有测试控制迁移"}

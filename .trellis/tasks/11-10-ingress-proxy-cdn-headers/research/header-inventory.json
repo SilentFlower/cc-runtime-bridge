@@ -1,0 +1,872 @@
+{
+  "note": "只统计历史头名、类别、来源与完整性，保留阶段；不复制头值、正文或凭据。",
+  "sources": [
+    {
+      "source": "artifacts/plain-api-tls-20261107T134346418310Z",
+      "kind": "saved_request_details",
+      "files": 5,
+      "stages": {
+        "ingress": {
+          "samples": 5,
+          "sources": [
+            "http_ingress"
+          ],
+          "states": {
+            "complete": 5
+          },
+          "headerNames": {
+            "accept": 5,
+            "accept-encoding": 5,
+            "authorization": 5,
+            "connection": 5,
+            "content-length": 5,
+            "content-type": 5,
+            "host": 5,
+            "user-agent": 5,
+            "x-api-client-probe": 5
+          }
+        },
+        "header_policy": {
+          "samples": 5,
+          "sources": [
+            "header_policy"
+          ],
+          "states": {
+            "complete": 5
+          },
+          "headerNames": {}
+        },
+        "cc_prepared": {
+          "samples": 5,
+          "sources": [
+            "claude_code_293_cli_prepared"
+          ],
+          "states": {
+            "complete": 5
+          },
+          "headerNames": {
+            "accept": 5,
+            "anthropic-beta": 5,
+            "anthropic-dangerous-direct-browser-access": 5,
+            "anthropic-version": 5,
+            "content-type": 5,
+            "user-agent": 5,
+            "x-api-client-probe": 5,
+            "x-api-key": 5,
+            "x-app": 5,
+            "x-claude-code-prompt-id": 4,
+            "x-claude-code-request-class": 5,
+            "x-claude-code-session-id": 5,
+            "x-stainless-arch": 5,
+            "x-stainless-lang": 5,
+            "x-stainless-os": 5,
+            "x-stainless-package-version": 5,
+            "x-stainless-retry-count": 5,
+            "x-stainless-runtime": 5,
+            "x-stainless-runtime-version": 5,
+            "x-stainless-timeout": 5
+          }
+        },
+        "wire_final": {
+          "samples": 5,
+          "sources": [
+            "native_tls_verifier"
+          ],
+          "states": {
+            "complete": 5
+          },
+          "headerNames": {
+            "accept": 5,
+            "accept-encoding": 5,
+            "anthropic-beta": 5,
+            "anthropic-dangerous-direct-browser-access": 5,
+            "anthropic-version": 5,
+            "connection": 5,
+            "content-length": 5,
+            "content-type": 5,
+            "host": 5,
+            "user-agent": 5,
+            "x-api-client-probe": 5,
+            "x-api-key": 5,
+            "x-app": 5,
+            "x-claude-code-prompt-id": 4,
+            "x-claude-code-request-class": 5,
+            "x-claude-code-session-id": 5,
+            "x-stainless-arch": 5,
+            "x-stainless-lang": 5,
+            "x-stainless-os": 5,
+            "x-stainless-package-version": 5,
+            "x-stainless-retry-count": 5,
+            "x-stainless-runtime": 5,
+            "x-stainless-runtime-version": 5,
+            "x-stainless-timeout": 5
+          }
+        },
+        "upstream_response": {
+          "samples": 5,
+          "sources": [
+            "native_response"
+          ],
+          "states": {
+            "complete": 5
+          },
+          "headerNames": {
+            "access-control-allow-credentials": 4,
+            "cache-control": 1,
+            "connection": 5,
+            "content-length": 4,
+            "content-type": 5,
+            "date": 5,
+            "server": 4,
+            "strict-transport-security": 4,
+            "transfer-encoding": 1,
+            "vary": 4,
+            "via": 5,
+            "x-amz-cf-id": 5,
+            "x-amz-cf-pop": 5,
+            "x-cache": 5,
+            "x-content-type-options": 4,
+            "x-ds-trace-id": 4,
+            "x-new-api-version": 5,
+            "x-oneapi-request-id": 5
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/active-cli-20261107T011516593183Z",
+      "kind": "saved_request_details",
+      "files": 20,
+      "stages": {
+        "ingress": {
+          "samples": 20,
+          "sources": [
+            "http_ingress"
+          ],
+          "states": {
+            "complete": 20
+          },
+          "headerNames": {
+            "accept": 20,
+            "accept-encoding": 20,
+            "anthropic-beta": 6,
+            "anthropic-dangerous-direct-browser-access": 6,
+            "anthropic-version": 6,
+            "authorization": 6,
+            "connection": 20,
+            "content-length": 20,
+            "content-type": 20,
+            "host": 20,
+            "user-agent": 20,
+            "x-app": 6,
+            "x-claude-code-session-id": 6,
+            "x-stainless-arch": 6,
+            "x-stainless-lang": 6,
+            "x-stainless-os": 6,
+            "x-stainless-package-version": 6,
+            "x-stainless-retry-count": 6,
+            "x-stainless-runtime": 6,
+            "x-stainless-runtime-version": 6,
+            "x-stainless-timeout": 6
+          }
+        },
+        "header_policy": {
+          "samples": 20,
+          "sources": [
+            "header_policy"
+          ],
+          "states": {
+            "complete": 20
+          },
+          "headerNames": {}
+        },
+        "cc_prepared": {
+          "samples": 20,
+          "sources": [
+            "claude_code_293_native_ingress_prepared"
+          ],
+          "states": {
+            "complete": 20
+          },
+          "headerNames": {
+            "accept": 20,
+            "anthropic-beta": 20,
+            "anthropic-dangerous-direct-browser-access": 20,
+            "anthropic-version": 20,
+            "content-type": 20,
+            "user-agent": 20,
+            "x-api-key": 20,
+            "x-app": 20,
+            "x-claude-code-agent-id": 3,
+            "x-claude-code-agent-type": 2,
+            "x-claude-code-parent-agent-id": 3,
+            "x-claude-code-prompt-id": 20,
+            "x-claude-code-request-class": 20,
+            "x-claude-code-session-id": 20,
+            "x-client-request-id": 20,
+            "x-stainless-arch": 20,
+            "x-stainless-lang": 20,
+            "x-stainless-os": 20,
+            "x-stainless-package-version": 20,
+            "x-stainless-retry-count": 20,
+            "x-stainless-runtime": 20,
+            "x-stainless-runtime-version": 20,
+            "x-stainless-timeout": 20
+          }
+        },
+        "wire_final": {
+          "samples": 20,
+          "sources": [
+            "local_pool_node_tls_receiver"
+          ],
+          "states": {
+            "complete": 20
+          },
+          "headerNames": {
+            "accept": 20,
+            "accept-encoding": 20,
+            "anthropic-beta": 20,
+            "anthropic-dangerous-direct-browser-access": 20,
+            "anthropic-version": 20,
+            "connection": 20,
+            "content-length": 20,
+            "content-type": 20,
+            "host": 20,
+            "user-agent": 20,
+            "x-api-key": 20,
+            "x-app": 20,
+            "x-claude-code-agent-id": 3,
+            "x-claude-code-agent-type": 2,
+            "x-claude-code-parent-agent-id": 3,
+            "x-claude-code-prompt-id": 20,
+            "x-claude-code-request-class": 20,
+            "x-claude-code-session-id": 20,
+            "x-client-request-id": 20,
+            "x-stainless-arch": 20,
+            "x-stainless-lang": 20,
+            "x-stainless-os": 20,
+            "x-stainless-package-version": 20,
+            "x-stainless-retry-count": 20,
+            "x-stainless-runtime": 20,
+            "x-stainless-runtime-version": 20,
+            "x-stainless-timeout": 20
+          }
+        },
+        "upstream_response": {
+          "samples": 20,
+          "sources": [
+            "native_response"
+          ],
+          "states": {
+            "complete": 16,
+            "incomplete": 4
+          },
+          "headerNames": {
+            "access-control-allow-credentials": 7,
+            "cache-control": 2,
+            "connection": 20,
+            "content-type": 20,
+            "date": 20,
+            "keep-alive": 20,
+            "server": 1,
+            "strict-transport-security": 1,
+            "transfer-encoding": 20,
+            "vary": 1,
+            "via": 3,
+            "x-amz-cf-id": 3,
+            "x-amz-cf-pop": 3,
+            "x-cache": 3,
+            "x-content-type-options": 1,
+            "x-ds-trace-id": 1,
+            "x-echo-secret": 3,
+            "x-new-api-version": 3,
+            "x-oneapi-request-id": 3
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/local-pool-runs/manual-thin-restart-20261106T154403969841Z/data/logs.sqlite",
+      "kind": "readonly_log_database",
+      "requests": 69,
+      "requestClasses": {
+        "main": 42,
+        "subagent": 27
+      },
+      "inputFormats": {
+        "claude_code": 69
+      },
+      "stages": {
+        "ingress": {
+          "samples": 69,
+          "sources": [
+            "http_ingress"
+          ],
+          "states": {
+            "complete": 69
+          },
+          "headerNames": {
+            "accept": 69,
+            "accept-encoding": 69,
+            "anthropic-beta": 69,
+            "anthropic-dangerous-direct-browser-access": 69,
+            "anthropic-version": 69,
+            "authorization": 69,
+            "connection": 69,
+            "content-length": 69,
+            "content-type": 69,
+            "host": 69,
+            "user-agent": 69,
+            "x-app": 69,
+            "x-claude-code-agent-id": 27,
+            "x-claude-code-session-id": 69,
+            "x-stainless-arch": 69,
+            "x-stainless-lang": 69,
+            "x-stainless-os": 69,
+            "x-stainless-package-version": 69,
+            "x-stainless-retry-count": 69,
+            "x-stainless-runtime": 69,
+            "x-stainless-runtime-version": 69,
+            "x-stainless-timeout": 69
+          }
+        },
+        "header_policy": {
+          "samples": 69,
+          "sources": [
+            "header_policy"
+          ],
+          "states": {
+            "complete": 69
+          },
+          "headerNames": {}
+        },
+        "cc_prepared": {
+          "samples": 69,
+          "sources": [
+            "claude_code_293_native_ingress_prepared"
+          ],
+          "states": {
+            "complete": 69
+          },
+          "headerNames": {
+            "accept": 69,
+            "anthropic-beta": 69,
+            "anthropic-dangerous-direct-browser-access": 69,
+            "anthropic-version": 69,
+            "content-type": 69,
+            "user-agent": 69,
+            "x-api-key": 69,
+            "x-app": 69,
+            "x-claude-code-agent-id": 27,
+            "x-claude-code-agent-type": 27,
+            "x-claude-code-prompt-id": 69,
+            "x-claude-code-request-class": 69,
+            "x-claude-code-session-id": 69,
+            "x-client-request-id": 69,
+            "x-stainless-arch": 69,
+            "x-stainless-lang": 69,
+            "x-stainless-os": 69,
+            "x-stainless-package-version": 69,
+            "x-stainless-retry-count": 69,
+            "x-stainless-runtime": 69,
+            "x-stainless-runtime-version": 69,
+            "x-stainless-timeout": 69
+          }
+        },
+        "wire_final": {
+          "samples": 69,
+          "sources": [
+            "local_pool_node_tls_receiver"
+          ],
+          "states": {
+            "complete": 69
+          },
+          "headerNames": {
+            "accept": 69,
+            "accept-encoding": 69,
+            "anthropic-beta": 69,
+            "anthropic-dangerous-direct-browser-access": 69,
+            "anthropic-version": 69,
+            "connection": 69,
+            "content-length": 69,
+            "content-type": 69,
+            "host": 69,
+            "user-agent": 69,
+            "x-api-key": 69,
+            "x-app": 69,
+            "x-claude-code-agent-id": 27,
+            "x-claude-code-agent-type": 27,
+            "x-claude-code-prompt-id": 69,
+            "x-claude-code-request-class": 69,
+            "x-claude-code-session-id": 69,
+            "x-client-request-id": 69,
+            "x-stainless-arch": 69,
+            "x-stainless-lang": 69,
+            "x-stainless-os": 69,
+            "x-stainless-package-version": 69,
+            "x-stainless-retry-count": 69,
+            "x-stainless-runtime": 69,
+            "x-stainless-runtime-version": 69,
+            "x-stainless-timeout": 69
+          }
+        },
+        "upstream_response": {
+          "samples": 69,
+          "sources": [
+            "native_response"
+          ],
+          "states": {
+            "complete": 68,
+            "truncated": 1
+          },
+          "headerNames": {
+            "access-control-allow-credentials": 26,
+            "cache-control": 42,
+            "connection": 69,
+            "content-type": 69,
+            "date": 69,
+            "keep-alive": 69,
+            "server": 26,
+            "strict-transport-security": 26,
+            "transfer-encoding": 69,
+            "vary": 26,
+            "via": 68,
+            "x-amz-cf-id": 68,
+            "x-amz-cf-pop": 68,
+            "x-cache": 68,
+            "x-content-type-options": 26,
+            "x-ds-trace-id": 26,
+            "x-new-api-version": 68,
+            "x-oneapi-request-id": 68,
+            "x-should-retry": 1
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/local-pool-runs/manual-transport-fix-20261106T163459481163Z/data/logs.sqlite",
+      "kind": "readonly_log_database",
+      "requests": 0,
+      "requestClasses": {},
+      "inputFormats": {},
+      "stages": {}
+    },
+    {
+      "source": "artifacts/local-pool-runs/manual-verified-dual-20261107T082518847201Z/data/logs.sqlite",
+      "kind": "readonly_log_database",
+      "requests": 0,
+      "requestClasses": {},
+      "inputFormats": {},
+      "stages": {}
+    },
+    {
+      "source": "artifacts/native-tls-profile-20261107T100428112773Z/captures.json",
+      "kind": "historical_tls_receiver",
+      "sha256": "55ae100a9aa75cf91cb89ce320d5346fa9e44e7374bdad5aaf94278d95573a52",
+      "sides": {
+        "receiver": {
+          "samples": 0,
+          "headerNames": {}
+        },
+        "upstream": {
+          "samples": 2,
+          "headerNames": {
+            "accept": 2,
+            "accept-encoding": 1,
+            "anthropic-beta": 2,
+            "anthropic-dangerous-direct-browser-access": 2,
+            "anthropic-version": 2,
+            "connection": 2,
+            "content-length": 2,
+            "content-type": 2,
+            "host": 2,
+            "user-agent": 2,
+            "x-api-key": 2,
+            "x-app": 2,
+            "x-claude-code-prompt-id": 2,
+            "x-claude-code-request-class": 2,
+            "x-claude-code-session-id": 2,
+            "x-stainless-arch": 2,
+            "x-stainless-lang": 2,
+            "x-stainless-os": 2,
+            "x-stainless-package-version": 2,
+            "x-stainless-retry-count": 2,
+            "x-stainless-runtime": 2,
+            "x-stainless-runtime-version": 2,
+            "x-stainless-timeout": 2
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/native-final-matrix-20261107T095638952781Z/captures.json",
+      "kind": "historical_tls_receiver",
+      "sha256": "9c82a45f973a5abd71af0985abb34cea6315227632f0895c063d3cb50d190061",
+      "sides": {
+        "receiver": {
+          "samples": 0,
+          "headerNames": {}
+        },
+        "upstream": {
+          "samples": 26,
+          "headerNames": {
+            "accept": 26,
+            "accept-encoding": 26,
+            "anthropic-beta": 26,
+            "anthropic-dangerous-direct-browser-access": 26,
+            "anthropic-version": 26,
+            "connection": 26,
+            "content-length": 26,
+            "content-type": 26,
+            "host": 26,
+            "user-agent": 26,
+            "x-api-key": 26,
+            "x-app": 26,
+            "x-claude-code-prompt-id": 26,
+            "x-claude-code-request-class": 26,
+            "x-claude-code-session-id": 26,
+            "x-duplicate": 2,
+            "x-fixture-close": 6,
+            "x-special": 2,
+            "x-stainless-arch": 26,
+            "x-stainless-lang": 26,
+            "x-stainless-os": 26,
+            "x-stainless-package-version": 26,
+            "x-stainless-retry-count": 26,
+            "x-stainless-runtime": 26,
+            "x-stainless-runtime-version": 26,
+            "x-stainless-timeout": 26
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/controlled-tls-output-20261107T100954257701Z/captures.json",
+      "kind": "historical_tls_receiver",
+      "sha256": "5af20b045e1b690a4567c3bed13b96710dca56fb44a02d9e20733af6ddc3432d",
+      "sides": {
+        "receiver": {
+          "samples": 0,
+          "headerNames": {}
+        },
+        "upstream": {
+          "samples": 1,
+          "headerNames": {
+            "accept": 1,
+            "accept-encoding": 1,
+            "anthropic-beta": 1,
+            "anthropic-dangerous-direct-browser-access": 1,
+            "anthropic-version": 1,
+            "connection": 1,
+            "content-length": 1,
+            "content-type": 1,
+            "host": 1,
+            "user-agent": 1,
+            "x-api-key": 1,
+            "x-app": 1,
+            "x-claude-code-prompt-id": 1,
+            "x-claude-code-request-class": 1,
+            "x-claude-code-session-id": 1,
+            "x-stainless-arch": 1,
+            "x-stainless-lang": 1,
+            "x-stainless-os": 1,
+            "x-stainless-package-version": 1,
+            "x-stainless-retry-count": 1,
+            "x-stainless-runtime": 1,
+            "x-stainless-runtime-version": 1,
+            "x-stainless-timeout": 1
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/cli-session-isolation-20261107T034034637260Z/service/data/logs.sqlite",
+      "kind": "readonly_log_database",
+      "requests": 34,
+      "requestClasses": {
+        "main": 16,
+        "auxiliary": 12,
+        "subagent": 6
+      },
+      "inputFormats": {
+        "claude_code": 34
+      },
+      "stages": {
+        "ingress": {
+          "samples": 34,
+          "sources": [
+            "http_ingress"
+          ],
+          "states": {
+            "complete": 34
+          },
+          "headerNames": {
+            "accept": 34,
+            "accept-encoding": 34,
+            "anthropic-beta": 34,
+            "anthropic-dangerous-direct-browser-access": 34,
+            "anthropic-version": 34,
+            "authorization": 34,
+            "connection": 34,
+            "content-length": 34,
+            "content-type": 34,
+            "host": 34,
+            "user-agent": 34,
+            "x-app": 34,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-session-id": 34,
+            "x-stainless-arch": 34,
+            "x-stainless-lang": 34,
+            "x-stainless-os": 34,
+            "x-stainless-package-version": 34,
+            "x-stainless-retry-count": 34,
+            "x-stainless-runtime": 34,
+            "x-stainless-runtime-version": 34,
+            "x-stainless-timeout": 34
+          }
+        },
+        "header_policy": {
+          "samples": 34,
+          "sources": [
+            "header_policy"
+          ],
+          "states": {
+            "complete": 34
+          },
+          "headerNames": {}
+        },
+        "cc_prepared": {
+          "samples": 34,
+          "sources": [
+            "claude_code_293_native_ingress_prepared"
+          ],
+          "states": {
+            "complete": 34
+          },
+          "headerNames": {
+            "accept": 34,
+            "anthropic-beta": 34,
+            "anthropic-dangerous-direct-browser-access": 34,
+            "anthropic-version": 34,
+            "content-type": 34,
+            "user-agent": 34,
+            "x-api-key": 34,
+            "x-app": 34,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-agent-type": 6,
+            "x-claude-code-prompt-id": 34,
+            "x-claude-code-request-class": 34,
+            "x-claude-code-session-id": 34,
+            "x-client-request-id": 34,
+            "x-stainless-arch": 34,
+            "x-stainless-lang": 34,
+            "x-stainless-os": 34,
+            "x-stainless-package-version": 34,
+            "x-stainless-retry-count": 34,
+            "x-stainless-runtime": 34,
+            "x-stainless-runtime-version": 34,
+            "x-stainless-timeout": 34
+          }
+        },
+        "wire_final": {
+          "samples": 34,
+          "sources": [
+            "local_pool_node_tls_receiver"
+          ],
+          "states": {
+            "complete": 34
+          },
+          "headerNames": {
+            "accept": 34,
+            "accept-encoding": 34,
+            "anthropic-beta": 34,
+            "anthropic-dangerous-direct-browser-access": 34,
+            "anthropic-version": 34,
+            "connection": 34,
+            "content-length": 34,
+            "content-type": 34,
+            "host": 34,
+            "user-agent": 34,
+            "x-api-key": 34,
+            "x-app": 34,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-agent-type": 6,
+            "x-claude-code-prompt-id": 34,
+            "x-claude-code-request-class": 34,
+            "x-claude-code-session-id": 34,
+            "x-client-request-id": 34,
+            "x-stainless-arch": 34,
+            "x-stainless-lang": 34,
+            "x-stainless-os": 34,
+            "x-stainless-package-version": 34,
+            "x-stainless-retry-count": 34,
+            "x-stainless-runtime": 34,
+            "x-stainless-runtime-version": 34,
+            "x-stainless-timeout": 34
+          }
+        },
+        "upstream_response": {
+          "samples": 34,
+          "sources": [
+            "native_response"
+          ],
+          "states": {
+            "complete": 34
+          },
+          "headerNames": {
+            "connection": 34,
+            "content-type": 34,
+            "date": 34,
+            "keep-alive": 34,
+            "transfer-encoding": 34
+          }
+        }
+      }
+    },
+    {
+      "source": "artifacts/native-purpose-isolation-20261107T041005940507Z/service/data/logs.sqlite",
+      "kind": "readonly_log_database",
+      "requests": 40,
+      "requestClasses": {
+        "auxiliary": 14,
+        "main": 16,
+        "subagent": 6,
+        "compaction": 4
+      },
+      "inputFormats": {
+        "claude_code": 40
+      },
+      "stages": {
+        "ingress": {
+          "samples": 40,
+          "sources": [
+            "http_ingress"
+          ],
+          "states": {
+            "complete": 40
+          },
+          "headerNames": {
+            "accept": 40,
+            "accept-encoding": 40,
+            "anthropic-beta": 40,
+            "anthropic-dangerous-direct-browser-access": 40,
+            "anthropic-version": 40,
+            "authorization": 40,
+            "connection": 40,
+            "content-length": 40,
+            "content-type": 40,
+            "host": 40,
+            "user-agent": 40,
+            "x-app": 40,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-session-id": 40,
+            "x-stainless-arch": 40,
+            "x-stainless-lang": 40,
+            "x-stainless-os": 40,
+            "x-stainless-package-version": 40,
+            "x-stainless-retry-count": 40,
+            "x-stainless-runtime": 40,
+            "x-stainless-runtime-version": 40,
+            "x-stainless-timeout": 40
+          }
+        },
+        "header_policy": {
+          "samples": 40,
+          "sources": [
+            "header_policy"
+          ],
+          "states": {
+            "complete": 40
+          },
+          "headerNames": {}
+        },
+        "cc_prepared": {
+          "samples": 40,
+          "sources": [
+            "claude_code_293_native_ingress_prepared"
+          ],
+          "states": {
+            "complete": 40
+          },
+          "headerNames": {
+            "accept": 40,
+            "anthropic-beta": 40,
+            "anthropic-dangerous-direct-browser-access": 40,
+            "anthropic-version": 40,
+            "content-type": 40,
+            "user-agent": 40,
+            "x-api-key": 40,
+            "x-app": 40,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-agent-type": 6,
+            "x-claude-code-prompt-id": 40,
+            "x-claude-code-request-class": 40,
+            "x-claude-code-session-id": 40,
+            "x-client-request-id": 40,
+            "x-stainless-arch": 40,
+            "x-stainless-lang": 40,
+            "x-stainless-os": 40,
+            "x-stainless-package-version": 40,
+            "x-stainless-retry-count": 40,
+            "x-stainless-runtime": 40,
+            "x-stainless-runtime-version": 40,
+            "x-stainless-timeout": 40
+          }
+        },
+        "wire_final": {
+          "samples": 40,
+          "sources": [
+            "local_pool_node_tls_receiver"
+          ],
+          "states": {
+            "complete": 40
+          },
+          "headerNames": {
+            "accept": 40,
+            "accept-encoding": 40,
+            "anthropic-beta": 40,
+            "anthropic-dangerous-direct-browser-access": 40,
+            "anthropic-version": 40,
+            "connection": 40,
+            "content-length": 40,
+            "content-type": 40,
+            "host": 40,
+            "user-agent": 40,
+            "x-api-key": 40,
+            "x-app": 40,
+            "x-claude-code-agent-id": 6,
+            "x-claude-code-agent-type": 6,
+            "x-claude-code-prompt-id": 40,
+            "x-claude-code-request-class": 40,
+            "x-claude-code-session-id": 40,
+            "x-client-request-id": 40,
+            "x-stainless-arch": 40,
+            "x-stainless-lang": 40,
+            "x-stainless-os": 40,
+            "x-stainless-package-version": 40,
+            "x-stainless-retry-count": 40,
+            "x-stainless-runtime": 40,
+            "x-stainless-runtime-version": 40,
+            "x-stainless-timeout": 40
+          }
+        },
+        "upstream_response": {
+          "samples": 40,
+          "sources": [
+            "native_response"
+          ],
+          "states": {
+            "complete": 40
+          },
+          "headerNames": {
+            "connection": 40,
+            "content-type": 40,
+            "date": 40,
+            "keep-alive": 40,
+            "transfer-encoding": 40
+          }
+        }
+      }
+    }
+  ]
+}

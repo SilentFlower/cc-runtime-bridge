@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/11-10-ingress-proxy-cdn-headers/research/spec-excerpts.md", "reason": "原生与日志规范的有来源摘录；核对字段归属、单次发送与采集阶段"}
+{"file": "docs/header-policy.md", "reason": "核对更新后的请求头兼容合同与各类字段归属"}
+{"file": ".trellis/tasks/11-10-ingress-proxy-cdn-headers/design.md", "reason": "精确白名单、运行时归属、名单外重复项与夹具私有通道"}
+{"file": ".trellis/tasks/11-10-ingress-proxy-cdn-headers/research/findings.md", "reason": "核对历史证据阶段和准入字段依据"}
