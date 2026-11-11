@@ -1,0 +1,309 @@
+{
+  "id": "environment-ui-alignment",
+  "name": "environment-ui-alignment",
+  "title": "环境页适配主后台风格与内核操作布局",
+  "description": "统一环境页的视觉、信息层级与内核管理交互，沿用既有后台风格和操作合同",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-11",
+  "completedAt": "2026-11-11",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-11T08:22:54Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "intentRouting": {
+      "autoCreated": true,
+      "createdAt": "2026-11-11T07:57:29Z",
+      "contextKey": "codex_01a1c944-f680-7722-bcad-11ced376f8f6",
+      "implementationStarted": false,
+      "baseline": {
+        "head": "457629fad9cd319199cdcab683508939eb4d89ff",
+        "status": [
+          {
+            "status": "??",
+            "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/brief.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/prd.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-native-header-merge/task.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/brief.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/design.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/implement.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/prd.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/tasks/11-07-pool-connection-recovery/task.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json"
+          },
+          {
+            "status": "??",
+            "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/workspace/silentflower/index.md"
+          },
+          {
+            "status": " M",
+            "path": ".trellis/workspace/silentflower/journal-1.md"
+          }
+        ],
+        "repositories": [
+          {
+            "root": ".",
+            "head": "457629fad9cd319199cdcab683508939eb4d89ff",
+            "status": [
+              {
+                "status": "??",
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/brief.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/prd.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-native-header-merge/task.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/brief.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/design.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/implement.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/prd.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/task.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json"
+              },
+              {
+                "status": "??",
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/workspace/silentflower/index.md"
+              },
+              {
+                "status": " M",
+                "path": ".trellis/workspace/silentflower/journal-1.md"
+              }
+            ],
+            "worktreeDiffSha256": "68a2a1db09057a5f308a21c63bf8ef1461ebbd0a6beaef3d5e8c3ad4c9df24d9",
+            "indexDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "untracked": [
+              {
+                "path": ".codex/hooks/__pycache__/session-start.cpython-312.pyc",
+                "sha256": "07efc4ceddebb2aede49ffaa7a7dc98296838e2d76278aaa1d4f2f9706465389"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/brief.md",
+                "sha256": "f91010f624b8219874b18d77c1db419641c6397262bf6e8a23bb62ef074c0919"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/check.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/implement.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/prd.md",
+                "sha256": "3b623cdc9a4418b7641c101f0d51961b8a77a5865d24cae4c58874e95090f38f"
+              },
+              {
+                "path": ".trellis/tasks/11-07-native-header-merge/task.json",
+                "sha256": "fa992b2d1a66f28aa33c4f0095361fb062d22108f1eda486a0ad6da6821f284f"
+              },
+              {
+                "path": ".trellis/tasks/11-07-pool-connection-recovery/active-cli-verification.md",
+                "sha256": "2ad622dc7a1bc67f63c1b1305937676cc12cae7e1c79c1165cead1e53bccc301"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/check.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/design.md",
+                "sha256": "2200d2f4b384e5bffaf41e8e81234980d14fdba9146ed7d897f7b090b940f51a"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.jsonl",
+                "sha256": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/implement.md",
+                "sha256": "2c2f40a01afd29c051a3d919b98ff993c5586fe33d77aeb22acd8c7e91fa42b7"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/prd.md",
+                "sha256": "b80bf89e930cd70dfb12cb330ff4307810a97b3bd36a61c78ddf5e5e3e266270"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/findings.md",
+                "sha256": "dea31ddda1071091ba66d6c90bd9201da35bc8e8bcde4dc9c5040f3976fdd0b4"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/research/offline-socket-proof.json",
+                "sha256": "175f273b86ddc3423f5b3b8c63a529a945a3378b75f81e459f617be3c2bbc841"
+              },
+              {
+                "path": ".trellis/tasks/11-07-transport-forwarding-repairs/task.json",
+                "sha256": "5460f3c5b373b25978b38a2aa8aa4c48262383cb8a6aa754e2e17efc15509cce"
+              }
+            ],
+            "conflicts": [],
+            "integration": [],
+            "fingerprint": "6eddc90f5a9f6d41d5c9b6c6f32b511cad4238a7e4e4e862cca10298988077a6"
+          }
+        ],
+        "fingerprint": "c17f1f9462d231180771d5bd23adc4a36904f785e2b8b49b1f1ecf8e6e7431a4"
+      }
+    }
+  },
+  "progress": {
+    "completedSteps": [
+      "环境页与主后台视觉对齐、搜索筛选及折叠详情完成",
+      "内核准备、激活、回滚与对账弹窗完成",
+      "只读轮询、版本冻结、提交去重与离页收口完成",
+      "14组合成浏览器场景和语法检查通过",
+      "Check-All完整检查通过及规范同步完成",
+      "业务实现与任务记录交付完成"
+    ],
+    "partialStep": null,
+    "nextStep": "本任务实现与交付完成；正式页面发布沿独立CI和生产部署SOP",
+    "notes": "真实gateway静态产物与合成API验收；1280/720/390px与两种原主题偏好通过，实际模型请求为零。生产部署属于独立操作范围。",
+    "updatedAt": "2026-11-11T08:22:54Z"
+  }
+}
