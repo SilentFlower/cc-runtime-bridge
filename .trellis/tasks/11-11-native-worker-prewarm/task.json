@@ -3,7 +3,7 @@
   "name": "native-worker-prewarm",
   "title": "原生转发预热、提速与现有会话池接入",
   "description": "提前预热一个原生进程并优化已确认本地开销；原生消息复用 cc2api 现有账号会话池开关、容量、TTL 与刷新策略，保持真实会话隔离和单次提交。",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,10 +11,10 @@
   "creator": "silentflower",
   "assignee": "silentflower",
   "createdAt": "2026-11-11",
-  "completedAt": null,
+  "completedAt": "2026-11-10",
   "closeout": {
-    "status": "pending",
-    "closedAt": null,
+    "status": "closed",
+    "closedAt": "2026-11-10T20:39:26Z",
     "blockers": []
   },
   "branch": null,
@@ -277,10 +277,12 @@
     }
   },
   "progress": {
-    "updatedAt": "2026-11-10T19:02:33Z",
-    "completedSteps": [],
-    "partialStep": "auto-loop blocked: repo-commit-repository-not-in-run",
-    "nextStep": "auto-loop 已阻断；确认后运行 python3 ./.trellis/scripts/auto_loop.py retry-blocked --run-id auto-20261110172928 --task .trellis/tasks/11-11-native-worker-prewarm",
-    "notes": "run_id=auto-20261110172928; task=.trellis/tasks/11-11-native-worker-prewarm; status=completed_with_blocked; reason=repo-commit-repository-not-in-run; summary=三仓精确计划已生成并完成分支/HEAD/空索引/无冲突/retained摘要预检。冻结manifest repositories仅有.；_validated_repo_commits拒绝未登记的/root/project/vibecoding-bench及cc2api，当前CLI没有补登记入口。为保留完整逐仓机器证据，本步在Git写入前阻塞。已完成实现、full重检与spec，三仓候选31文件及363项历史保护基线保持；私有恢复计划为.trellis/.runtime/native-prewarm-commit-plan.json。"
+    "updatedAt": "2026-11-10T20:41:29Z",
+    "completedSteps": [
+      "auto-loop: 本地提交完成 /root/project/vibecoding-bench/cc2api:1171f8f, /root/project/vibecoding-bench:5f941cf, .:f8b3289"
+    ],
+    "partialStep": null,
+    "nextStep": "auto-loop 已完成本地提交与确定性 Close；如有 blocker，按 close_result 处理",
+    "notes": "run_id=auto-20261110172928; task=.trellis/tasks/11-11-native-worker-prewarm; commit=f8b3289299a92887054661d86e9ca082e9df5761; commits=/root/project/vibecoding-bench/cc2api:1171f8f57ee5ecbf61448b645a4be193aeb0b193,/root/project/vibecoding-bench:5f941cff8e384efb588a821143ac688068c5682a,.:f8b3289299a92887054661d86e9ca082e9df5761; status=completed"
   }
 }
