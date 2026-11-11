@@ -3,7 +3,7 @@
   "name": "native-kernel-online-switch",
   "title": "打通 11-5 请求内核在线切换与回滚",
   "description": "固定官方 2.1.293，验证 V3 按账号排空、预热、生效和回退",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,10 +11,10 @@
   "creator": "silentflower",
   "assignee": "silentflower",
   "createdAt": "2026-11-11",
-  "completedAt": null,
+  "completedAt": "2026-11-11",
   "closeout": {
-    "status": "pending",
-    "closedAt": null,
+    "status": "closed",
+    "closedAt": "2026-11-11T07:53:06Z",
     "blockers": []
   },
   "branch": null,
@@ -293,14 +293,18 @@
     }
   },
   "progress": {
-    "updatedAt": "2026-11-11T07:28:00Z",
     "completedSteps": [
       "三仓本地实现、签名候选及双账号回环验收",
       "Check-All 两项修复和30组联合验收通过",
-      "规范更新与三仓业务提交推送"
+      "规范更新与三仓业务提交推送",
+      "正式beta.4签名附件发布和联合CI交付",
+      "三个空闲环境完成底座升级，身份与资源政策核验通过",
+      "11-5实际内核正向切换及回滚完成，最终beta.3，零模型验收",
+      "健康检查、数据库核验和旧镜像定向回收完成"
     ],
-    "partialStep": "正式内核发布与11-5生产交付",
-    "nextStep": "核对正式制品、联合CI及11-5现场绑定，准备上线操作",
-    "notes": "保留in_progress；正式生产正向切换及回滚后关闭任务"
+    "partialStep": null,
+    "nextStep": "本任务交付完成；后续兼容内核沿11-5环境页准备、激活及回滚",
+    "notes": "生产批次ci-42979923877-1。内核切换期间全机容器身份保持；worker PID=15/27，实际映像及memfd封存通过。首次网关启动覆盖的两项元数据已按维护前完整身份摘要恢复。保留当前及最近两套完整发布。",
+    "updatedAt": "2026-11-11T07:53:06Z"
   }
 }
