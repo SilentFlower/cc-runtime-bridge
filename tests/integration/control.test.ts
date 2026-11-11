@@ -146,6 +146,26 @@ describe('控制、持久日志与查询', () => {
     expect(capture.sha256).toBe(createHash('sha256').update(raw).digest('hex'));
   });
 
+  test('两种 HTTP 入口清理根本机设置，入站日志保留原始表示并脱敏', async () => {
+    const { app: running, base } = await app();
+    const secret = 'client-settings-secret-canary';
+    const body = { ...request, settings: { permissions: { allow: ['synthetic-only'] } }, claude_settings: false, env: { ANTHROPIC_API_KEY: secret, CLIENT_MODE: 'ignored' }, tools: [{ name: 'set_config', input_schema: { type: 'object', properties: { env: { type: 'string' } } } }] };
+    for (const envelope of [false, true]) {
+      const raw = '{\n  ' + JSON.stringify(envelope ? { body } : body).slice(1, -1) + '\n}\n';
+      const response = await fetch(base + (envelope ? '/api/requests' : '/v1/messages'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: raw });
+      expect(response.status).toBe(200); await response.text(); await running.store.flush();
+      const detail = (await running.store.detail(response.headers.get('x-ccrb-request-id')!))!;
+      const ingress = detail.captures.find(item => item.stage === 'ingress')!;
+      expect(ingress.sha256).toBe(createHash('sha256').update(raw).digest('hex'));
+      const captured = JSON.parse(ingress.text!), incoming = envelope ? captured.body : captured;
+      for (const key of ['settings', 'claude_settings', 'env']) expect(Object.hasOwn(incoming, key)).toBe(true);
+      const prepared = JSON.parse(detail.captures.find(item => item.stage === 'cc_prepared')!.text!);
+      for (const key of ['settings', 'claude_settings', 'env']) expect(Object.hasOwn(prepared, key)).toBe(false);
+      expect(prepared.tools).toEqual(body.tools);
+      expect(JSON.stringify(detail)).not.toContain(secret);
+    }
+  });
+
   test.each(['summary', 'off'])('模式 %s 不保存正文', async mode => {
     const { app: running, base } = await app(undefined, { CCRB_LOG_MODE: mode });
     const response = await post(base, { request_id: 'mode-test', body: request });

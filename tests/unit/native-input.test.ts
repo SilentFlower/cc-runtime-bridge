@@ -130,8 +130,28 @@ describe('固定 293 原生入站合同', () => {
     expect(() => parseInput({ ...fixture(), metadata: { user_id: '{}' } })).toThrow('结构不合法');
   });
 
-  test('本机控制字段明确拒绝，合法扩展及工具参数中的同名字段保留', () => {
-    for (const key of ['env', 'settings', 'headers', 'proxy_url', 'api_key']) expect(() => parseInput({ ...fixture(), [key]: {} })).toThrow('本机控制字段');
+  test('两类入站删除根本机设置，原始输入及嵌套同名业务字段保持', () => {
+    const business = { settings: { selected: 'business' }, claude_settings: ['business'], env: { mode: 'business' } };
+    const tool = { name: 'set_config', input_schema: { type: 'object', properties: { settings: { type: 'object' }, claude_settings: { type: 'array' }, env: { type: 'object' } } } };
+    const bases: MessageBody[] = [fixture(), { model: 'm', messages: [{ role: 'user', content: 'q' }] }];
+    for (const base of bases) {
+      const expected: MessageBody = { ...base, tools: [tool], messages: [...base.messages, { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_settings', name: tool.name, input: business }] }] };
+      for (const value of [null, false, 'ignored', [], { env: { ANTHROPIC_BASE_URL: 'https://client.invalid' } }]) {
+        const body = Object.freeze({ ...expected, settings: value, claude_settings: value, env: value });
+        const before = structuredClone(body);
+        for (const envelope of [false, true]) for (const policy of ['strict', 'local_base_url'] as const) {
+          const input = parseInput(envelope ? { body } : body, [], policy);
+          expect(input.body).toEqual(expected);
+          expect(input.body.tools).toEqual([tool]);
+          expect(body).toEqual(before);
+        }
+      }
+    }
+  });
+
+  test('其余本机控制字段明确拒绝，合法扩展及工具参数中的同名字段保留', () => {
+    for (const key of ['extra_headers', 'extra_body', 'headers', 'proxy_url', 'api_key', 'oauth_token', 'claude_binary', 'claude_home', 'claude_config_dir', 'workdir']) expect(() => parseInput({ ...fixture(), settings: {}, [key]: {} })).toThrow('本机控制字段');
+    expect(() => readNativeInput({ ...fixture(), settings: {} })).toThrow('本机控制字段');
     const body = { ...fixture(), tools: [{ name: 'set_config', input_schema: { type: 'object', properties: { env: { type: 'string' } } } }] };
     expect(parseInput(body).body.tools).toEqual(body.tools);
     expect(readNativeInput({ model: 'm', messages: [] })).toBeNull();

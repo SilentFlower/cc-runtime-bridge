@@ -4,6 +4,7 @@ import { BridgeError, isObject } from './errors';
 import { readNativeInput, mergeNativeContext } from './native-input';
 
 const BODY_KEYS = new Set(['model', 'messages', 'system', 'tools', 'tool_choice', 'max_tokens', 'thinking', 'temperature', 'output_config', 'stream']);
+const CLIENT_SETTINGS_KEYS = ['settings', 'claude_settings', 'env'] as const;
 const CONTEXT_KEYS = new Set(['requestClass', 'sessionId', 'promptId', 'agentId', 'parentAgentId', 'agentType', 'agentKind', 'workflowRunId']);
 export const REQUEST_CLASSES = ['main', 'subagent', 'workflow', 'compaction', 'auxiliary', 'side_reply'] as const;
 
@@ -24,8 +25,10 @@ export function parseInput(raw: unknown, incomingHeaders: HeaderPair[] = [], nat
   const envelope = 'body' in raw && !('model' in raw || 'messages' in raw) ? raw : { body: raw };
   validateKeys(envelope, new Set(['schema_version', 'request_id', 'body', 'headers', 'context']), '信封');
   if (envelope.schema_version !== undefined && envelope.schema_version !== 1) throw new BridgeError('schema_version', '不支持的内部协议版本');
-  const body = envelope.body;
-  if (!isObject(body)) throw new BridgeError('invalid_body', 'body 必须是对象');
+  if (!isObject(envelope.body)) throw new BridgeError('invalid_body', 'body 必须是对象');
+  const body = { ...envelope.body };
+  // 本机设置由账号运行时管理；只清理正文根字段，保留原始入站及嵌套业务数据。
+  for (const key of CLIENT_SETTINGS_KEYS) delete body[key];
   const native = readNativeInput(body, nativeIngressPolicy);
   if (!native) validateKeys(body, BODY_KEYS, '正文');
   if (typeof body.model !== 'string' || !body.model.trim()) throw new BridgeError('invalid_model', 'model 必须是非空字符串');

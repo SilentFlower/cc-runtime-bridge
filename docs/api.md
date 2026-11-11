@@ -28,6 +28,8 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 信封 headers 是有序二元字符串数组，提供后替代外层 HTTP 头作为业务转发输入；日志仍会保存实际入站 HTTP 头。没有信封 headers 时使用 HTTP 头。两类输入共用精确协议白名单，名单外的代理、CDN、客户端私有及未知协议头逐项删除并记录原因。鉴权、传输字段、Connection 动态字段及原生上下文按 [头部策略](header-policy.md) 处理。
 
+两种入口均在解析正文时删除顶层 `settings`、`claude_settings`、`env`，随后继续校验和处理。它们的值不参与运行时配置；账号、凭据、代理及工作目录由服务端启动配置管理。清理只作用于正文根字段，工具 schema、工具调用参数及其他嵌套业务数据中的同名字段保持。入站日志仍保存原始请求表示，并按日志策略脱敏。
+
 ## 原生 CC 正文
 
 两种入口均按正文证据区分原生 CC 与普通 API。原生请求需要根 system 数组首段包含唯一独立 billing 文本块，`cc_version=2.1.293.<三位十六进制后缀>`、`cc_entrypoint=cli`、有效 CCH，以及合法的 `metadata.user_id` JSON 字符串。设备 ID 为 64 位十六进制，账号 UUID 可为空，会话 ID 必须为 UUID；可选 prompt ID、轮次及子代理标识同时校验。损坏或不支持的原生证据返回 422，不回落到普通 API 重组。
@@ -36,7 +38,7 @@ request_id 可省略，使用 1–128 位字母、数字、连字符、下划线
 
 默认 preserve 下的必要改写仅包括：metadata.user_id 的 device_id/account_uuid 使用当前专用运行时身份，session_id 与其他 metadata 保留；billing CCH 先置为原生占位，再由同一原生传输生成最终值。原版本后缀、prompt、轮次及父子标识保留，显式上下文或头部冲突返回 400。入站 beta 在原生分支保留，凭据与传输头仍遵循既有头部策略。
 
-扩展 JSON 只作为上游数据。根字段 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于本机控制字段，返回 422。调用方不能通过正文改变账号、代理、工作目录或执行程序。原生识别不代表上游已接受扩展字段或模型参数组合。
+扩展 JSON 只作为上游数据。三个顶层本机设置字段按入口规则删除；根字段 extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 继续返回 422。调用方不能通过正文改变账号、代理、工作目录或执行程序。原生识别不代表上游已接受扩展字段或模型参数组合。
 
 ### 本地 Base URL 联调模式
 

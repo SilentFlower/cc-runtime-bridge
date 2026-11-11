@@ -816,6 +816,21 @@ native('官方 293 的无外网回环链路', () => {
   }
   const nativeTool = { name: 'lookup_status', input_schema: { type: 'object', properties: {} } };
   const nativeHistory = [{ role: 'user', content: '查询状态' }, { role: 'assistant', content: [{ type: 'thinking', thinking: '已有推理', signature: 'synthetic-native-signature' }, { type: 'tool_use', id: 'toolu_native_history', name: 'lookup_status', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_native_history', content: 'ready' }] }];
+  test.each(['api', 'claude_code'] as const)('根本机设置被清理，TLS 实收只包含业务工具字段：%s', async format => {
+    mode = 'normal';
+    const tool = { name: 'set_config', input_schema: { type: 'object', properties: { settings: { type: 'object' }, claude_settings: { type: 'string' }, env: { type: 'object' } } } };
+    const base = format === 'claude_code' ? nativeBody() : { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '离线设置清理验证' }], stream: false };
+    const body = { ...base, tools: [tool], settings: { env: { ANTHROPIC_BASE_URL: 'https://untrusted.invalid' } }, claude_settings: { hooks: { synthetic: 'never-execute' } }, env: { PATH: '/untrusted', ANTHROPIC_API_KEY: 'ignored-settings-canary' } };
+    const before = structuredClone(body), count = requests.length;
+    const result = await send(body);
+    expect(result.response.status).toBe(200); expect(requests.length - count).toBe(1);
+    const wire = requests.at(-1)!;
+    for (const key of ['settings', 'claude_settings', 'env']) expect(Object.hasOwn(wire.body, key)).toBe(false);
+    expect(wire.body.tools).toHaveLength(1); expect(wire.body.tools).toMatchObject([tool]);
+    expect(body).toEqual(before);
+    expect(wire.raw).not.toContain('ignored-settings-canary');
+    assertCch(wire.raw);
+  });
   test.each(['api', 'claude_code'] as const)('协议白名单过滤客户端附加头，合法多值覆盖 SDK 默认值：%s', async format => {
     mode = 'normal';
     const body = format === 'claude_code' ? nativeBody() : { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '离线头部合并验证' }], stream: false };
@@ -952,7 +967,7 @@ native('官方 293 的无外网回环链路', () => {
 
   test('原生版本和上下文冲突、私有控制字段在发送前明确拒绝', async () => {
     const wrong = nativeBody(); (wrong.system as { text: string }[])[0]!.text = (wrong.system as { text: string }[])[0]!.text.replace('2.1.293', '2.1.303');
-    for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ env: { PATH: '/untrusted' } }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {
+    for (const [body, context] of [[wrong, {}], [nativeBody(), { sessionId: 'different' }], [nativeBody({ settings: {}, proxy_url: 'http://untrusted.invalid' }), {}]] as [Record<string, unknown>, Record<string, unknown>][]) {
       const count = requests.length, started = performance.now(); const result = await send(body, context);
       expect([400, 422]).toContain(result.response.status); expect(requests.length).toBe(count); expect(performance.now() - started).toBeLessThan(10000);
     }

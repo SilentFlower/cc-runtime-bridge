@@ -176,7 +176,8 @@
 - 默认严格策略下，原生根 system 必须为数组，首段是唯一独立 text billing 且不带 cache_control。cc_version 匹配 2.1.293.<三位十六进制>，cc_entrypoint=cli，CCH 为五位十六进制；重复字段、歧义 CCH、非法 cc_is_subagent、prompt UUID 或轮次均拒绝。这里只核对入站形状，不凭 billing 授权账号或执行。本地 Base URL 兼容例外见下文独立场景。
 - metadata.user_id 必须是 JSON 字符串，device_id 为 64 位十六进制，account_uuid 为空或 UUID，session_id 为 UUID。session、可选 billing prompt 和主/子身份合并显式信封及原生头，冲突拒绝；子代理及 workflow 仍须提供既有合同所需关联，不能猜父子身份。
 - 默认 preserve 策略下，原生保留业务 system、messages、tools、thinking、输出配置、缓存位置及 thread/diagnostics/fallbacks/safeguards 等扩展 JSON；省略字段保持省略，原生 system 角色和消息扩展允许。不加入默认 CLI system、提醒、工具、strict 或种子默认参数。显式启用的消息缓存策略按下文独立合同处理。
-- 根 settings、claude_settings、env、extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 属于禁止的本机控制字段；工具 schema 内的同名业务字段不因此删除。其他扩展只作为上游数据，不改变账号、目标地址、代理或工作目录。
+- `parseInput` 在普通 API/原生识别前，以正文的浅副本删除三个精确根字段 settings、claude_settings、env；无论字段值的 JSON 类型均删除后继续既有校验，不读取、合并或执行调用方设置。两种 HTTP 入口及显式信封 body 共用该行为，strict/local_base_url 相同；信封根字段仍按既有白名单校验。原始对象及入站日志表示保持，日志继续先脱敏再保存。
+- 根 extra_headers、extra_body、headers、proxy_url、api_key、oauth_token、claude_binary、claude_home、claude_config_dir、workdir 继续作为本机控制字段拒绝；内部 readNativeInput 仍拒绝带任一本机控制字段的未清理正文。工具 schema、tool_use.input 和其他嵌套业务数据中的 settings/claude_settings/env 保留。其他扩展只作为上游数据，不改变账号、目标地址、代理或工作目录。
 - 同一 SDK 的安全种子仅取得当前账号发送上下文，内部用途为 transport_context；不对即将丢弃的种子执行业务消息、提醒或参数保留断言，不能因 Sonnet 5 的种子布局误拦原生分类请求。普通 API/bootstrap 仍为 business 用途，真实业务保留检查不删除。两种用途都只进入一次真实构造和发送回调，验证发送结构及上下文；唯一 fetchOverride 中才替换为原生正文。metadata.user_id 只用原生 SDK 生成的 device_id/account_uuid 覆盖归属，保留原 session 及其余字段；billing 只定位独立 CCH 字段写 00000，保留其余文本与合法间隔，最终值仍由 Ree 的原生传输生成。入站 beta 沿用其列表，普通 API 继续按生成列表校验；凭据与传输头遵循共同策略。
 - 入口仅检查实际组装所需结构，max_tokens/temperature 须为有限 JSON 数值，不判定数值范围、thinking 枚举/最小预算或工具名称与选择组合的模型政策。原生参数原值交上游；普通 API 仍须满足原生装配的结构和显式字段保留要求，原生工厂不能表达时明确失败，不能静默改值或推断实际上游能力。
 - 构造边界异常先保存原因并取消；model_fallback_triggered 和助手 isApiErrorMessage 事件在未采集正文时明确 422，只公开受控分类，不启动模型回退，不等待整体超时。
@@ -187,7 +188,8 @@
 | 条件 | 行为 |
 | --- | --- |
 | 无 billing 前缀 | 普通 API 白名单及角色校验 |
-| 版本、billing、metadata 不合法，或根本机控制字段 | 422，0 发送，不回落 API 重组 |
+| 正文根 settings、claude_settings、env | 删除后继续普通/原生识别及原有校验，不应用调用方设置 |
+| 版本、billing、metadata 不合法，或其余根本机控制字段 | 422，0 发送，不回落 API 重组 |
 | metadata/billing 与显式上下文或头部冲突 | 400，0 发送 |
 | 原生 thinking 未来类型、低预算或强制工具组合 | 保留原值，不根据种子或固定模型政策提前拒绝，由上游判断 |
 | max_tokens/temperature 非有限数值，或关键字段结构无法组装 | 400，0 发送 |
@@ -199,15 +201,17 @@
 - 正常：默认 preserve 下，原生主请求自带业务 system、缓存、线程和工具历史，仅改设备/账号归属及最终 CCH，保留版本后缀、轮次、签名和会话。
 - 边界：原生省略 stream/max_tokens/tools 时不从种子补入；缺可选 billing prompt 时可生成头部 prompt，metadata 会话仍保留。子代理压缩保留子身份及 compaction 类别。
 - 正常：Sonnet 5 分类请求只借用同次 SDK 的发送上下文，system/messages/stop_sequences 仍来自原生输入，种子提醒不会成为发送或拦截依据。
+- 边界：正文根 env=null、settings=false 或 claude_settings 为数组时均移除后继续；工具参数中的 env、settings、claude_settings 保留。清理后仍带 proxy_url 或损坏 billing 的请求继续明确拒绝。
+- 错误用法：递归删除业务参数内的同名字段，或修改原对象后将日志称为原始入站。正确做法是在 parseInput 的正文浅副本上只删三个根字段，原始哈希与日志脱敏独立处理。
 - 错误用法：把已有原生正文再次交给 OM 添加默认提醒，或仅替换版本字符串接纳 303。正确做法是固定 293 原生分支保真，版本不匹配明确拒绝。
 - 错误用法：工具续轮守卫失败后忽略全部 system-reminder。正确做法是逐项关联同次已知提醒，同时保留完整业务前缀并拒绝未知注入。
 
 ### 6. Tests Required
 
-- tests/unit/native-input.test.ts：普通白名单、原生保真/缓存/省略、版本/身份/重复/冲突、本机控制、模型参数与工具组合原值保持、错误结构拒绝及 billing 间隔占位。
+- tests/unit/native-input.test.ts：普通白名单、原生保真/缓存/省略、版本/身份/重复/冲突、本机控制、模型参数与工具组合原值保持、错误结构拒绝及 billing 间隔占位；两类输入、两种信封表示和两种入站策略删除三个根字段的各类 JSON 值，原输入与嵌套 schema/tool_use.input 保持。
 - tests/unit/message-projection.test.ts：字符串/数组工具结果的已知提醒合并、Environment 提升、业务丢失/改写和未知注入反例。
-- tests/native/native.test.ts：当前原版 + preload 验证保真正文、六类归因、原工具历史、参数透传、26 MiB 完整正文、错误/取消及后续隔离，独立核验已发送 TLS 实体的 CCH。旧轻量文件内嵌代码不随源码变化；只有重新构建并验证的最终哈希才能声明具备本次合同。
-- tests/integration/control.test.ts：0 预算、20 个提交保持串行、取消及慢消费者；tests/integration/local-pool.test.ts：合成 Sonnet 5、26 MiB 完整哈希及超过旧 50 秒等待预算。
+- tests/native/native.test.ts：当前原版 + preload 验证保真正文、六类归因、原工具历史、参数透传、26 MiB 完整正文、错误/取消及后续隔离，独立核验已发送 TLS 实体的 CCH；两类输入清理根设置后恰好一次 TLS 实收，业务工具字段保留。旧轻量文件内嵌代码不随源码变化；只有重新构建并验证的最终哈希才能声明具备本次合同。
+- tests/integration/control.test.ts：0 预算、20 个提交保持串行、取消及慢消费者；两种 HTTP 入口接受三个根设置字段，组装后移除，原始入站 SHA256 和设置字段保留且秘密脱敏。tests/integration/local-pool.test.ts：合成 Sonnet 5、26 MiB 完整哈希及超过旧 50 秒等待预算。
 - 原 23 组 API 与新增原生矩阵保留稳定 ID、预期状态、发送次数和最终采集缺失原因；支持输入成功，不支持输入明确拒绝，不能删用例换取全通过。只用合成凭据与无外网回环。
 
 ## Scenario: 官方运行时压缩与新版本适配
