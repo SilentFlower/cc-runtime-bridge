@@ -95,7 +95,9 @@ export async function buildRuntime(args: string[]): Promise<void> {
     const compiler = await run(['gcc', '-dumpfullversion'], root);
     const loader = join(root, 'ccrb-runtime');
     const gccFlags = ['-O3', '-DNDEBUG', '-DZ7_EXTRACT_ONLY', '-ffunction-sections', '-fdata-sections', '-Wall', '-Wextra', '-Werror'];
-    await isolated(['gcc', ...gccFlags, '-ffile-prefix-map=' + root + '=/ccrb-build', '-I', sdk, '-I', root, join(project, 'scripts/runtime/loader.c'), join(root, 'payload.s'), ...sdkFiles.map(file => join(sdk, file)), '-Wl,--gc-sections', '-Wl,--build-id=none', '-s', '-o', loader]);
+    // 发布分发体可用 ELF Build ID 对照崩溃记录；执行体身份继续取实际 SHA256。
+    const linkerFlags = ['-Wl,--gc-sections', '-Wl,--build-id=sha1'];
+    await isolated(['gcc', ...gccFlags, '-ffile-prefix-map=' + root + '=/ccrb-build', '-I', sdk, '-I', root, join(project, 'scripts/runtime/loader.c'), join(root, 'payload.s'), ...sdkFiles.map(file => join(sdk, file)), ...linkerFlags, '-s', '-o', loader]);
     const bytes = (await stat(loader)).size;
     if (bytes > LIMIT_BYTES) throw new Error('完整可执行产物超出体积目标：' + bytes + ' > ' + LIMIT_BYTES);
     const launcherSha256 = await digest(loader);
@@ -105,7 +107,7 @@ export async function buildRuntime(args: string[]): Promise<void> {
       kernel: { version: closure.bun_version, revision: closure.bun_revision, sections_before_prune: image.kernel_before },
       launcher: { sha256: launcherSha256, bytes }, image: { sha256: image.image_sha256, bytes: image.image_bytes },
       deployment: { files: [{ name: output.split('/').at(-1), bytes, sha256: launcherSha256 }], total_bytes: bytes, limit_bytes: LIMIT_BYTES, required_external_files: [], existing_system_libraries: ['librt.so.1', 'libc.so.6', 'ld-linux-x86-64.so.2', 'libpthread.so.0', 'libdl.so.2', 'libm.so.6'], disk_expansion_bytes: 0, memory_file_bytes: image.image_bytes },
-      recipe: { version: 9, bridge_sources: bridgeSources, archive: packOptions, gcc: compiler.trim(), gcc_flags: gccFlags, tool_sha256: TOOL_SHA, sdk_archive_sha256: SDK_SHA, sdk_files: sdkFiles, icu: { kept: image.icu_kept, removed: image.icu_removed, policy: image.locale_policy } },
+      recipe: { version: 10, bridge_sources: bridgeSources, archive: packOptions, gcc: compiler.trim(), gcc_flags: gccFlags, linker_flags: linkerFlags, tool_sha256: TOOL_SHA, sdk_archive_sha256: SDK_SHA, sdk_files: sdkFiles, icu: { kept: image.icu_kept, removed: image.icu_removed, policy: image.locale_policy } },
       closure,
       admission: '构建通过不自动授信；必须对最终哈希执行原生回归、常驻隔离、部署验证并保留计时记录后登记',
     };

@@ -589,3 +589,43 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - `tests/unit/worker-protocol.test.ts`：原始信封归属、能力枚举与 header_policy 字段限制。
 - `tests/native/native.test.ts`：固定原版和新精简二进制的错误后复用、实际头部策略、独立 TLS/CCH 与单次发送。
 - `scripts/testing/{standalone-native.py,cc2api-native.ts}`：脱离源码和构建工具执行，实际 Rust 消费者覆盖 HTTP/SOCKS、3 普通/6 Haiku、凭据代次、取消及独立账号。
+
+## Scenario: 固定 293 内核修订的签名分发
+
+### 1. Scope / Trigger
+
+- 为 V3 单账号在线升级生成受信附件，固定官方版本和来源。账号排空及 sender 轮换由 bench 的 account-runtime-v3 合同所有。
+
+### 2. Signatures
+
+- sealRuntimeRelease(release,binary,keyPath,output): Promise<RuntimeRelease>；CLI 为 bun scripts/seal-runtime-release.ts <发布标签> <分发文件> <Ed25519私钥文件> <新目录>。
+- 输出 runtime-release.json、runtime-release.sig（64字节原始签名）、ccrb-runtime-linux-x64。
+
+### 3. Contracts
+
+- 只接受 v0.1.0-beta.N（正整数且至多9位）、Linux x64、官方2.1.293及当前来源SHA256，worker_schema=2、raw_input_protocol=1、resource_contract=1。
+- 清单 schema_version=1，包含 release、platform、asset、source_version/source_sha256、launcher_sha256/launcher_bytes、image_sha256/image_bytes。分发不超过27933052字节，执行体不超过128MiB。
+- 签名覆盖 UTF-8 JSON 与末尾换行的精确字节。私钥仅在发布端，部署信任根提前固定；未验证的外部构建清单不能直接获得受信身份。签署前必须完成最终产物的行为准入。
+- 工具从分发文件旁读取构建清单，签名前与复制后均核对实际分发SHA；输出目录必须全新。异常清理本轮新目录。
+- 配方10给外层加载器加ELF Build ID用于制品定位，实际内存执行体仍独立核验。每个新配方重复构建并比较分发/执行体摘要。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+| --- | --- |
+| 来源、大小、摘要、标签或私钥类型不符 | 拒绝签署 |
+| 输出目录已存在 | 拒绝覆盖 |
+| 复制后摘要不符 | 清理新输出并失败 |
+| 仅构建或签署成功 | 仍需最终产物行为准入 |
+
+### 5. Scenarios and Examples
+
+- 正常：两次独立构建摘要相同，对最终哈希完成原生及消费者离线验证后签署，部署预登记公钥。
+- 边界：外层加载器不同、执行体相同，仍须实际运行每份候选加载器并核验真实进程。
+- 错误用法：签署任意下载清单后直接上线。正确处理：先核来源、重建配方和行为证据，再由发布者批准对应实际SHA。
+
+### 6. Tests Required
+
+- tests/unit/runtime-release.test.ts：签名覆盖原始字节、字节改动使签名失效、分发文件被替换时拒绝。
+- scripts/testing/cc2api-native.ts：签名候选的切换/回滚真实PID，零模型预热，HTTP/SOCKS TLS实收及私有协议保真。
+- scripts/testing/standalone-native.py：新候选显式传入 expected-launcher/expected-executable，在无外网固定容器核验真实映像和有限资源。

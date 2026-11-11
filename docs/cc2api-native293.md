@@ -62,3 +62,13 @@ python3 scripts/testing/standalone-native.py \
 beta.3 的最终二进制重新通过 67 项原生回归、HTTP/SOCKS 各 19 次消费者 TLS 实收与 6 路并发验证；消费者 Rust 单测 766 项通过。两次独立构建的分发及执行体摘要一致，24 项构建源码摘要与来源提交逐项匹配。
 
 独立 Python 容器以单文件启动 3 路普通和 6 路 Haiku 请求，共 9 次 TLS 实收；每次原始私有请求均携带三个顶层本机设置字段，实收正文确认已移除。整个验证容器峰值为 1629663232 B，OOM 计数为 0；该峰值包含 TLS 夹具与校验器。
+
+## 内核在线分发附件
+
+一次性支持在线升级的 V3 底座可按账号准备、激活和回滚固定 293 的后续内核修订。镜像内置 beta.3 的登记继续保留。发布时先按本页离线验收验证最终分发 SHA256 和实际执行体，再在发布端使用专用 Ed25519 私钥生成三个同批附件：
+
+```bash
+bun scripts/seal-runtime-release.ts v0.1.0-beta.4 /绝对路径/ccrb-runtime-linux-x64 /发布端/ed25519.pem /全新输出目录
+```
+
+工具读取分发文件旁的构建清单。输出 `runtime-release.json`、64 字节原始签名 `runtime-release.sig` 和 `ccrb-runtime-linux-x64`。部署端以预先登记的公钥核对原始清单字节，独立核对分发 SHA256；sender 在真实 worker 握手后从进程映像读取并核对 SHA256 及四项封存。签署动作代表发布者批准最终制品；构建或签署命令成功本身不替代离线验证。

@@ -27,6 +27,7 @@ const messages: { label: string; device: string; account: string; bearer: string
 let parallel = 0, parallelPeak = 0;
 let gatewayIdentity: { device_id: string; account_uuid: string } | undefined;
 let runningBindingReads = 0;
+let finishKernelStream: (() => void) | undefined;
 let bindingGate: { skip: number; mode: string; entered: boolean; release?: () => void } | undefined;
 const groups = new Map<string, { count: number; release: () => void; promise: Promise<void> }>();
 const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.file(key), cert: Bun.file(ca) }, async fetch(request) {
@@ -34,7 +35,7 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
   const raw = await request.text(); verifyCch(raw);
   for (const name of ['cf-ray', 'new-api-user', 'x-unregistered']) assert.equal(request.headers.has(name), false);
   const body = JSON.parse(raw);
-  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-info|gateway-native|gateway-mapped-main|gateway-agent)$/.test(text));
+  const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|gateway-normal|gateway-error|gateway-info|gateway-native|gateway-mapped-main|gateway-agent|gateway-kernel-long|gateway-kernel-next)$/.test(text));
   assert.ok(label, '必须从真实用户文本取得场景标识');
   const metadata = JSON.parse(body.metadata.user_id);
   const bearer = request.headers.get('authorization')!;
@@ -74,12 +75,24 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
     assert.equal(request.headers.get('x-claude-code-prompt-id'), '55555555-5555-4555-8555-555555555555');
     assert.ok(!raw.includes('cc_is_subagent=true'));
   }
+  if (label === 'gateway-kernel-long') {
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(Buffer.from(': waiting\n\n'));
+        finishKernelStream = () => {
+          controller.enqueue(Buffer.from('event: message_stop\ndata: {"type":"message_stop","fixture":"fixture-complete"}\n\n'));
+          controller.close();
+        };
+      },
+    }), { headers: { 'content-type': 'text/event-stream' } });
+  }
   if (label === 'slow') return new Response(new ReadableStream({ start(controller) { controller.enqueue(Buffer.from(': waiting\n\n')); } }), { headers: { 'content-type': 'text/event-stream' } });
   if (label === 'http-error' || label === 'gateway-error') return Response.json({ error: { type: 'authentication_error', message: 'synthetic' } }, { status: 401 });
   return Response.json({ id: 'msg_fixture', type: 'message', role: 'assistant', model: body.model, content: [{ type: 'text', text: '离线消费者验证' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 2 } }, { headers: { 'x-v3-native-observation': 'synthetic-forged', 'x-v3-transport-error': 'before-send' } });
 } });
 const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
   const url = new URL(request.url);
+  if (url.pathname === '/kernel/release') { assert.ok(finishKernelStream); finishKernelStream(); return Response.json({ ok: true }); }
   if (url.pathname === '/binding/arm') { const input = await request.json() as { skip: number; mode: string }; bindingGate = { ...input, entered: false }; return Response.json({ ok: true }); }
   if (url.pathname === '/binding/release') { bindingGate?.release?.(); return Response.json({ ok: true }); }
   if (url.pathname === '/identity') { gatewayIdentity = await request.json() as typeof gatewayIdentity; return Response.json({ ok: true }); } if (url.pathname.startsWith('/internal/v3/native-captures/')) {
@@ -146,7 +159,7 @@ try {
     assert.equal(code, 0);
   }
   assert.equal(code, 0);
-  assert.equal(messages.length, phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 16 : 19) : 6);
+  assert.equal(messages.length, (phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 16 : 19) : 6) + (process.env.CCRB_TEST_SWITCH_DIGEST ? 3 : 0));
   assert.ok(runningBindingReads >= 3, '启动补偿与凭据轮换均重新核对只读运行绑定');
   if (phases.length === 2) assert.equal(messages.find(message => message.label === 'rotated')?.bearer, 'Bearer synthetic-bearer-b');
   console.log(JSON.stringify({ messages: messages.length, parallelPeak, processTreePeakRssKiB: peakRssKiB }));

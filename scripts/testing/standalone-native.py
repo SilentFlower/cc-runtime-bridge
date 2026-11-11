@@ -22,11 +22,11 @@ LAUNCHER = '423a6a848c84e09bcc73a8b7be481ed4ead44a6644cef94bbf47d2009d3f6b80'
 EXECUTABLE = '22f26d7803f80630968caf21b6170cf9bb94d87bea6f5eef678464f3bb0d3ecd'
 
 
-def inside():
+def inside(launcher, executable):
     """仅在隔离容器中执行真实请求与满并发测量。@return 可审计的合成验证结果。"""
     assert shutil.which('bun') is None
     assert not Path('/root/project').exists()
-    assert hashlib.sha256(Path('/opt/ccrb-runtime').read_bytes()).hexdigest() == LAUNCHER
+    assert hashlib.sha256(Path('/opt/ccrb-runtime').read_bytes()).hexdigest() == launcher
     receipts, workers = [], []
     barriers = {count: threading.Barrier(count, timeout=60) for count in (3, 6)}
 
@@ -107,7 +107,7 @@ def inside():
         ready = json.loads(process.stdout.readline())
         assert ready['type'] == 'worker_ready' and ready.get('raw_input_protocol') == 1, ready
         assert ready['pid'] == process.pid and ready['version'] == '2.1.293'
-        assert hashlib.sha256(Path(f'/proc/{process.pid}/exe').read_bytes()).hexdigest() == EXECUTABLE
+        assert hashlib.sha256(Path(f'/proc/{process.pid}/exe').read_bytes()).hexdigest() == executable
         return process, worker_id
 
     def run(worker, count):
@@ -146,7 +146,7 @@ def inside():
             list(executor.map(lambda worker: run(worker, 3), active))
             active += list(executor.map(lambda _: start(), range(3)))
             list(executor.map(lambda worker: run(worker, 6), active))
-        report = {'launcher_sha256':LAUNCHER,'executable_sha256':EXECUTABLE,'messages':receipts,
+        report = {'launcher_sha256':launcher,'executable_sha256':executable,'messages':receipts,
                   'cgroup':{name:Path('/sys/fs/cgroup',name).read_text().strip() for name in
                             ('memory.max','memory.peak','memory.events')},'source_available':False,'bun_available':False}
         assert len(receipts) == 9
@@ -166,9 +166,14 @@ def main():
     parser.add_argument('--inside', action='store_true')
     parser.add_argument('--binary', type=Path)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--expected-launcher', default=LAUNCHER)
+    parser.add_argument('--expected-executable', default=EXECUTABLE)
     args = parser.parse_args()
+    for digest in (args.expected_launcher, args.expected_executable):
+        if len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
+            parser.error('预期 SHA256 必须为 64 位小写十六进制')
     if args.inside:
-        inside()
+        inside(args.expected_launcher, args.expected_executable)
         return
     output = args.output.resolve()
     output.mkdir(mode=0o700)
@@ -182,7 +187,8 @@ def main():
         '--pids-limit','128','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=16m,mode=1777','--tmpfs','/native:rw,nosuid,nodev,size=128m,mode=700',
         '--mount',f'type=bind,src={args.binary.resolve()},dst=/opt/ccrb-runtime,readonly',
         '--mount',f'type=bind,src={output},dst=/fixture,readonly',
-        '--mount',f'type=bind,src={output},dst=/output',IMAGE,'python','/fixture/check.py','--inside'], check=True, timeout=240)
+        '--mount',f'type=bind,src={output},dst=/output',IMAGE,'python','/fixture/check.py','--inside', '--expected-launcher', args.expected_launcher,
+        '--expected-executable', args.expected_executable], check=True, timeout=240)
     print(json.loads((output/'standalone-report.json').read_text())['cgroup'])
 
 
