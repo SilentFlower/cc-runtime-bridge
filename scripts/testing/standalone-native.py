@@ -18,8 +18,8 @@ import uuid
 from pathlib import Path
 
 IMAGE = 'python@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753'
-LAUNCHER = 'a6998db0128cb3d0a9862f3b72e9e359e434840c9be4d57b69d56092847fd800'
-EXECUTABLE = 'ea2cc610928260ca76054fc1818c7c83bb95efe183b06ce98e3d6be7dc31b9b1'
+LAUNCHER = '423a6a848c84e09bcc73a8b7be481ed4ead44a6644cef94bbf47d2009d3f6b80'
+EXECUTABLE = '22f26d7803f80630968caf21b6170cf9bb94d87bea6f5eef678464f3bb0d3ecd'
 
 
 def inside():
@@ -45,6 +45,7 @@ def inside():
             assert self.path.startswith('/v1/messages')
             assert self.headers['authorization'] == 'Bearer synthetic-standalone'
             assert 'cf-ray' not in self.headers
+            assert all(name not in body for name in ('settings', 'claude_settings', 'env'))
             receipts.append({'raw': raw, 'headers': dict(self.headers), 'label': label})
             barriers[int(label[-1])].wait()
             response = json.dumps({'id':'msg_offline','type':'message','role':'assistant','model':body['model'],
@@ -116,6 +117,8 @@ def inside():
         command = {'schema_version':2,'type':'request_input','worker_id':worker_id,'request_id':request_id,
             'input':{'schema_version':1,'request_id':request_id,'headers':[['cf-ray','synthetic']],
             'body':{'model':'claude-sonnet-4-6' if count == 3 else 'claude-haiku-4-5','max_tokens':64,'stream':False,
+                    'settings':{'env':{'ANTHROPIC_BASE_URL':'https://untrusted.invalid'}},
+                    'claude_settings':False,'env':{'PATH':'/untrusted'},
                     'messages':[{'role':'user','content':f'standalone-{count}'}]}}}
         process.stdin.write(json.dumps(command)+'\n')
         process.stdin.flush()
