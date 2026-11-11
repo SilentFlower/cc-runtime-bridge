@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "environment": "隔离回环合成上游，Rust debug 消费者，固定真实运行时",
+  "cpu_max": "25000 100000",
+  "memory_budget": "沿用隔离测试有限账号原上限；无额外内存扩容",
+  "input_bytes": 786766,
+  "tools": 57,
+  "observation_boundary": "已验证信封进入池 submit_validated 至实际 cc_prepared，不含此前上传/解码及上游首字",
+  "binary_sha256": "423a6a848c84e09bcc73a8b7be481ed4ead44a6644cef94bbf47d2009d3f6b80",
+  "image_sha256": "22f26d7803f80630968caf21b6170cf9bb94d87bea6f5eef678464f3bb0d3ecd",
+  "measurements": [
+    {
+      "round": 0,
+      "mode": "cold",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "a5b4dea7-f266-44a5-b19c-c8c469710d33",
+        "worker_pid": 445316,
+        "kernel_generation": null,
+        "warm_hit": false,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 31298,
+        "worker_start_ms": 31298,
+        "prepared_ms": 31894
+      }
+    },
+    {
+      "round": 0,
+      "mode": "hot",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "a5b4dea7-f266-44a5-b19c-c8c469710d33",
+        "worker_pid": 445316,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 592
+      }
+    },
+    {
+      "round": 0,
+      "mode": "prewarmed",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "b85df933-4902-4e75-b940-c968378fccb7",
+        "worker_pid": 446363,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 705
+      }
+    },
+    {
+      "round": 1,
+      "mode": "cold",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "7547ab2c-64d3-46e4-97b3-1fddaee15296",
+        "worker_pid": 447178,
+        "kernel_generation": null,
+        "warm_hit": false,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 28106,
+        "worker_start_ms": 28106,
+        "prepared_ms": 28694
+      }
+    },
+    {
+      "round": 1,
+      "mode": "hot",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "7547ab2c-64d3-46e4-97b3-1fddaee15296",
+        "worker_pid": 447178,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 692
+      }
+    },
+    {
+      "round": 1,
+      "mode": "prewarmed",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "9e1254c7-fe1e-4892-9861-a81bfe1b2a4b",
+        "worker_pid": 447620,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 679
+      }
+    },
+    {
+      "round": 2,
+      "mode": "cold",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "dfdf6989-bbac-4b2f-86cd-9d51a866228c",
+        "worker_pid": 447728,
+        "kernel_generation": null,
+        "warm_hit": false,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 27397,
+        "worker_start_ms": 27397,
+        "prepared_ms": 27891
+      }
+    },
+    {
+      "round": 2,
+      "mode": "hot",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "dfdf6989-bbac-4b2f-86cd-9d51a866228c",
+        "worker_pid": 447728,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 401
+      }
+    },
+    {
+      "round": 2,
+      "mode": "prewarmed",
+      "input_bytes": 786766,
+      "runtime": {
+        "worker_id": "29f5db00-e7d7-48c9-9ce9-67674e0627b5",
+        "worker_pid": 447756,
+        "kernel_generation": null,
+        "warm_hit": true,
+        "preparation_wait_ms": 0,
+        "checkout_ms": 0,
+        "worker_start_ms": null,
+        "prepared_ms": 696
+      }
+    }
+  ],
+  "idle_coverage": {
+    "actual_seconds": 61,
+    "controlled_age_seconds": [
+      60,
+      1800,
+      14400
+    ],
+    "description": "数小时覆盖通过调整空闲年龄完成；真实等待覆盖回收窗口"
+  },
+  "synthetic_business_requests": 9,
+  "real_model_requests": 0,
+  "prewarm_model_requests": 0,
+  "log_sha256": "dc4e42fc003523396a779b9200d85f7d16a936cfe805a82d383b53633f412f27",
+  "limitation": "冷启动值含 debug 消费者的 SHA 核验；与历史生产6.93秒条件不同。生产首字耗时由上线后用户正常业务采集。"
+}

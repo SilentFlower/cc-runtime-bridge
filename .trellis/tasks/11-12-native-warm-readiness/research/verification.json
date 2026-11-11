@@ -1,0 +1,364 @@
+{
+  "schema_version": 1,
+  "check_all": {
+    "depth": "full",
+    "result": "strict_pass",
+    "CHK": 0,
+    "FBK": 0,
+    "DOC": 0
+  },
+  "validation": {
+    "rust": {
+      "passed": 854,
+      "ignored": 8
+    },
+    "python": {
+      "passed": 105
+    },
+    "browser": {
+      "passed": 16,
+      "evidence": {
+        "status": "passed",
+        "scenes": [
+          "真实网关导航和统一会话嵌入；首屏只读",
+          "1280/720/390px，原明暗偏好下与主后台色板一致且无溢出",
+          "名称/ID 搜索、实际状态筛选和未知状态，刷新保留选择",
+          "实时准备、过期与准备中状态准确展示，状态读取零业务写入",
+          "物理实测显式刷新，缺失/无限口径及详情展开保留",
+          "准备表单校验、取消/Esc 零提交、刷新保留输入焦点及原请求合同",
+          "激活/回滚明确目标、摘要与状态前置条件，当前版本按服务器回执更新",
+          "CLI 忙碌、候选缺失、灰度外及待对账状态的操作许可",
+          "弹窗冻结原版本，冲突可见并阻止自动重放",
+          "直接进入环境页即可操作原运行窗口表单，取消保持只读",
+          "读取故障保留快照；账号名与错误文本安全转义",
+          "乱序列表回执按请求序号丢弃旧快照",
+          "重复提交仅发一次；离页收口定时器/窗口，迟到写回执不污染页面",
+          "手机长 ID/主机名/完整摘要展开及真正空列表",
+          "环境作用域退出后恢复原主题偏好和其他页样式",
+          "请求详情展示真实 PID/热命中/本地分段；历史记录保留未观测，手机无溢出"
+        ],
+        "scene_count": 16,
+        "script_errors": [],
+        "business_writes": 7,
+        "synthetic_only": true,
+        "real_model_requests": 0,
+        "actual_gateway_dist": "/root/project/vibecoding-bench/cc2api/web/dist",
+        "screenshots": [
+          "environments-1280-dark.png",
+          "environments-1280-light.png",
+          "environments-390-dark.png",
+          "environments-390-light.png",
+          "environments-720-dark.png",
+          "environments-720-light.png",
+          "kernel-details-390.png",
+          "prepare-dialog-1280.png",
+          "prepare-dialog-390.png"
+        ]
+      }
+    },
+    "docker": {
+      "passed": 30,
+      "scenes": [
+        {
+          "scene": "V1/V2/V5 实际三角色权限、秘密隔离与本地构建",
+          "passed": true,
+          "facts": {
+            "cli": {
+              "uid": 1000,
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000",
+                "NoNewPrivs": "1"
+              },
+              "hostname": "a8417ae68f0c",
+              "machine_id": "e7081774708a4e8c7ba3d2e897af7e89",
+              "memory": 3892314112,
+              "memory_swap": 3892314112,
+              "oom_killed": false,
+              "memory_peak": 610840576
+            },
+            "sender": {
+              "uid": 1001,
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000",
+                "NoNewPrivs": "1"
+              },
+              "hostname": "a8417ae68f0c",
+              "machine_id": "e7081774708a4e8c7ba3d2e897af7e89",
+              "memory": 134217728,
+              "memory_swap": 134217728,
+              "oom_killed": false,
+              "memory_peak": 6881280
+            },
+            "network": {
+              "mac_matches": true,
+              "oom_killed": false,
+              "memory_peak": 39960576
+            },
+            "pressure": {
+              "allocated": 402653184,
+              "tmp_written": 131571712,
+              "tmp_full_rejected": true
+            }
+          }
+        },
+        {
+          "scene": "V5 官方 CLI 本地 SSE 工具构建",
+          "passed": true,
+          "facts": {
+            "official_cli": "2.1.293",
+            "tool_uid": 1000,
+            "compiled_program": true,
+            "real_model": false
+          }
+        },
+        {
+          "scene": "S1 创建按钮/API/SQLite：六项配置、TTL 与无样本状态",
+          "passed": true
+        },
+        {
+          "scene": "S1 创建冲突不自动关联；关联保留自定义策略和养号；未关联指标动作拒绝",
+          "passed": true
+        },
+        {
+          "scene": "S2 官方 CLI 容器 RSS → 按钮/API/SQLite，凭据与配置不变",
+          "passed": true,
+          "rss_bytes": 183189504,
+          "samples": 1
+        },
+        {
+          "scene": "S2 网关卡片区分容器上限、实测 RSS/时间与未采集状态",
+          "passed": true
+        },
+        {
+          "scene": "V3 服务端 OAuth 经本账号配置代理的实际 TLS 刷新：http",
+          "passed": true,
+          "count": 1
+        },
+        {
+          "scene": "S4/S5/S6 JSON 完整往返及账号隔离：http",
+          "passed": true,
+          "status": 200,
+          "response_sha256": "e7843324a3edff7f729c92f16e25bfa61f129da4aa163897e8ca757657fefd7c",
+          "account_id": 1
+        },
+        {
+          "scene": "V3 服务端 OAuth 经本账号配置代理的实际 TLS 刷新：socks5h",
+          "passed": true,
+          "count": 1
+        },
+        {
+          "scene": "S4/S5/S6 JSON 完整往返及账号隔离：socks5h",
+          "passed": true,
+          "status": 200,
+          "response_sha256": "ccd00a3932f0494164bf2e2c5427372cabd7e3b1c796c06c9ec74d26a1ca556b",
+          "account_id": 2
+        },
+        {
+          "scene": "V3 OAuth 空白代理在请求前拒绝，凭据与账号状态保持，直连由最终内核计数核验",
+          "passed": true
+        },
+        {
+          "scene": "S3 指标导入拒绝缺失或伪造内部服务证明",
+          "passed": true
+        },
+        {
+          "scene": "S4 完整 SSE 字节哈希与结束标记",
+          "passed": true,
+          "response_sha256": "12054dc3e87222147d45bfc19482138ce2e0e4628c2af61c9fb02ccfb695bf50"
+        },
+        {
+          "scene": "S4 Claude Code 消息：Billing 重写，5 个会话被限制在 4 个池成员",
+          "passed": true
+        },
+        {
+          "scene": "S4 非流式 /v1/messages：完整消息 JSON 与上游字节哈希一致",
+          "passed": true,
+          "response_sha256": "c56a9c687d6ef64705e25100551c916cec76c194859d448baf3f61b1f45d6d57"
+        },
+        {
+          "scene": "S6 共享租约与实际官方 CLI 进程存活期间，正式 API 可转发",
+          "passed": true
+        },
+        {
+          "scene": "S7 慢流完整结束/取消：两端 active 归零，取消传播到上游，无重放",
+          "passed": true
+        },
+        {
+          "scene": "V6 实际重启 orchestrator，健康 sender 与 API 长流保留且字节哈希一致",
+          "passed": true
+        },
+        {
+          "scene": "S8 真实发送路径不可达：正式 API 明确失败，无管理端直连回退",
+          "passed": true
+        },
+        {
+          "scene": "S5/S8 拒绝错误证书/代理且无上游重放：untrusted",
+          "passed": true,
+          "status": 502
+        },
+        {
+          "scene": "S5/S8 拒绝错误证书/代理且无上游重放：hostname",
+          "passed": true,
+          "status": 502
+        },
+        {
+          "scene": "S5/S8 拒绝错误证书/代理且无上游重放：proxy",
+          "passed": true,
+          "status": 502
+        },
+        {
+          "scene": "S5/S8 拒绝错误证书/代理且无上游重放：unreachable",
+          "passed": true,
+          "status": 502
+        },
+        {
+          "scene": "S8 错误身份/代次/目标/秘密在发送前拒绝；正式 API 绑定故障无直连回退",
+          "passed": true
+        },
+        {
+          "scene": "N1/N2 原生 Messages 与旧端点共存，三角色及预算一致：http",
+          "passed": true,
+          "sender_peak": 680710144,
+          "sender_events": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0,
+            "oom_group_kill": 0
+          }
+        },
+        {
+          "scene": "N1/N2 原生 Messages 与旧端点共存，三角色及预算一致：socks5h",
+          "passed": true,
+          "sender_peak": 679018496,
+          "sender_events": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0,
+            "oom_group_kill": 0
+          }
+        },
+        {
+          "scene": "N4 共享封存映像，60秒空闲回收后保留一个暖进程",
+          "passed": true,
+          "sender_idle": 199847936
+        },
+        {
+          "scene": "N5 真实管理端内核切换和回滚，原有流完整且对照账号、管理服务及容器保持",
+          "passed": true,
+          "switched": {
+            "release": "v0.1.0-beta.4",
+            "launcher_sha256": "bc732aad564e702050e88ad0888b38dbac1692200cfab2afd2b2ab9720026114"
+          },
+          "restored": {
+            "release": "v0.1.0-beta.3",
+            "launcher_sha256": "423a6a848c84e09bcc73a8b7be481ed4ead44a6644cef94bbf47d2009d3f6b80"
+          }
+        },
+        {
+          "scene": "N3 按账号空闲回退恢复原 sender 布局，另一个账号保持原生方式",
+          "passed": true
+        },
+        {
+          "scene": "S8 管理端公网被阻断，全部场景中直连尝试计数为零",
+          "passed": true,
+          "external_attempts": 0
+        }
+      ]
+    },
+    "build_format_typecheck": "通过",
+    "native_cpu": {
+      "cpu_max": "25000 100000",
+      "synthetic_messages": 28,
+      "parallel_peak": 6,
+      "exit_code": 0
+    },
+    "benchmark": {
+      "synthetic_messages": 9,
+      "exit_code": 0
+    }
+  },
+  "real_model_requests": 0,
+  "cleanup": "测试部署 forward-40bb4be4d2 容器清空，私有 CPU cgroup 清空",
+  "logs": {
+    "rust": {
+      "local_path": "/tmp/native-warm-readiness-rust-final.log",
+      "sha256": "10b4ae57c3df9f186a6c8e0897867b8d3c681b41bea8c28140f17ae0e0c3fc5c"
+    },
+    "python": {
+      "local_path": "/tmp/native-warm-readiness-python-final.log",
+      "sha256": "1c70e9924333e458d0a8b1a3a7f422dca5ff98230079d9089c5dfee3361dc7b6"
+    },
+    "web": {
+      "local_path": "/tmp/native-warm-readiness-web-final.log",
+      "sha256": "7e828c969213209dae0d7f7ee72ddc13361814445352ea54f543427be13c8ca3"
+    },
+    "browser": {
+      "local_path": "/tmp/native-warm-readiness-browser-final.log",
+      "sha256": "a41feca8324b9f7e911d8c7cbc38b2b99b8896093b29b38e9b1328392f437a91"
+    },
+    "root_typecheck": {
+      "local_path": "/tmp/native-warm-readiness-root-typecheck-final.log",
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    "native_cpu": {
+      "local_path": "/tmp/native-warm-readiness-cpu025.log",
+      "sha256": "e800163deba69e754fe3bd9ca0e5a26032d9ff73dfba8832be802b53d559bc1f"
+    },
+    "benchmark": {
+      "local_path": "/tmp/native-warm-readiness-benchmark-clean.log",
+      "sha256": "dc4e42fc003523396a779b9200d85f7d16a936cfe805a82d383b53633f412f27"
+    },
+    "docker_build": {
+      "local_path": "/tmp/native-warm-readiness-docker-build.log",
+      "sha256": "ba5287cd4f89b86bf7711058043f80d75bcef3acbe0799b0de7fe3ef1e435c7c"
+    },
+    "docker_verify": {
+      "local_path": "/tmp/native-warm-readiness-docker-verify.log",
+      "sha256": "c3a9e22b4f567b93a129d1d92b2a7959061c4d9643e9655a3cc665befa5a08c5"
+    }
+  },
+  "source_sha256": {
+    "cc-runtime-bridge": {
+      "scripts/testing/cc2api-native.ts": "99ce433bc4260d0b8b53867888a86349e374549fb4c7caf8ff4bb468b95d1a94"
+    },
+    "cc2api": {
+      "src/handler/router.rs": "ea0a3c913895c8b9cae8e08918ad1e07524a7a091f0d44f0f1da4ad55b891552",
+      "src/model/request_diagnostics.rs": "502b8a4e169dbac390943ff59d285561c7a7501a1001ae8ecc557f669375a28d",
+      "src/service/diagnostics.rs": "29edae31d6da8f3569c6340f4d6cdbf592bdb7f433efdfb5201812009e5d0ce9",
+      "src/service/gateway.rs": "7277f5606cc4fadf85abc6e6023a4a0e35decaf2b1d0a281bfc749052e02e0b7",
+      "src/service/native_contract.rs": "44b3f8a2850c61787b851adb4c7c41898a2a3eabdf42cc7ef20d0bb3ded221f2",
+      "src/service/native_prewarm.rs": "d7e44de98c42627d2b65cb53d394175c0e90aac2d06e785f2965cdeb7adf707b",
+      "src/service/native_runtime.rs": "433a8aa21c2f0b1b2d02e78985364f6a72b096fe64683daa78be290f4d22b5ac",
+      "src/service/native_runtime_unsupported.rs": "1b8699027422910e29a5cd7c63239633956ce3ab1c37d47c9151bab4c78c9cc0",
+      "src/service/runtime_transport.rs": "0ca76f2223d6123af77d51774212333bd2e6cd91212a010dbeab547a000762f4",
+      "src/store/diagnostics_store.rs": "7aac883fd1c6e0983d9e6d3abc04ef770398ec0db5cb14acde65b18fdbddb13f",
+      "web/src/api.ts": "621d0268c10d9f7369b479352431b44877f3b6621b00b9fecf2fdb7b8c491d94",
+      "web/src/components/RequestDiagnostics.vue": "be30ac098db4c3d6c6408fb871c872a2e4de7b3aa0944b2e9eccf32adcbbae69"
+    },
+    "vibecoding-bench": {
+      "orchestrator/account_runtime.py": "f3e7c4a19899d5beae8be015a42566a6ab10414d1d74a584a0e2587bb887bec5",
+      "orchestrator/main.py": "30a3234386b041f40e348b8ae1ce507a0cb9e217dadc2f2185d578a9d09ac5c8",
+      "orchestrator/test_account_runtime.py": "df79ee7827c9f36d6692c16dd4b3260ebddfed97ee570b8c2e706419aba9dea8",
+      "webui/environments.js": "55b27af7eb1d80a6a34e513e0aa98b8cf963621edcf81154a94caeb1c331acec",
+      "webui/environments.css": "0368f0f5bd4bea4542470512602041d980980c98554dad437e5fc977b1504526",
+      "webui/index.html": "2f40db032c14d28bb7a48c8703915d4b4bc4e8d72b8c9dbfde444f7dd593391b",
+      "deploy/v3/verify_environment_ui.py": "30ae566655185020dd53164299e1f3117c207d0d07ddc1330e3aa00dfc915cad"
+    }
+  },
+  "post_deployment": [
+    "目标环境实际就绪状态及用户正常业务的暖命中、PID、分段耗时",
+    "故障恢复期间状态和等待时间"
+  ]
+}
