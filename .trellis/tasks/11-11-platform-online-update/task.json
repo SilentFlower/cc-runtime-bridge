@@ -1,0 +1,44 @@
+{
+  "id": "platform-online-update",
+  "name": "platform-online-update",
+  "title": "统一平台在线更新与兼容回退改造",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-11",
+  "completedAt": "2026-11-11",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-11T11:34:33Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "完成签名发行、维护门禁、平台更新与兼容回退及原生管理页面",
+      "完成隔离 Docker、浏览器和相关回归验证",
+      "完成 Check-All 授权修复与严格重检",
+      "完成部署合同 Spec",
+      "完成业务仓精确提交与推送"
+    ],
+    "partialStep": null,
+    "nextStep": "生产接入与真实发行核验按后续上线指令执行",
+    "notes": "生产部署保持暂停。首次接入、CI 签名密钥和真实发行获取由后续上线流程承接。",
+    "updatedAt": "2026-11-11T11:34:33Z"
+  }
+}
