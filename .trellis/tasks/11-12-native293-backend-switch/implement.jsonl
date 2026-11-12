@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/runtime-contract.md", "reason": "固定官方来源、私有运行时与内核修订合同"}
+{"file": ".trellis/tasks/11-12-native293-backend-switch/research/switch-analysis.md", "reason": "线上根因、全环境开放及切换方案"}
+{"file": ".trellis/tasks/11-12-native293-backend-switch/research/verification.md", "reason": "实际恢复、回归及缓存能力复现证据"}
