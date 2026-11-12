@@ -629,3 +629,38 @@ bun scripts/benchmark-runtime.ts --binary /绝对路径/新产物 --reference /r
 - tests/unit/runtime-release.test.ts：签名覆盖原始字节、字节改动使签名失效、分发文件被替换时拒绝。
 - scripts/testing/cc2api-native.ts：签名候选的切换/回滚真实PID，零模型预热，HTTP/SOCKS TLS实收及私有协议保真。
 - scripts/testing/standalone-native.py：新候选显式传入 expected-launcher/expected-executable，在无外网固定容器核验真实映像和有限资源。
+
+## Scenario: 首响应预算归属与逐请求缓存TTL
+
+### 1. Scope / Trigger
+- 修改固定293的fetchOverride、Ree发送信号、缓存TTL及常驻私有指令时适用。官方来源版本与摘要保持固定。
+
+### 2. Signatures
+- `runNativeJob(..., cachePolicy:CachePolicy='preserve', cacheTtlRewrite:CacheTtlRewrite='off')`。
+- `CacheTtlRewrite='off'|'5m'|'1h'`；`readCacheTtlRewrite(value:unknown)`校验私有值；`rewriteCacheTtl(body:JsonObject,mode:CacheTtlRewrite):JsonObject`。
+- `request_input.cache_ttl_rewrite?`为受信指令同级字段；`worker_ready.cache_ttl_rewrite_protocol?:1`声明能力。业务信封与body/context不能设置该私有字段。
+
+### 3. Contracts
+- 官方SDK的首响应计时器等待fetchOverride返回。桥接send回调独占响应并等待整条流释放，SDK内部signal不能直接作为实际Ree的取消信号，否则持续有数据的流也会在180秒加上传余量后误断。
+- 实际发送使用`AbortSignal.any([signal,dispatch.signal])`，分别承接调用方取消和本地发送/快照失败清理。前置服务继续拥有首响应及流静默预算；不以扩大固定总时限掩盖阶段归属错误。
+- TTL在原生构造与既有缓存选点之后、cc_prepared/Ree之前应用。只覆盖根、system数组项、tools数组项和messages顶层content数组块内已有`type=ephemeral`的cache_control。工具schema、tool_use.input及嵌套tool_result业务内容保持。
+- off返回原对象；5m/1h复制正文并覆盖已有标记的ttl，断点位置保持。非法私有值按runtime_protocol/502拒绝；旧握手省略能力仍可解码。消费者对强制模式要求能力1，省略能力时不能静默忽略。
+- cc_prepared仍是中间值。最终CCH由原生传输根据TTL改写后的正文封口；模型只发送一次。新候选须固定真实SHA并完成重建与行为验证。
+
+### 4. Validation & Error Matrix
+| 条件 | 结果 |
+| --- | --- |
+| 持续有数据跨181秒 | 正常读取到真实终态 |
+| 调用方取消、快照写出或实际发送失败 | 取消本次实际网络活动并收口 |
+| off/5m/1h同PID切换 | 仅按本次受信模式处理 |
+| null、布尔、未知TTL或能力值 | 私有协议拒绝 |
+
+### 5. Scenarios and Examples
+- 正常：cc2api强制1h，worker收到同级策略，组装快照与回环实收已有断点均为1h。
+- 基础：off保留调用方TTL及官方默认，旧消费者继续使用既有指令。
+- 错误用法：把SDK的首响应signal绑定到独占读取的整流，或递归改写工具业务JSON。正确处理：按阶段管理取消，按协议精确路径覆盖TTL。
+
+### 6. Tests Required
+- `scripts/testing/native-stream-budget.ts`：校验实际二进制SHA，在隔离回环对照旧版181秒误断与新候选185秒完整流；主动取消和每条唯一提交。
+- `tests/unit/{cache-policy,worker-protocol}.test.ts`：off对象保持、5m/1h切换、嵌套业务保持及非法私有值拒绝。
+- `tests/native/native.test.ts`：同PID三个模式，cc_prepared与TLS实收仅规范已知CCH占位后相等；另独立核验最终CCH。

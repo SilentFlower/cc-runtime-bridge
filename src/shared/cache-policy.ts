@@ -1,6 +1,29 @@
 import type { JsonObject } from './contracts';
 import { isObject } from './errors';
-import type { CachePolicy, CachePolicyDecision } from './runtime-policy';
+import type { CachePolicy, CachePolicyDecision, CacheTtlRewrite } from './runtime-policy';
+
+/** 在协议范围内覆盖已有缓存TTL，保持工具业务嵌套对象及断点位置。
+ * @param body 已完成原生构造与缓存选点的正文。
+ * @param mode 本次受信任策略。
+ * @return 关闭时返回原对象；覆盖时返回独立正文。
+ */
+export function rewriteCacheTtl(body: JsonObject, mode: CacheTtlRewrite): JsonObject {
+  if (mode === 'off') return body;
+  const result = structuredClone(body);
+  const rewrite = (block: unknown): void => {
+    if (isObject(block) && isObject(block.cache_control) && block.cache_control.type === 'ephemeral') block.cache_control.ttl = mode;
+  };
+  rewrite(result);
+  for (const field of ['system', 'tools'] as const) {
+    if (Array.isArray(result[field])) for (const block of result[field]) rewrite(block);
+  }
+  if (Array.isArray(result.messages)) {
+    for (const message of result.messages) {
+      if (isObject(message) && Array.isArray(message.content)) for (const block of message.content) rewrite(block);
+    }
+  }
+  return result;
+}
 
 /** 缓存策略返回值，跳过时直接保留原对象。 */
 export interface CachePolicyResult {

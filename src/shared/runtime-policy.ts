@@ -3,6 +3,19 @@ import { BridgeError, isObject } from './errors';
 /** 由本机启动配置选择的消息缓存策略。 */
 export type CachePolicy = 'preserve' | 'sub2api';
 
+/** 受信任前置服务按本次设置冻结的已有缓存TTL覆盖。 */
+export type CacheTtlRewrite = 'off' | '5m' | '1h';
+
+/** 校验私有指令中的TTL模式，省略时保留原值。
+ * @param value 前置服务冻结的策略。
+ * @return 有效模式；非法模式按私有协议错误拒绝。
+ */
+export function readCacheTtlRewrite(value: unknown): CacheTtlRewrite {
+  if (value === undefined) return 'off';
+  if (value === 'off' || value === '5m' || value === '1h') return value;
+  throw new BridgeError('runtime_protocol', '私有缓存TTL策略无效', 502);
+}
+
 /** 本机第一方遥测开关，开启仍服从官方策略。 */
 export type TelemetryPolicy = 'off' | 'on';
 

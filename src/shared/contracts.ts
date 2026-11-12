@@ -1,4 +1,4 @@
-import type { CachePolicy, CachePolicyDecision, TelemetryHandshake } from './runtime-policy';
+import type { CachePolicy, CachePolicyDecision, CacheTtlRewrite, TelemetryHandshake } from './runtime-policy';
 
 /** JSON 对象，解析和验证由共享入口统一负责。 */
 export type JsonObject = Record<string, unknown>;
@@ -224,13 +224,13 @@ export interface RuntimeJob {
 /** 账号常驻进程接收的私有指令，进程和请求归属分别绑定。 */
 export type WorkerCommand =
   | { type: 'request_start'; schema_version: 2; worker_id: string; request_id: string; prepared: PreparedInput }
-  | { type: 'request_input'; schema_version: 2; worker_id: string; request_id: string; input: unknown }
+  | { type: 'request_input'; schema_version: 2; worker_id: string; request_id: string; input: unknown; cache_ttl_rewrite?: CacheTtlRewrite }
   | { type: 'request_cancel'; schema_version: 2; worker_id: string; request_id: string }
   | { type: 'worker_shutdown'; schema_version: 2; worker_id: string };
 
 /** 常驻进程输出；请求载荷解包后继续使用外部 schema 1。 */
 export type WorkerFrame =
-  | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number; cache_policy?: CachePolicy; telemetry?: TelemetryHandshake; raw_input_protocol?: 1 }
+  | { type: 'worker_ready'; schema_version: 2; worker_id: string; version: string; pid: number; cache_policy?: CachePolicy; telemetry?: TelemetryHandshake; raw_input_protocol?: 1; cache_ttl_rewrite_protocol?: 1 }
   | { type: 'worker_error'; schema_version: 2; worker_id: string; code: 'native_configuration'; status: 503; error: string }
   | { type: 'request_event'; schema_version: 2; worker_id: string; request_id: string; payload: RuntimePayload }
   | { type: 'worker_idle'; schema_version: 2; worker_id: string; request_id: string };

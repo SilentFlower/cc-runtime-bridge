@@ -12,7 +12,7 @@ import type { NativeBindings, NativeSession } from './native';
 import { NATIVE_EXPORTS_293, PROFILE_293 } from './source-profile';
 import { generateNativeRequest, runNativeJob } from './job';
 import { initializeCli } from './cli';
-import { readCachePolicy, readTelemetryPolicy } from '../../shared/runtime-policy';
+import { readCachePolicy, readTelemetryPolicy, readCacheTtlRewrite } from '../../shared/runtime-policy';
 import { createNativeTelemetry } from './telemetry';
 import { readNativeIngressPolicy } from '../../shared/upstream';
 
@@ -124,7 +124,8 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
           try {
             await storage.run(scope, async () => {
               bindings.state.t_(job.context.sessionId, 'resume');
-              await runNativeJob(job, bindings, abort.signal, redactor, emit, cachePolicy);
+              await runNativeJob(job, bindings, abort.signal, redactor, emit, cachePolicy,
+                readCacheTtlRewrite(command.type === 'request_input' ? command.cache_ttl_rewrite : undefined));
             });
           } finally { scope.telemetry = false; }
         } catch (error) {
@@ -145,7 +146,7 @@ export async function startWorker(bindings: NativeBindings): Promise<void> {
     } catch { fatal(); }
   });
   input.on('close', () => { if (!closing) stop(); });
-  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid, cache_policy: cachePolicy, telemetry: telemetryState, raw_input_protocol: 1 });
+  await write({ type: 'worker_ready', schema_version: 2, worker_id: workerId, version: PROFILE_293.version, pid: process.pid, cache_policy: cachePolicy, telemetry: telemetryState, raw_input_protocol: 1, cache_ttl_rewrite_protocol: 1 });
   await closed;
   await telemetry.close();
   storage.disable();

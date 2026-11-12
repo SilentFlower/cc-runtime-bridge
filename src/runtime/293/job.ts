@@ -5,8 +5,8 @@ import { Redactor } from '../../control/redaction';
 import type { NativeBindings, NativeMessage, NativeRecord } from './native';
 import { isNativeModelCall, prepareCli } from './cli';
 import { prepareNativeBody } from '../../shared/native-input';
-import { applyCachePolicy } from '../../shared/cache-policy';
-import type { CachePolicy } from '../../shared/runtime-policy';
+import { applyCachePolicy, rewriteCacheTtl } from '../../shared/cache-policy';
+import type { CachePolicy, CacheTtlRewrite } from '../../shared/runtime-policy';
 
 function unsupported(message: string): never {
   throw new BridgeError('unsupported_parameter', message, 422);
@@ -253,9 +253,10 @@ export async function generateNativeRequest(prepared: PreparedInput, bindings: N
  * @param redactor 本轮秘密处理器。
  * @param emit 本轮有背压的事件输出。
  * @param cachePolicy 本机启动时固定的缓存策略。
+ * @param cacheTtlRewrite 前置服务按本次设置冻结的已有缓存TTL覆盖。
  * @return 作业和流已收口。
  */
-export async function runNativeJob(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, redactor: Redactor, emit: (payload: RuntimePayload) => Promise<void>, cachePolicy: CachePolicy = 'preserve'): Promise<void> {
+export async function runNativeJob(prepared: PreparedInput, bindings: NativeBindings, signal: AbortSignal, redactor: Redactor, emit: (payload: RuntimePayload) => Promise<void>, cachePolicy: CachePolicy = 'preserve', cacheTtlRewrite: CacheTtlRewrite = 'off'): Promise<void> {
   redactor.register(prepared.input);
   redactor.register({ api_key: process.env.ANTHROPIC_API_KEY, token: process.env.CLAUDE_CODE_OAUTH_TOKEN });
   const { api } = bindings;
@@ -300,16 +301,21 @@ export async function runNativeJob(prepared: PreparedInput, bindings: NativeBind
       const stream = prepared.input.body.stream === true;
       const sendingBody = !native && generated.body.stream !== stream ? { ...generated.body, stream } : generated.body;
       const cache = applyCachePolicy(prepared.input.body, sendingBody, cachePolicy);
-      if (cache.body !== generated.body) init.body = JSON.stringify(cache.body);
+      const finalBody = rewriteCacheTtl(cache.body, cacheTtlRewrite);
+      if (finalBody !== generated.body) init.body = JSON.stringify(finalBody);
       if (typeof init.body !== 'string') throw new Error('原生 SDK 发送正文不是字符串');
       init.headers = headers;
       // 单次发送合同要求由调用方处理重定向；原生 fetch 的自动跟随会产生未归属的第二次请求。
       init.redirect = 'manual';
+      // SDK 的首响应预算等待 fetchOverride 返回；桥接独占读取完整响应时该回调仍挂起。
+      // 出站只绑定本轮调用方取消，防止 SDK 构造计时器取消已正常返回的长流。
+      const dispatch = new AbortController();
+      init.signal = AbortSignal.any([signal, dispatch.signal]);
       const outgoing = [...headers.entries()] as HeaderPair[];
       redactor.register(outgoing);
       // 正文和头仅走私有管道；控制层先注册秘密，再统一脱敏持久化，避免重复扫描完整正文。
       const snapshot: RuntimePayload = { type: 'cc_prepared', attempt: 1, body: init.body, headers: outgoing, body_bytes: Buffer.byteLength(init.body), body_sha256: createHash('sha256').update(init.body).digest('hex'), cache_policy: cache.decision };
-      const fail = (error: unknown): never => { cancelNative(); throw error; };
+      const fail = (error: unknown): never => { dispatch.abort(); cancelNative(); throw error; };
       // 快照在 Ree 前固定；等待两方收口后才交付响应事件，失败时取消并释放未交付的响应。
       const [written, sent] = await Promise.allSettled([emit(snapshot).catch(fail), (async () => api.Ree(target, init))().catch(fail)]);
       if (written.status === 'rejected') {

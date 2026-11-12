@@ -76,3 +76,15 @@ test('初始化错误帧只接纳有界配置说明，不允许混入业务归�
     expect(() => decodeWorkerFrame(JSON.stringify({ ...frame, ...fields }), workerId)).toThrow();
   }
 });
+
+test('逐请求TTL仅通过受信私有指令传递，旧握手保持兼容', () => {
+  const input = { schema_version: 1, request_id: 'ttl-job', body: { model: 'synthetic', messages: [{ role: 'user', content: 'x' }] } };
+  const command = { schema_version: 2, worker_id: workerId, type: 'request_input', request_id: 'ttl-job', input };
+  for (const mode of ['off', '5m', '1h']) expect(decodeWorkerCommand({ ...command, cache_ttl_rewrite: mode }, workerId).type).toBe('request_input');
+  for (const mode of ['', '1H', 'auto', null, true]) expect(() => decodeWorkerCommand({ ...command, cache_ttl_rewrite: mode }, workerId)).toThrow('TTL');
+  expect(() => parseInput({ ...input, cache_ttl_rewrite: '1h' })).toThrow('信封');
+  const ready = { schema_version: 2, worker_id: workerId, type: 'worker_ready', version: '2.1.293', pid: 1 };
+  expect(decodeWorkerFrame(JSON.stringify(ready), workerId).type).toBe('worker_ready');
+  expect(decodeWorkerFrame(JSON.stringify({ ...ready, cache_ttl_rewrite_protocol: 1 }), workerId).type).toBe('worker_ready');
+  expect(() => decodeWorkerFrame(JSON.stringify({ ...ready, cache_ttl_rewrite_protocol: 2 }), workerId)).toThrow();
+});

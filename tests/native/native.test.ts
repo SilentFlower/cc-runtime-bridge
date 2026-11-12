@@ -226,6 +226,7 @@ native('官方 293 的无外网回环链路', () => {
       expect(ready.type).toBe('worker_ready');
       if (ready.type !== 'worker_ready') throw new Error('缺少工作进程握手');
       expect(ready.raw_input_protocol).toBe(1);
+      expect(ready.cache_ttl_rewrite_protocol).toBe(1);
       expect(ready.pid).toBe(worker.child.pid);
       const count = requests.length;
       const body = { model: 'claude-sonnet-4-6', messages: [{ role: 'user', content: '原始输入回环' }], stream: false };
@@ -241,6 +242,33 @@ native('官方 293 的无外网回环链路', () => {
         assertCch(requests.at(-1)!.raw);
       }
       expect(requests.length - count).toBe(2);
+      for (const cache_ttl_rewrite of ['1h', '5m', 'off'] as const) {
+        const id = 'raw-ttl-' + cache_ttl_rewrite;
+        await worker.send({ type: 'request_input', schema_version: 2, worker_id: workerId, request_id: id,
+          cache_ttl_rewrite, input: { schema_version: 1, request_id: id, body } });
+        const events = await collect(id);
+        expect(events.at(-1)).toEqual(expect.objectContaining({ type: 'completed', state: 'success' }));
+        const prepared = events.find(event => event.type === 'cc_prepared');
+        if (prepared?.type !== 'cc_prepared') throw new Error('缺少TTL改写后的组装快照');
+        const actual = requests.at(-1)!;
+        // 组装阶段的CCH占位由最终传输补齐；两阶段仅规范该已知字段后比较。
+        const normalizeCch = (raw: string): unknown => JSON.parse(raw.replace(/cch=[0-9a-f]{5}/g, 'cch=00000'));
+        expect(normalizeCch(prepared.body)).toEqual(normalizeCch(actual.raw));
+        const markers: Record<string, unknown>[] = [];
+        const pending: unknown[] = [actual.body];
+        while (pending.length) {
+          const node = pending.pop();
+          if (node && typeof node === 'object' && !Array.isArray(node)) {
+            const object = node as Record<string, unknown>;
+            if (object.cache_control && typeof object.cache_control === 'object') markers.push(object.cache_control as Record<string, unknown>);
+            pending.push(...Object.values(object));
+          } else if (Array.isArray(node)) pending.push(...node);
+        }
+        expect(markers.length).toBeGreaterThan(0);
+        if (cache_ttl_rewrite !== 'off') expect(markers.every(marker => marker.ttl === cache_ttl_rewrite)).toBe(true);
+        assertCch(actual.raw);
+      }
+      expect(requests.length - count).toBe(5);
       await worker.send({ type: 'worker_shutdown', schema_version: 2, worker_id: workerId });
       expect(await worker.child.exited).toBe(0);
     } finally { await verified.handle.close(); await worker.close(); }

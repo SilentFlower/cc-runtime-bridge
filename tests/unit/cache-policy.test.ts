@@ -145,3 +145,31 @@ test('普通 API 的自动断点可被替换，原输入及工具声明不变', 
   expect(outgoing).toEqual(before);
   for (const invalid of [{ ...result.decision, ttl: ['1h'] }, { ...result.decision, selected: [{ message: -1, block: 0 }] }, { ...result.decision, breakpoints: 5 }]) expect(isCachePolicyDecision(invalid)).toBe(false);
 });
+
+test('受信TTL覆盖仅处理已有协议断点，支持关闭及跨轮切换', async () => {
+  const { rewriteCacheTtl } = await import('../../src/shared/cache-policy');
+  const { readCacheTtlRewrite } = await import('../../src/shared/runtime-policy');
+  const business = { type: 'ephemeral', ttl: '5m' };
+  const body = {
+    cache_control: { type: 'ephemeral' },
+    system: [{ type: 'text', text: 'prefix', cache_control: { type: 'ephemeral', ttl: '5m' } }],
+    tools: [{ name: 'lookup', input_schema: { cache_control: business }, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tool_synthetic', content: [{ type: 'text', text: 'business', cache_control: business }], cache_control: { type: 'ephemeral' } }, { type: 'text', text: 'tail' }] }],
+  };
+  expect(rewriteCacheTtl(body, 'off')).toBe(body);
+  let previous: JsonObject = body;
+  for (const mode of ['1h', '5m'] as const) {
+    const rewritten = rewriteCacheTtl(previous, mode);
+    expect(rewritten).toEqual({
+      ...body,
+      cache_control: { type: 'ephemeral', ttl: mode },
+      system: body.system.map(block => ({ ...block, cache_control: { ...block.cache_control, ttl: mode } })),
+      tools: body.tools.map(tool => ({ ...tool, cache_control: { ...tool.cache_control, ttl: mode } })),
+      messages: body.messages.map(message => ({ ...message, content: message.content.map((block, index) => index === 0 ? { ...block, cache_control: { type: 'ephemeral', ttl: mode } } : block) })),
+    });
+    previous = rewritten;
+  }
+  expect(body.cache_control).toEqual({ type: 'ephemeral' });
+  expect(readCacheTtlRewrite(undefined)).toBe('off');
+  for (const value of ['', '1H', 'auto', null, true]) expect(() => readCacheTtlRewrite(value)).toThrow('TTL');
+});

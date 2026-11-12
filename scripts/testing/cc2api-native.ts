@@ -23,7 +23,7 @@ assert.equal(Bun.spawnSync(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-
 const senderHost = 'v3-' + createHash('sha256').update('native-offline').digest('hex').slice(0, 12) + '-account-' + 'a'.repeat(32);
 await writeFile(join(root, 'hosts'), await readFile('/etc/hosts', 'utf8') + '\n127.0.0.1 ' + senderHost + '\n');
 assert.equal(Bun.spawnSync(['mount', '--bind', join(root, 'hosts'), '/etc/hosts']).exitCode, 0);
-const messages: { label: string; device: string; account: string; bearer: string }[] = [];
+const messages: { label: string; device: string; account: string; bearer: string; cache_ttls: unknown[] }[] = [];
 let parallel = 0, parallelPeak = 0;
 let gatewayIdentity: { device_id: string; account_uuid: string } | undefined;
 let runningBindingReads = 0;
@@ -42,7 +42,17 @@ const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.fil
   assert.ok(bearer.startsWith('Bearer synthetic-bearer-'));
   assert.equal(metadata.device_id, label.startsWith('gateway-') ? gatewayIdentity?.device_id : (label === 'second-account' ? 'b' : 'a').repeat(64));
   assert.equal(metadata.account_uuid, label === 'second-account' ? '33333333-3333-4333-8333-333333333333' : '11111111-1111-4111-8111-111111111111');
-  messages.push({ label, device: metadata.device_id, account: metadata.account_uuid, bearer });
+  const cacheTtls: unknown[] = [];
+  const pending: unknown[] = [body];
+  while (pending.length) {
+    const node = pending.pop();
+    if (node && typeof node === 'object' && !Array.isArray(node)) {
+      const object = node as Record<string, unknown>;
+      if (object.cache_control && typeof object.cache_control === 'object') cacheTtls.push((object.cache_control as Record<string, unknown>).ttl ?? null);
+      pending.push(...Object.values(object));
+    } else if (Array.isArray(node)) pending.push(...node);
+  }
+  messages.push({ label, device: metadata.device_id, account: metadata.account_uuid, bearer, cache_ttls: cacheTtls });
   if (label?.startsWith('parallel-')) {
     const target = Number(label.split('-')[1]);
     let group = groups.get(label);
@@ -99,7 +109,14 @@ const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request)
   assert.equal(request.headers.get('authorization'), 'Bearer ' + 'synthetic-private-management-key'.repeat(2));
   const id = new URL(request.url).pathname.split('/').at(-1)!;
   assert.match(id, /^[a-f0-9-]{36}$/);
-  return Response.json(JSON.parse(await readFile(join(root, 'captures', id + '.json'), 'utf8')));
+  if (process.env.CCRB_TEST_CAPTURE_PYTHON && process.env.CCRB_TEST_ORCHESTRATOR) {
+    // 直接经过生产Python读取器，核对Rust真实落盘的新旧可选阶段合同。
+    const verified = Bun.spawnSync([process.env.CCRB_TEST_CAPTURE_PYTHON, '-c',
+      'import sys;from pathlib import Path;from native_capture import read_capture;read_capture(Path(sys.argv[1]),1,sys.argv[2])',
+      join(root, 'environment'), id], { env: { PATH: process.env.PATH ?? '/usr/bin:/bin', PYTHONPATH: process.env.CCRB_TEST_ORCHESTRATOR }, stdout: 'pipe', stderr: 'pipe' });
+    assert.equal(verified.exitCode, 0, '实际Python快照读取合同校验失败');
+  }
+  return Response.json(JSON.parse(await readFile(join(root, 'environment/flows/api/cc-prepared', id + '.json'), 'utf8')));
 } if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) {
   // 模拟调度器迟到就绪，首次后台只读解析失败后由启动补偿恢复。
   if (new URL(request.url).searchParams.get('wake') === 'false' && ++runningBindingReads === 1) return Response.json({ error: 'synthetic-not-ready' }, { status: 503 });
@@ -152,7 +169,7 @@ try {
   const phases = benchmarkOnly ? ['native_real_binary'] : process.env.CCRB_TEST_GATEWAY_ONLY === '1' ? ['native_real_gateway'] : ['native_real_binary', 'native_real_gateway'];
   let code = 0;
   for (const phase of phases) {
-    const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CAPTURE_DIR: join(root, 'captures'), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
+    const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CAPTURE_DIR: join(root, 'environment/flows/api/cc-prepared'), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
     const timer = setInterval(() => { void sample(child.pid).then(value => { peakRssKiB = Math.max(peakRssKiB, value); }); }, 100);
     code = await child.exited; clearInterval(timer);
     // 失败时同样保存实收请求摘要，后续断言与夹具清理才有可核对的现场。
