@@ -1,0 +1,42 @@
+{
+  "id": "platform-semver-update-ui",
+  "name": "platform-semver-update-ui",
+  "title": "平台语义版本与更新页交互整理",
+  "description": "平台使用语义版本、可用版本默认折叠、时间本地化，并参照vm2api优化更新页展示",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-12",
+  "completedAt": "2026-11-12",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-12T06:43:37Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-12-update-version-environment-navigation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "受信语义版本与历史兼容",
+      "更新列表单展开及本地时间",
+      "构建和签名合同验证"
+    ],
+    "partialStep": null,
+    "nextStep": "已完成",
+    "notes": "合成离线验证通过，主动模型调用为零。",
+    "updatedAt": "2026-11-12T06:43:37Z"
+  }
+}

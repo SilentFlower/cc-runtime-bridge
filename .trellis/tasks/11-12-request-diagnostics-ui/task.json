@@ -1,0 +1,42 @@
+{
+  "id": "request-diagnostics-ui",
+  "name": "request-diagnostics-ui",
+  "title": "请求记录交互与采集状态展示修复",
+  "description": "参照vm2api改进请求列表和详情，区分采集关闭、等待、失败、缺失状态",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-12",
+  "completedAt": "2026-11-12",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-12T06:43:37Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "11-12-update-version-environment-navigation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "请求记录与四页签详情",
+      "账号采集开关及独占维护",
+      "失败恢复与内核下载互斥回归"
+    ],
+    "partialStep": null,
+    "nextStep": "已完成",
+    "notes": "合成离线验证通过，主动模型调用为零。",
+    "updatedAt": "2026-11-12T06:43:37Z"
+  }
+}
