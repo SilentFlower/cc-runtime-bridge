@@ -24,6 +24,7 @@ const senderHost = 'v3-' + createHash('sha256').update('native-offline').digest(
 await writeFile(join(root, 'hosts'), await readFile('/etc/hosts', 'utf8') + '\n127.0.0.1 ' + senderHost + '\n');
 assert.equal(Bun.spawnSync(['mount', '--bind', join(root, 'hosts'), '/etc/hosts']).exitCode, 0);
 const messages: { label: string; device: string; account: string; bearer: string; cache_ttls: unknown[] }[] = [];
+const tlsBodies = new Map<string, { bytes: number; sha256: string }>();
 let parallel = 0, parallelPeak = 0;
 let gatewayIdentity: { device_id: string; account_uuid: string } | undefined;
 let runningBindingReads = 0;
@@ -33,6 +34,7 @@ const groups = new Map<string, { count: number; release: () => void; promise: Pr
 const upstream = Bun.serve({ hostname: '127.0.0.1', port: 0, tls: { key: Bun.file(key), cert: Bun.file(ca) }, async fetch(request) {
   assert.equal(new URL(request.url).pathname, '/v1/messages');
   const raw = await request.text(); verifyCch(raw);
+  tlsBodies.set(request.headers.get('x-client-request-id')!, { bytes: Buffer.byteLength(raw), sha256: createHash('sha256').update(raw).digest('hex') });
   for (const name of ['cf-ray', 'new-api-user', 'x-unregistered']) assert.equal(request.headers.has(name), false);
   const body = JSON.parse(raw);
   const label = body.messages.flatMap((message: { content: string | { type: string; text?: string }[] }) => typeof message.content === 'string' ? [message.content] : message.content.filter(block => block.type === 'text').map(block => block.text)).find((text: string | undefined) => text && /^(parallel-[2346]|slow|rotated|http-error|second-account|readiness-latency|gateway-normal|gateway-error|gateway-info|gateway-native|gateway-mapped-main|gateway-agent|gateway-kernel-long|gateway-kernel-next)$/.test(text));
@@ -116,7 +118,15 @@ const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request)
       join(root, 'environment'), id], { env: { PATH: process.env.PATH ?? '/usr/bin:/bin', PYTHONPATH: process.env.CCRB_TEST_ORCHESTRATOR }, stdout: 'pipe', stderr: 'pipe' });
     assert.equal(verified.exitCode, 0, '实际Python快照读取合同校验失败');
   }
-  return Response.json(JSON.parse(await readFile(join(root, 'environment/flows/api/cc-prepared', id + '.json'), 'utf8')));
+  const snapshot = JSON.parse(await readFile(join(root, 'environment/flows/api/cc-prepared', id + '.json'), 'utf8'));
+  if (process.env.CCRB_TLS_OBSERVER && snapshot.wire_final?.complete) {
+    const client = snapshot.wire_final.headers.find(([name]: [string, string]) => name.toLowerCase() === 'x-client-request-id')?.[1];
+    const actual = tlsBodies.get(client); assert.ok(actual, '须以实际TLS头关联独立接收器');
+    assert.equal(snapshot.wire_final.body_sha256, actual.sha256);
+    assert.equal(snapshot.wire_final.observed_body_bytes, actual.bytes);
+    if (process.env.CCRB_TEST_CAPTURE_FIXTURE) await writeFile(process.env.CCRB_TEST_CAPTURE_FIXTURE, JSON.stringify(snapshot));
+  }
+  return Response.json(snapshot);
 } if (new URL(request.url).pathname.startsWith('/internal/v3/transport/')) {
   // 模拟调度器迟到就绪，首次后台只读解析失败后由启动补偿恢复。
   if (new URL(request.url).searchParams.get('wake') === 'false' && ++runningBindingReads === 1) return Response.json({ error: 'synthetic-not-ready' }, { status: 503 });
@@ -131,7 +141,7 @@ const control = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request)
     }
   }
   return Response.json({ account_id: 1, environment_id: 'a'.repeat(32), generation, endpoint: `http://${senderHost}:8091`, secret: 'synthetic-private-key'.repeat(3), release_id: 'native-offline' });
-} return Response.json({ messages, parallel_peak: parallelPeak, running_binding_reads: runningBindingReads, binding_waiting: bindingGate?.entered ?? false }); } });
+} return Response.json({ messages, tls_bodies: Object.fromEntries(tlsBodies), parallel_peak: parallelPeak, running_binding_reads: runningBindingReads, binding_waiting: bindingGate?.entered ?? false }); } });
 const proxy = createServer();
 proxy.on('connect', (request, socket, head) => {
   assert.equal(request.url, 'api.anthropic.com:443');
@@ -165,8 +175,9 @@ try {
       return Number(/VmRSS:\s+(\d+)/.exec(status)?.[1] ?? 0) + (await Promise.all(children.map(id => sample(Number(id))))).reduce((a, b) => a + b, 0);
     } catch { return 0; }
   };
+  const tlsOnly = process.env.CCRB_TEST_TLS_ONLY === '1';
   const benchmarkOnly = process.env.CCRB_TEST_READINESS_BENCH_ONLY === '1';
-  const phases = benchmarkOnly ? ['native_real_binary'] : process.env.CCRB_TEST_GATEWAY_ONLY === '1' ? ['native_real_gateway'] : ['native_real_binary', 'native_real_gateway'];
+  const phases = tlsOnly ? ['native_real_binary'] : benchmarkOnly ? ['native_real_binary'] : process.env.CCRB_TEST_GATEWAY_ONLY === '1' ? ['native_real_gateway'] : ['native_real_binary', 'native_real_gateway'];
   let code = 0;
   for (const phase of phases) {
     const child = Bun.spawn(['cargo', 'test', '--locked', '--lib', phase, '--', '--ignored', '--nocapture'], { cwd: resolve(consumer), env: { ...process.env, CCRB_TEST_BINARY: resolve(binary), CCRB_TEST_CAPTURE_DIR: join(root, 'environment/flows/api/cc-prepared'), CCRB_TEST_CA_FILE: ca, CCRB_TEST_PROXY: proxyUrl, CCRB_TEST_CONTROL: control.url.toString(), CCRB_TEST_SENDER_HOST: senderHost, V3_RUNTIME_URL: control.url.toString(), V3_INTERNAL_TOKEN: 'synthetic-private-management-key'.repeat(2), V3_DEPLOYMENT_ID: 'native-offline', V3_RELEASE: 'native-offline' }, stdout: 'inherit', stderr: 'inherit' });
@@ -177,8 +188,8 @@ try {
     assert.equal(code, 0);
   }
   assert.equal(code, 0);
-  assert.equal(messages.length, (benchmarkOnly ? 9 : phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 25 : 28) : 6) + (process.env.CCRB_TEST_SWITCH_DIGEST ? 3 : 0));
-  if (!benchmarkOnly) assert.ok(runningBindingReads >= 3, '启动补偿与凭据轮换均重新核对只读运行绑定');
+  assert.equal(messages.length, (tlsOnly ? 6 : benchmarkOnly ? 9 : phases.length === 2 ? (process.env.CCRB_TEST_UNLIMITED === '1' ? 25 : 28) : 6) + (process.env.CCRB_TEST_SWITCH_DIGEST ? 3 : 0));
+  if (!benchmarkOnly && !tlsOnly) assert.ok(runningBindingReads >= 3, '启动补偿与凭据轮换均重新核对只读运行绑定');
   if (phases.length === 2) assert.equal(messages.find(message => message.label === 'rotated')?.bearer, 'Bearer synthetic-bearer-b');
   console.log(JSON.stringify({ messages: messages.length, parallelPeak, processTreePeakRssKiB: peakRssKiB }));
 } finally { upstream.stop(true); control.stop(true); proxy.closeAllConnections(); proxy.close(); socks.close(); await rm(root, { recursive: true, force: true }); }

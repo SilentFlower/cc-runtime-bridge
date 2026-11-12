@@ -6,6 +6,8 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 /native/tls-verifier/target/
+/native/tls-observer/*.o
+/native/tls-observer/__pycache__/
 
 # 运行数据、凭据及本机配置
 /data/

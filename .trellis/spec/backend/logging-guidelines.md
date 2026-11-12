@@ -1,5 +1,49 @@
 # 请求日志合同
 
+## Scenario: Linux x64 原生 TLS 接受边界旁路采集
+
+### 1. Scope / Trigger
+
+- 修改`native/tls-observer/`的探针、私有协议或平台sender接入时适用。原生运行时拥有TLS握手及唯一业务提交；该机制独立于下文终止TLS的验证器。
+
+### 2. Signatures
+
+- `python3 native/tls-observer/build.py`生成相邻`capture.bpf.o`。运行依赖Python 3.11+、libbpf.so.1及实际BPF/perf能力。
+- `observer.py --pid <直属worker PID> --image <执行体SHA> --worker <物理代次> --capture <采集UUID>`；`CCRB_TLS_OBSERVER`由受控sender启动环境指定绝对路径。
+- 私有JSONL帧`schema_version=1`；ready携带`capture_id/worker_id`。收口命令为`{capture_id,client_request_id}`，后者来自同次cc_prepared的唯一实际`x-client-request-id`。
+
+### 3. Contracts
+
+- 当前只准入执行体SHA`af4cea9e21aa959c5e39c389173ba30ebb19b354b67acfe99164946450e9776d`，文件偏移`0x232d5b3`，指令`4883c4185b415c415d415e415f5dc3`；RBX=SSL对象、R14=明文指针、R15d=提交长度、EAX=实际接受长度。核验直属PPID、完整执行体SHA、指令及PID命名空间dev/inode。新映像独立重新准入。
+- 探针在原生返回边界同步作一次有界副本，后续解析、收口、脱敏和持久化在后台。每事件最多16KiB，非阻塞ring 4MiB，最多8条SSL连接，头128KiB、每连接正文预览2MiB。满载丢副本并累计计数，业务沿原请求继续。
+- 仅正返回实际接受量计数。事件带PID/TID、SSL对象、全采集代次sequence、accepted/requested；独立计数核对writes/bytes/dropped/read_errors/oversized。序号缺口后停止本代全部解析，继续计数用于对账。
+- 仅解析唯一Content-Length的HTTP/1.1 `POST /v1/messages`（可带query）。复制和哈希前限制本实体范围，越界字节直接丢弃。不能把连接复用后的下一请求拼入当前副本。
+- 最终对象`source=native_tls_uprobe`、`representation=http_entity_from_tls_accepted_write`。`complete/status/reason`区分完整与缺口；实体`observed_body_bytes/body_sha256`及整体`observed_http_bytes/http_sha256`只在完整时提供。`flushed=null`，保持TLS接受、网络刷出和上游实收的独立语义。
+- 外部故障导致连续性待核对时清空头和正文预览；保留固定原因及空哈希/未知范围。Rust持久化前再次清空非HTTP_PARTIAL的不完整原文，连续HTTP前缀裁剪未闭合字符串后统一脱敏。对应平台可选快照与容量合同由`vibecoding-bench/.trellis/spec/cc2api/backend/settings-database.md`的“CC组装后私有采集”所有。
+- 物理worker后台预备一个单次采集器，业务即时取用。准备中记CAPTURE_PREPARING，就绪后绑定当前业务ID；启动及收口各2秒后台期限。迟到启动、退役、取消及重读均按采集代次和业务归属隔离，采集故障保持零模型重放。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 结果 |
+| --- | --- |
+| 缺配置/未知映像/权限或帮助进程异常 | 明确OBSERVER_NOT_CONFIGURED/IMAGE_NOT_ADMITTED/受控OBSERVER原因，业务独立执行 |
+| 首条到达时探针准备中 | CAPTURE_PREPARING，即时发送本条业务 |
+| 额外HTTP字节/未知长度或协议 | HTTP_EXTRA_BYTES/HTTP_LENGTH_UNKNOWN/HTTP_UNSUPPORTED，未知全量摘要 |
+| 序号缺口或最终计数不符 | EVENT_SEQUENCE/EVENT_LOSS，清空不连续预览，哈希与范围null |
+| 正文仅预览限长，事件及范围完整 | 全量实际SHA保留，正文截断单独标记 |
+
+### 5. Scenarios and Examples
+
+- 正常：同次原生TLS接受的实体SHA和整体HTTP SHA与隔离接收器实收一致；原生握手协议投影在采集开关两组保持一致。
+- 基础边界：首次冷worker显示准备缺口。高负载可能丢副本或保存任务，固定原因独立于模型终态。
+- 错误用法：跨缺口拼接后用完整凭据字符串替换，或把下一请求当旧请求的尾部。正确处理：先限制实体边界，缺口后冻结解析并清空不安全原文。
+
+### 6. Tests Required
+
+- `python3 -m unittest discover -s native/tls-observer -p 'test_*.py'`：任意头边界、部分实体、整体SHA、重复长度、连接复用分段/合并、首中尾缺口及跨事件凭据。
+- `scripts/testing/cc2api-native.ts`配合CCRB_TEST_TLS_ONLY=1：已就绪六PID并发、真实beta.5、独立TLS实体SHA、实际Rust保存及生产Python读取器；仅合成凭据和隔离回环。
+- 强制测试ring丢副本，核对业务单次完成、EVENT_LOSS及清空预览；采集开关按完整ClientHello协议字段比较，排除真实随机及密钥材料。生产权限与资源验收由独立上线授权承接。
+
 ## Scenario: 采集、持久化及只读查询
 
 ### 1. Scope / Trigger
