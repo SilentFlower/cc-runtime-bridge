@@ -3,7 +3,7 @@
   "name": "native293-backend-switch",
   "title": "恢复10-30原生转发并完善后端切换流程",
   "description": "",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,10 +11,10 @@
   "creator": "silentflower",
   "assignee": "silentflower",
   "createdAt": "2026-11-12",
-  "completedAt": null,
+  "completedAt": "2026-11-12",
   "closeout": {
-    "status": "pending",
-    "closedAt": null,
+    "status": "closed",
+    "closedAt": "2026-11-12T05:26:40Z",
     "blockers": []
   },
   "branch": null,
@@ -389,15 +389,17 @@
     }
   },
   "progress": {
-    "updatedAt": "2026-11-12T05:04:08.581807+00:00",
+    "updatedAt": "2026-11-12T05:26:40.155224+00:00",
     "completedSteps": [
-      "10-30无限内存环境恢复并激活beta.5",
-      "观察5次自然请求成功，实际原生进程复用正常",
+      "10-30恢复无限内存并激活beta.5，5次自然请求成功",
       "全环境内核管理与默认beta.5完成实现、检查及规范同步",
-      "业务代码按精确范围提交并推送"
+      "按已确认精确范围完成关联仓库代码和任务材料推送",
+      "联合CI、双库兼容演练与签名发行成功",
+      "线上安装完成，内核选择、身份、资源及其他容器核对通过",
+      "实际页面的两个管理入口可见，两个原生环境零模型准备ready"
     ],
-    "partialStep": "联合CI及线上平台发布",
-    "nextStep": "等待联合CI签名发行，按平台更新流程安装并核对管理入口、内核与资源",
-    "notes": "10-30已保持显式beta.5；全环境入口和镜像默认更新由后续线上安装生效。"
+    "partialStep": null,
+    "nextStep": "本轮交付完成；原后端切换事务的后续实现参考研究方案",
+    "notes": "线上发行system-ci-43158784173-1；10-30代次31、11-5代次16，均保留beta.5。主动模型调用0。"
   }
 }

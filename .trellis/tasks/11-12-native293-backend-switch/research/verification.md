@@ -76,3 +76,14 @@
 - 第二个请求于04:36:35.242Z开始，与首个请求重叠；实际创建PID20，worker_start_ms=5708、warm_hit=false。截图的北京时间12:36:37晚于首个请求结束时间，页面空闲PID9与总数2对应这一扩容阶段。
 - 后续三次请求均复用PID20，warm_hit=true、checkout_ms=0。当前checkout仅在取进程时选择已有空闲worker，开始扩容后继续等待所创建的worker；普通业务占用与按需扩容独立于adaptive_prewarm开关。
 - 私有只读证据idle-reuse-requests.log，主动模型调用0。
+
+## 联合发行与线上交付完成
+
+- 精确提交：cc2api仅提交三个内置身份与长度片段；bench提交全环境管理、默认beta.5及其引用。其他任务的TLS观察与历史任务材料按原范围保留。
+- 联合CI 43158784173全部成功，签名发行system-ci-43158784173-1包含双库兼容演练及迁移、签名清单和同批镜像附件。
+- 通过原独立更新服务提交操作41283bce-cfc2-4b78-bfa6-5114bb97a697。实际经过preparing、draining、snapshotting、migrating、switching、verifying、cleaning，最终succeeded。
+- 10-30环境代次30→31，11-5代次15→16，均为ready并保留显式beta.5。两个新sender的内置分发SHA均为64c61cae565e9097de18cf61a35f46e7595f633cb14f7d6b8c6609fcd294ce89，均取得只读/runtime-releases挂载。
+- 身份及数据库schema摘要、全部环境固化资源和运行角色额度、既有内核选择核对一致；其他四个容器保持原身份与状态；维护门禁恢复idle，清理通过，数据库快照保留两组。
+- 实际浏览器通过受保护SSH隧道打开环境页，10-30与11-5均显示v0.1.0-beta.5及“准备内核”入口，脚本错误0。截图published-kernel-management.png、页面回执published-ui-result.json保存在本地私有目录。
+- 更新后按既有零模型准备入口取得10-30 PID16、11-5 PID15，均idle_workers=1、live_workers=1，代次及beta.5引用一致。主动模型调用0。
+- 服务器交付证据：/opt/vibebench-v3-us/operations/native293-publish-ci-43158784173-1/，包含冻结请求、原资源与内核、实际阶段和verified.json；本地install-platform-ci-43158784173.log及published-native-preparation.log记录成功结果。
