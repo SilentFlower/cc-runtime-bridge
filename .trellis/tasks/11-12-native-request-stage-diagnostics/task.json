@@ -1,0 +1,51 @@
+{
+  "id": "native-request-stage-diagnostics",
+  "name": "native-request-stage-diagnostics",
+  "title": "原生请求分阶段诊断与预热可靠性",
+  "description": "补齐头部处理、正文变更和阶段采集展示；修复首次热池失效、环境准备状态读取及并发备用策略",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "请求诊断、热池与准备状态、动态CPU持久化、首响应预算修复及缓存TTL联动",
+  "package": "vibecoding-bench/cc2api",
+  "priority": "P1",
+  "creator": "silentflower",
+  "assignee": "silentflower",
+  "createdAt": "2026-11-12",
+  "completedAt": "2026-11-12",
+  "closeout": {
+    "status": "closed",
+    "closedAt": "2026-11-12T02:49:21Z",
+    "blockers": []
+  },
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "prd.md",
+    "design.md",
+    "implement.md",
+    "research/inspection.md",
+    "research/prewarm-root-cause.md",
+    "research/stream-interruption-and-cache.md",
+    "release.md"
+  ],
+  "notes": "",
+  "meta": {},
+  "progress": {
+    "completedSteps": [
+      "实现与联合离线验收",
+      "Check-All通过",
+      "Spec同步",
+      "三个仓库精确提交与推送"
+    ],
+    "partialStep": null,
+    "nextStep": "按release.md承接后续软件上线授权",
+    "notes": "正式软件发布与生产验收由后续授权承接。",
+    "updatedAt": "2026-11-12T02:49:21.638424+00:00"
+  }
+}
