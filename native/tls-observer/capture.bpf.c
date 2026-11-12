@@ -21,13 +21,36 @@ struct target { unsigned long device, inode; unsigned int pid, padding; };
 struct record {
     unsigned long pid_tid, ssl, sequence;
     unsigned int accepted, requested;
-    char data[16384];
+    char data[];
 };
-struct { UINT(type, BPF_MAP_TYPE_RINGBUF); UINT(max_entries, 1 << 22); } events SEC(".maps");
+struct { UINT(type, BPF_MAP_TYPE_RINGBUF); UINT(max_entries, 1 << 24); } events SEC(".maps");
 struct { UINT(type, BPF_MAP_TYPE_ARRAY); UINT(max_entries, 1); TYPE(key, unsigned int); TYPE(value, struct counts); } stats SEC(".maps");
 struct { UINT(type, BPF_MAP_TYPE_ARRAY); UINT(max_entries, 1); TYPE(key, unsigned int); TYPE(value, struct target); } config SEC(".maps");
 
-/** 复制本次 TLS 正返回实际接受的明文。@param ctx 固定 ABI 寄存器。@return 始终为零。 */
+/* 不同容量使用独立子程序，确保ring保留长度为校验器可见的常量。 */
+#define EMIT(name, capacity) \
+__attribute__((noinline)) static int name(struct registers *ctx, unsigned long pid_tid, unsigned long sequence, struct counts *counts) \
+{ \
+    int accepted = (int)ctx->ax; \
+    if (accepted <= 0 || accepted > capacity || accepted > (unsigned int)ctx->r15) return 0; \
+    struct record *record = reserve(&events, sizeof(struct record) + capacity, 0); \
+    if (!record) { __sync_fetch_and_add(&counts->dropped, 1); return 0; } \
+    record->pid_tid = pid_tid; record->ssl = ctx->bx; record->sequence = sequence; \
+    record->accepted = accepted; record->requested = (unsigned int)ctx->r15; \
+    unsigned long size = (unsigned int)accepted; \
+    asm volatile("%0 &= 16777215" : "+r"(size)); \
+    if (size > capacity) { discard(record, 0); __sync_fetch_and_add(&counts->oversized, 1); return 0; } \
+    if (read_user(record->data, size, (void *)ctx->r14)) { __sync_fetch_and_add(&counts->read_errors, 1); discard(record, 0); return 0; } \
+    submit(record, 0); return 0; \
+}
+EMIT(emit16k, 16384)
+EMIT(emit64k, 65536)
+EMIT(emit256k, 262144)
+EMIT(emit1m, 1048576)
+EMIT(emit4m, 4194304)
+EMIT(emit8m, 8388608)
+
+/** 按一次SSL接受量选择有界副本容量。@param ctx 固定ABI。@return 始终为零。 */
 SEC("uprobe") int capture(struct registers *ctx)
 {
     int accepted = (int)ctx->ax;
@@ -40,30 +63,16 @@ SEC("uprobe") int capture(struct registers *ctx)
     struct target *target = map_lookup(&config, &key);
     struct bpf_pidns_info identity = {};
     if (!target || namespace_pid(target->device, target->inode, &identity, sizeof(identity)) || identity.tgid != target->pid) {
-        __sync_fetch_and_add(&counts->read_errors, 1);
-        return 0;
+        __sync_fetch_and_add(&counts->read_errors, 1); return 0;
     }
-    if (accepted > 16384 || accepted > (unsigned int)ctx->r15) {
-        __sync_fetch_and_add(&counts->oversized, 1);
-        return 0;
-    }
-    struct record *record = reserve(&events, sizeof(struct record), 0);
-    if (!record) { __sync_fetch_and_add(&counts->dropped, 1); return 0; }
-    record->pid_tid = ((unsigned long)identity.tgid << 32) | identity.pid;
-    record->ssl = ctx->bx;
-    record->sequence = sequence;
-    record->accepted = accepted;
-    record->requested = (unsigned int)ctx->r15;
-    // 显式掩码使旧内核校验器也能确认复制长度的非负上界。
-    unsigned long size = (unsigned int)accepted;
-    asm volatile("%0 &= 32767" : "+r"(size));
-    if (size > 16384) { discard(record, 0); __sync_fetch_and_add(&counts->oversized, 1); return 0; }
-    if (read_user(record->data, size, (void *)ctx->r14)) {
-        __sync_fetch_and_add(&counts->read_errors, 1);
-        discard(record, 0);
-        return 0;
-    }
-    submit(record, 0);
-    return 0;
+    if (accepted > (unsigned int)ctx->r15) { __sync_fetch_and_add(&counts->oversized, 1); return 0; }
+    unsigned long pid_tid = ((unsigned long)identity.tgid << 32) | identity.pid;
+    if (accepted <= 16384) return emit16k(ctx, pid_tid, sequence, counts);
+    if (accepted <= 65536) return emit64k(ctx, pid_tid, sequence, counts);
+    if (accepted <= 262144) return emit256k(ctx, pid_tid, sequence, counts);
+    if (accepted <= 1048576) return emit1m(ctx, pid_tid, sequence, counts);
+    if (accepted <= 4194304) return emit4m(ctx, pid_tid, sequence, counts);
+    if (accepted <= 8388608) return emit8m(ctx, pid_tid, sequence, counts);
+    __sync_fetch_and_add(&counts->oversized, 1); return 0;
 }
 char LICENSE[] SEC("license") = "GPL";

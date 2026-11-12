@@ -11,11 +11,14 @@
 - `python3 native/tls-observer/build.py`生成相邻`capture.bpf.o`。运行依赖Python 3.11+、libbpf.so.1及实际BPF/perf能力。
 - `observer.py --pid <直属worker PID> --image <执行体SHA> --worker <物理代次> --capture <采集UUID>`；`CCRB_TLS_OBSERVER`由受控sender启动环境指定绝对路径。
 - 私有JSONL帧`schema_version=1`；ready携带`capture_id/worker_id`。收口命令为`{capture_id,client_request_id}`，后者来自同次cc_prepared的唯一实际`x-client-request-id`。
+- 平台入口为`broker.py`及固定`launch`，客户端为`client.py`；独立`observer.py`保留直属PPID模式，broker模式追加可信`--owner`及`--started`。`export_bundle.py --output <镜像输入目录> --control-policy-output <控制端策略文件>`要求canonical已提交且相关路径干净，开发快照显式`--development`。清单绑定来源revision及各文件SHA，正式镜像默认拒绝开发快照。
 
 ### 3. Contracts
 
 - 当前只准入执行体SHA`af4cea9e21aa959c5e39c389173ba30ebb19b354b67acfe99164946450e9776d`，文件偏移`0x232d5b3`，指令`4883c4185b415c415d415e415f5dc3`；RBX=SSL对象、R14=明文指针、R15d=提交长度、EAX=实际接受长度。核验直属PPID、完整执行体SHA、指令及PID命名空间dev/inode。新映像独立重新准入。
-- 探针在原生返回边界同步作一次有界副本，后续解析、收口、脱敏和持久化在后台。每事件最多16KiB，非阻塞ring 4MiB，最多8条SSL连接，头128KiB、每连接正文预览2MiB。满载丢副本并累计计数，业务沿原请求继续。
+- 探针在原生返回边界同步作一次有界副本，后续解析、收口、脱敏和持久化在后台。每事件按16KiB/64KiB/256KiB/1MiB/4MiB/8MiB六档固定容量预留，非阻塞ring16MiB，最多8条SSL连接，头128KiB、每连接正文预览2MiB。Python只复制32字节事件头和实际accepted范围。满载丢副本并累计计数，业务沿原请求继续。
+- 平台加载器初始仅SYS_ADMIN/SETUID/SETGID，业务sender、worker及C监督进程为UID1001、P/E/I/A能力全零、NoNewPrivs=1；观察器附着后在ready前清零能力。Unix peer、sender直属关系、固定执行体及目标pidfd/启动时刻共同隔离归属。每worker最多一个采集器，账号至多min(max_workers,64)份诊断实例，业务并发沿原配置。
+- 观察器由同UID零能力的C监督进程响应stdin挂断并回收；清理不再分配帮助进程pidfd。broker关闭stdin后最多等待2秒，socket尾部最多等待250ms，超时放弃缓冲。sender停止沿固定降权入口及既有pidfd收口，不增加KILL能力。固定seccomp按Moby profiles `6049e40058759e8a1673ac1090ec6a7e36b9c9bd`的原零能力画像展开，只补bpf/perf_event_open；制品保留其许可。
 - 仅正返回实际接受量计数。事件带PID/TID、SSL对象、全采集代次sequence、accepted/requested；独立计数核对writes/bytes/dropped/read_errors/oversized。序号缺口后停止本代全部解析，继续计数用于对账。
 - 仅解析唯一Content-Length的HTTP/1.1 `POST /v1/messages`（可带query）。复制和哈希前限制本实体范围，越界字节直接丢弃。不能把连接复用后的下一请求拼入当前副本。
 - 最终对象`source=native_tls_uprobe`、`representation=http_entity_from_tls_accepted_write`。`complete/status/reason`区分完整与缺口；实体`observed_body_bytes/body_sha256`及整体`observed_http_bytes/http_sha256`只在完整时提供。`flushed=null`，保持TLS接受、网络刷出和上游实收的独立语义。
@@ -43,6 +46,7 @@
 - `python3 -m unittest discover -s native/tls-observer -p 'test_*.py'`：任意头边界、部分实体、整体SHA、重复长度、连接复用分段/合并、首中尾缺口及跨事件凭据。
 - `scripts/testing/cc2api-native.ts`配合CCRB_TEST_TLS_ONLY=1：已就绪六PID并发、真实beta.5、独立TLS实体SHA、实际Rust保存及生产Python读取器；仅合成凭据和隔离回环。
 - 强制测试ring丢副本，核对业务单次完成、EVENT_LOSS及清空预览；采集开关按完整ClientHello协议字段比较，排除真实随机及密钥材料。生产权限与资源验收由独立上线授权承接。
+- `test_broker.py`覆盖六档容量、有效副本读取范围、peer/映像拒绝、目标句柄耗尽、EOF与弃读回收；`verify_container.py --image <候选> --binary <固定分发体> --output <证据目录>`在关闭外网的真实容器覆盖取消后再准备、512KiB、4MiB以上、六worker及独立TLS实收摘要。平台角色验收分别核对加载器与真实业务，不能用容器默认root身份冒充业务权限。
 
 ## Scenario: 采集、持久化及只读查询
 
