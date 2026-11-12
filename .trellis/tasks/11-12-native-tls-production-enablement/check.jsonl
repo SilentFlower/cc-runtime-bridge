@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"核对原生TLS边界、缺口清空、全量摘要及不阻塞业务"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"核对就绪与单次采集区分、迟到结果归属和安全展示"}
+{"file":".trellis/tasks/11-12-native-tls-production-enablement/research/online-enablement.md","reason":"对照已验证自然请求、恢复点及生产权限差异"}

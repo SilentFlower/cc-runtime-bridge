@@ -1,0 +1,3 @@
+{"file":".trellis/spec/backend/logging-guidelines.md","reason":"固定映像、实际TLS接受量、异步私有采集及缺口隐私合同"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"真实来源、完整性、异步读取归属及安全文本渲染"}
+{"file":".trellis/tasks/11-12-native-tls-production-enablement/research/online-enablement.md","reason":"两个账号生产启用证据、临时权限差异及最新默认策略决定"}
